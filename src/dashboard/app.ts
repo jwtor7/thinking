@@ -88,7 +88,7 @@ interface AppState {
   // Plan selector dropdown open state
   planSelectorOpen: boolean;
   // Context menu state
-  contextMenuPlanPath: string | null;
+  contextMenuFilePath: string | null;
   // Active view tab for navigation
   activeView: 'all' | 'thinking' | 'tools' | 'agents' | 'plan';
 }
@@ -99,6 +99,7 @@ interface PlanInfo {
   content: string;
   lastModified: number; // Timestamp from when we received the update
   sessionId?: string;
+  agentId?: string; // The agent that was active when this plan was modified
 }
 
 /** Plan metadata from the server's plan list */
@@ -159,7 +160,7 @@ const state: AppState = {
   currentPlanPath: null,
   planList: [],
   planSelectorOpen: false,
-  contextMenuPlanPath: null,
+  contextMenuFilePath: null,
   activeView: 'all',
 };
 
@@ -532,7 +533,7 @@ function handleToolStart(event: MonitorEvent): void {
       <span class="tool-time">${escapeHtml(time)}</span>
       ${sessionBadge}
       <span class="tool-name">${escapeHtml(toolName)}</span>
-      <span class="tool-detail">${escapeHtml(summarizeInput(input))}</span>
+      <span class="tool-detail">${renderToolDetail(input)}</span>
       <span class="tool-status tool-status-pending">running</span>
     </div>
     <div class="tool-entry-details">
@@ -664,6 +665,23 @@ function handlePlanList(event: MonitorEvent): void {
   renderPlanSelector();
 }
 
+/**
+ * Find the currently active (running) agent.
+ * Returns the most recently started running agent, or undefined if none.
+ */
+function findActiveAgent(): AgentInfo | undefined {
+  let activeAgent: AgentInfo | undefined;
+  for (const agent of state.agents.values()) {
+    if (agent.active && agent.status === 'running') {
+      // If multiple agents are running, prefer the most recently started
+      if (!activeAgent || agent.startTime > activeAgent.startTime) {
+        activeAgent = agent;
+      }
+    }
+  }
+  return activeAgent;
+}
+
 function handlePlanUpdate(event: MonitorEvent): void {
   const filename = event.filename ? String(event.filename) : 'Unknown plan';
   const path = event.path ? String(event.path) : filename;
@@ -673,6 +691,9 @@ function handlePlanUpdate(event: MonitorEvent): void {
     ? event.lastModified
     : Date.now();
 
+  // Find the currently active (running) agent to associate with this plan
+  const activeAgent = findActiveAgent();
+
   // Store this plan in our map
   state.plans.set(path, {
     path,
@@ -680,6 +701,7 @@ function handlePlanUpdate(event: MonitorEvent): void {
     content,
     lastModified,
     sessionId: event.sessionId || state.currentSessionId || undefined,
+    agentId: activeAgent?.id,
   });
 
   // Update plan list if this plan isn't already in it
@@ -766,18 +788,36 @@ function displayPlan(planPath: string): void {
 }
 
 /**
- * Display the most recent plan for a given session.
- * If no plans exist for the session, keeps the current plan displayed.
+ * Display the most recent plan for a given agent.
+ * Falls back to session-based lookup if no agent-specific plan found.
+ * If no plans found, keeps the current plan displayed.
  */
-function displayPlanForSession(sessionId: string): void {
-  const sessionPlans = Array.from(state.plans.values())
-    .filter((p) => p.sessionId === sessionId)
+function displayPlanForAgent(agentId: string): void {
+  const agent = state.agents.get(agentId);
+
+  // First, try to find a plan directly associated with this agent
+  const agentPlans = Array.from(state.plans.values())
+    .filter((p) => p.agentId === agentId)
     .sort((a, b) => b.lastModified - a.lastModified);
 
-  if (sessionPlans.length > 0) {
-    displayPlan(sessionPlans[0].path);
+  if (agentPlans.length > 0) {
+    displayPlan(agentPlans[0].path);
+    return;
   }
-  // If no plans for session, keep current plan displayed
+
+  // Fall back to session-based lookup
+  if (agent?.sessionId) {
+    const sessionPlans = Array.from(state.plans.values())
+      .filter((p) => p.sessionId === agent.sessionId)
+      .sort((a, b) => b.lastModified - a.lastModified);
+
+    if (sessionPlans.length > 0) {
+      displayPlan(sessionPlans[0].path);
+      return;
+    }
+  }
+
+  // If no plans found, keep current plan displayed
 }
 
 /**
@@ -967,8 +1007,8 @@ function formatTimeAgo(date: Date): string {
 /**
  * Show the plan context menu at the given position.
  */
-function showPlanContextMenu(x: number, y: number, planPath: string): void {
-  state.contextMenuPlanPath = planPath;
+function showFileContextMenu(x: number, y: number, filePath: string): void {
+  state.contextMenuFilePath = filePath;
 
   const menu = elements.planContextMenu;
 
@@ -1001,7 +1041,7 @@ function showPlanContextMenu(x: number, y: number, planPath: string): void {
  */
 function hidePlanContextMenu(): void {
   elements.planContextMenu.classList.remove('visible');
-  state.contextMenuPlanPath = null;
+  state.contextMenuFilePath = null;
 }
 
 /**
@@ -1090,8 +1130,8 @@ function handlePlanRevealClick(): void {
  * Handle context menu "Open in Default App" action.
  */
 function handleContextMenuOpen(): void {
-  if (state.contextMenuPlanPath) {
-    executeFileAction('open', state.contextMenuPlanPath);
+  if (state.contextMenuFilePath) {
+    executeFileAction('open', state.contextMenuFilePath);
   }
   hidePlanContextMenu();
 }
@@ -1100,8 +1140,8 @@ function handleContextMenuOpen(): void {
  * Handle context menu "Reveal in Finder" action.
  */
 function handleContextMenuReveal(): void {
-  if (state.contextMenuPlanPath) {
-    executeFileAction('reveal', state.contextMenuPlanPath);
+  if (state.contextMenuFilePath) {
+    executeFileAction('reveal', state.contextMenuFilePath);
   }
   hidePlanContextMenu();
 }
@@ -1116,7 +1156,7 @@ function handlePlanContextMenu(event: MouseEvent): void {
   }
 
   event.preventDefault();
-  showPlanContextMenu(event.clientX, event.clientY, state.currentPlanPath);
+  showFileContextMenu(event.clientX, event.clientY, state.currentPlanPath);
 }
 
 /**
@@ -1125,7 +1165,7 @@ function handlePlanContextMenu(event: MouseEvent): void {
 function handlePlanOptionContextMenu(event: MouseEvent, planPath: string): void {
   event.preventDefault();
   event.stopPropagation();
-  showPlanContextMenu(event.clientX, event.clientY, planPath);
+  showFileContextMenu(event.clientX, event.clientY, planPath);
 }
 
 function handlePlanDelete(event: MonitorEvent): void {
@@ -1691,10 +1731,7 @@ function selectAgent(agentId: string): void {
 
   // Show plan for agent's session
   if (agentId !== 'all') {
-    const agent = state.agents.get(agentId);
-    if (agent?.sessionId) {
-      displayPlanForSession(agent.sessionId);
-    }
+    displayPlanForAgent(agentId);
   }
 
   // Update tab styles
@@ -1744,7 +1781,7 @@ function selectAgent(agentId: string): void {
  * - entryAgentId is not in the agents map - show for root agents (orphaned entries)
  */
 function isAgentInTree(entryAgentId: string, selectedAgentId: string): boolean {
-  console.log(`[Dashboard] isAgentInTree called: entryAgentId="${entryAgentId}", selectedAgentId="${selectedAgentId}"`);
+  console.log(`[Dashboard] isAgentInTree called: entryAgentId="${entryAgentId}" (type=${typeof entryAgentId}, length=${entryAgentId.length}), selectedAgentId="${selectedAgentId}"`);
 
   // Exact match
   if (entryAgentId === selectedAgentId) {
@@ -1756,8 +1793,10 @@ function isAgentInTree(entryAgentId: string, selectedAgentId: string): boolean {
   // in thinking events (transcript lines often lack agentId).
   // Show 'main' entries for ALL agents since we can't determine which agent
   // they actually belong to.
-  if (entryAgentId === 'main') {
-    console.log(`[Dashboard] isAgentInTree: entryAgentId is 'main' -> true`);
+  // Use case-insensitive comparison and trim for robustness.
+  const normalizedEntryAgentId = entryAgentId.trim().toLowerCase();
+  if (normalizedEntryAgentId === 'main' || normalizedEntryAgentId === '') {
+    console.log(`[Dashboard] isAgentInTree: entryAgentId is 'main' or empty (normalized: "${normalizedEntryAgentId}") -> true`);
     return true;
   }
 
@@ -1943,6 +1982,45 @@ function summarizeInput(input: string | undefined): string {
   return input;
 }
 
+/**
+ * Extract file path from tool input (if present).
+ * Returns null if no file path found.
+ */
+function extractFilePath(input: string | undefined): string | null {
+  if (!input) return null;
+
+  // Match absolute paths - be careful to handle JSON-escaped paths
+  const pathMatch = input.match(/\/[^\s"'\\]+/);
+  return pathMatch ? pathMatch[0] : null;
+}
+
+/**
+ * Render the tool detail, making file paths interactive for context menu.
+ * Returns HTML string with file paths wrapped in a clickable span.
+ *
+ * Security: Always escapes user content using escapeHtml(summarizeInput(input))
+ * pattern to prevent XSS attacks.
+ */
+function renderToolDetail(input: string | undefined): string {
+  const filePath = extractFilePath(input);
+
+  if (filePath) {
+    const summary = summarizeInput(input);
+    if (summary.includes(filePath)) {
+      // Wrap the file path in an interactive span
+      const escapedPath = escapeHtml(filePath);
+      const escapedSummary = escapeHtml(summary);
+      return escapedSummary.replace(
+        escapedPath,
+        `<span class="tool-file-path" data-path="${escapedPath}" title="Right-click for file actions">${escapedPath}</span>`
+      );
+    }
+  }
+
+  // Default case: escape the summarized input for XSS safety
+  return escapeHtml(summarizeInput(input));
+}
+
 function appendAndTrim(container: HTMLElement, element: HTMLElement): void {
   container.appendChild(element);
 
@@ -2038,7 +2116,7 @@ function clearAllPanels(): void {
   state.planList = [];
   state.currentPlanPath = null;
   state.planSelectorOpen = false;
-  state.contextMenuPlanPath = null;
+  state.contextMenuFilePath = null;
   elements.planSelectorText.textContent = 'No active plan';
   updatePlanMeta(null);
   closePlanSelector();
@@ -2259,6 +2337,19 @@ elements.planContent.addEventListener('contextmenu', handlePlanContextMenu);
 
 // Right-click context menu on plan selector button
 elements.planSelectorBtn.addEventListener('contextmenu', handlePlanContextMenu);
+
+// Right-click context menu on file paths in tool entries
+elements.toolsContent.addEventListener('contextmenu', (e) => {
+  const target = e.target as HTMLElement;
+  const filePathEl = target.closest('.tool-file-path') as HTMLElement | null;
+  if (filePathEl) {
+    e.preventDefault();
+    const path = filePathEl.dataset.path;
+    if (path) {
+      showFileContextMenu(e.clientX, e.clientY, path);
+    }
+  }
+});
 
 // Context menu actions
 elements.contextMenuOpen.addEventListener('click', handleContextMenuOpen);

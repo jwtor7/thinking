@@ -6,15 +6,25 @@
  * - Reveal files in Finder
  *
  * Security:
- * - Only allows operations on files within ~/.claude/plans/
- * - Validates and sanitizes all paths before executing
+ * - Only allows paths within ~/.claude/plans/ directory
+ * - Validates path starts with the allowed directory prefix
+ * - Normalizes path before validation to prevent traversal attacks
+ * - Rejects paths containing ".." (prevents directory traversal)
  * - Uses macOS `open` command for safe file handling
+ * - Localhost-only binding ensures only local access
  */
 
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
+import { homedir } from 'node:os';
+import { normalize, join } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { isValidPlanPath } from './plan-watcher.ts';
+
+/**
+ * The only allowed directory for file operations.
+ * All paths must be within this directory.
+ */
+const ALLOWED_DIRECTORY = join(homedir(), '.claude', 'plans');
 
 const execAsync = promisify(exec);
 
@@ -60,8 +70,23 @@ function validateRequest(body: unknown): string | null {
     return 'Invalid path. Must be a non-empty string';
   }
 
-  // Validate path is within allowed directory
-  if (!isValidPlanPath(req.path)) {
+  // Validate path is an absolute path (starts with /)
+  if (!req.path.startsWith('/')) {
+    return 'Invalid path. Must be an absolute path starting with /';
+  }
+
+  // Prevent directory traversal attacks (check before normalization)
+  if (req.path.includes('..')) {
+    return 'Access denied. Path must not contain ".."';
+  }
+
+  // Normalize the path to resolve any relative components
+  const normalizedPath = normalize(req.path);
+
+  // Security: Ensure the normalized path is within the allowed directory
+  // The path must start with the allowed directory path followed by a separator
+  // or be exactly the allowed directory
+  if (!normalizedPath.startsWith(ALLOWED_DIRECTORY + '/') && normalizedPath !== ALLOWED_DIRECTORY) {
     return 'Access denied. Path must be within ~/.claude/plans/';
   }
 

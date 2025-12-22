@@ -130,7 +130,7 @@ case "$HOOK_TYPE" in
 
     "SubagentStart")
         SUBAGENT_ID=$(echo "$INPUT" | jq -r '.subagent_id // .agent_id // empty' 2>/dev/null || echo "")
-        SUBAGENT_NAME=$(echo "$INPUT" | jq -r '.agent_name // .name // empty' 2>/dev/null || echo "")
+        SUBAGENT_NAME=$(echo "$INPUT" | jq -r '.agent_name // .agent_type // .name // empty' 2>/dev/null || echo "")
         PARENT_ID=$(echo "$INPUT" | jq -r '.parent_agent_id // empty' 2>/dev/null || echo "")
 
         EVENT_JSON=$(jq -n \

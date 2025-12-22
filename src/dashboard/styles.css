@@ -748,6 +748,19 @@ body {
   overflow-y: auto;
 }
 
+/* Interactive file paths in tool entries */
+.tool-file-path {
+  color: var(--color-text-link);
+  cursor: context-menu;
+  border-bottom: 1px dashed var(--color-text-link);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.tool-file-path:hover {
+  color: var(--color-status-running);
+  border-color: var(--color-status-running);
+}
+
 .tool-duration {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
