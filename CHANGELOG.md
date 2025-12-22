@@ -13,6 +13,10 @@
 - Right-click context menu on plans with "Open in Default App" and "Reveal in Finder" actions
 - Server-side file action API endpoint for secure file operations
 - Plan list event type for syncing available plans to dashboard
+- Toolbar buttons (Open, Reveal) in Plan panel header for quick file actions
+- Keyboard shortcuts: `Cmd+O` to open plan, `Cmd+Shift+R` to reveal in Finder
+- Toast notifications for file action feedback (success/error)
+- Security tests for file action API (path validation, directory traversal prevention)
 
 ### Fixed
 - TypeScript unused variable warning (cleanup from Phase 1 evaluation)

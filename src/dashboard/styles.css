@@ -1413,6 +1413,58 @@ body.keyboard-mode .view-tab-shortcut {
 }
 
 /* ========================================
+   Plan Action Buttons
+   ======================================== */
+
+.plan-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-right: var(--spacing-sm);
+}
+
+.plan-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.plan-action-btn:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  border-color: var(--color-text-muted);
+  color: var(--color-text-primary);
+}
+
+.plan-action-btn:active:not(:disabled) {
+  background: var(--color-border);
+  transform: scale(0.95);
+}
+
+.plan-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.plan-action-btn:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+
+.plan-action-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* ========================================
    Plan Selector Dropdown
    ======================================== */
 
@@ -1614,4 +1666,130 @@ body.keyboard-mode .view-tab-shortcut {
 /* Make plan content area contextmenu-aware */
 .panel-plan .panel-content {
   cursor: context-menu;
+}
+
+/* ========================================
+   Plan Scope Badge & Metadata
+   ======================================== */
+
+.plan-scope-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 6px;
+  margin-left: var(--spacing-sm);
+  background: var(--color-bg-hover);
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: help;
+  vertical-align: middle;
+}
+
+.plan-scope-badge:hover {
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.plan-meta {
+  display: none;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-bg-primary);
+  border-bottom: 1px solid var(--color-border-light);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.plan-meta.visible {
+  display: flex;
+}
+
+.plan-meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.plan-meta-label {
+  color: var(--color-text-muted);
+}
+
+.plan-meta-value {
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-mono);
+}
+
+.plan-meta-path {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+}
+
+.plan-meta-time {
+  color: var(--color-accent-cyan);
+}
+
+/* Plan info notice for workspace scope */
+.plan-scope-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: rgba(57, 197, 207, 0.1);
+  border-left: 3px solid var(--color-accent-cyan);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.plan-scope-notice-icon {
+  color: var(--color-accent-cyan);
+  font-size: 14px;
+}
+
+/* ========================================
+   Toast Notifications
+   ======================================== */
+
+.toast {
+  position: fixed;
+  bottom: calc(var(--footer-height) + var(--spacing-lg));
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 2000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+  pointer-events: none;
+}
+
+.toast.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast-success {
+  border-color: var(--color-accent-green);
+  border-left: 4px solid var(--color-accent-green);
+}
+
+.toast-error {
+  border-color: var(--color-accent-red);
+  border-left: 4px solid var(--color-accent-red);
 }

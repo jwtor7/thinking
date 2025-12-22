@@ -104,8 +104,16 @@
         <!-- Plan Panel -->
         <section class="panel panel-plan">
           <header class="panel-header">
-            <h2 class="panel-title">PLAN</h2>
+            <h2 class="panel-title">PLAN <span class="plan-scope-badge" title="Plans are workspace-level files shared across all sessions">workspace</span></h2>
             <div class="panel-header-controls">
+              <div class="plan-actions">
+                <button class="plan-action-btn" id="plan-open-btn" title="Open in Default App (Cmd+O)" aria-label="Open in Default App" disabled>
+                  <span class="plan-action-icon">&#128196;</span>
+                </button>
+                <button class="plan-action-btn" id="plan-reveal-btn" title="Reveal in Finder (Cmd+Shift+R)" aria-label="Reveal in Finder" disabled>
+                  <span class="plan-action-icon">&#128193;</span>
+                </button>
+              </div>
               <div class="plan-selector-wrapper">
                 <button class="plan-selector-btn" id="plan-selector-btn" aria-haspopup="listbox" aria-expanded="false" title="Select a plan file">
                   <span class="plan-selector-text" id="plan-selector-text">No active plan</span>
@@ -117,6 +125,9 @@
               </div>
             </div>
           </header>
+          <div class="plan-meta" id="plan-meta">
+            <!-- Plan metadata (last modified, etc.) will be added dynamically -->
+          </div>
           <div class="panel-content" id="plan-content">
             <div class="empty-state">
               <span class="empty-icon">file</span>

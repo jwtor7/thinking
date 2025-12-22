@@ -98,6 +98,7 @@ interface PlanInfo {
   filename: string;
   content: string;
   lastModified: number; // Timestamp from when we received the update
+  sessionId?: string;
 }
 
 /** Plan metadata from the server's plan list */
@@ -120,6 +121,7 @@ interface AgentInfo {
   id: string;
   name?: string;
   parentId?: string;
+  sessionId?: string;
   active: boolean;
   status?: 'running' | 'success' | 'failure' | 'cancelled';
   startTime: string;
@@ -200,6 +202,9 @@ const elements = {
   agentsContent: document.getElementById('agents-content')!,
   agentsCount: document.getElementById('agents-count')!,
   planContent: document.getElementById('plan-content')!,
+  planMeta: document.getElementById('plan-meta')!,
+  planOpenBtn: document.getElementById('plan-open-btn') as HTMLButtonElement,
+  planRevealBtn: document.getElementById('plan-reveal-btn') as HTMLButtonElement,
   planSelectorBtn: document.getElementById('plan-selector-btn')!,
   planSelectorText: document.getElementById('plan-selector-text')!,
   planSelectorDropdown: document.getElementById('plan-selector-dropdown')!,
@@ -212,6 +217,7 @@ const elements = {
   connectionOverlayMessage: document.getElementById('connection-overlay-message')!,
   connectionOverlayRetry: document.getElementById('connection-overlay-retry')!,
   panels: document.querySelector('.panels') as HTMLElement,
+  toast: null as HTMLElement | null,
 };
 
 // ============================================
@@ -427,6 +433,9 @@ function handleThinking(event: MonitorEvent): void {
   const sessionId = event.sessionId;
   const preview = content.slice(0, 80).replace(/\n/g, ' ');
 
+  // Debug: Log the agentId values to diagnose filtering issues
+  console.log(`[Dashboard] Thinking entry agentId: "${agentId}", known agents: [${Array.from(state.agents.keys()).join(', ')}]`);
+
   // Clear empty state if present
   const emptyState = elements.thinkingContent.querySelector('.empty-state');
   if (emptyState) {
@@ -610,6 +619,7 @@ function handleAgentStart(event: MonitorEvent): void {
     id: agentId,
     name: agentName,
     parentId,
+    sessionId: event.sessionId || state.currentSessionId || undefined,
     active: true,
     status: 'running',
     startTime: event.timestamp,
@@ -669,6 +679,7 @@ function handlePlanUpdate(event: MonitorEvent): void {
     filename,
     content,
     lastModified,
+    sessionId: event.sessionId || state.currentSessionId || undefined,
   });
 
   // Update plan list if this plan isn't already in it
@@ -733,6 +744,8 @@ function displayPlan(planPath: string): void {
         <p>Loading plan content...</p>
       </div>
     `;
+    updatePlanMeta(null);
+    updatePlanActionButtons();
     return;
   }
 
@@ -742,8 +755,29 @@ function displayPlan(planPath: string): void {
     <div class="plan-markdown">${renderSimpleMarkdown(plan.content)}</div>
   `;
 
+  // Update plan metadata display
+  updatePlanMeta(plan);
+
+  // Update action buttons enabled state
+  updatePlanActionButtons();
+
   // Update selector to show active state
   renderPlanSelector();
+}
+
+/**
+ * Display the most recent plan for a given session.
+ * If no plans exist for the session, keeps the current plan displayed.
+ */
+function displayPlanForSession(sessionId: string): void {
+  const sessionPlans = Array.from(state.plans.values())
+    .filter((p) => p.sessionId === sessionId)
+    .sort((a, b) => b.lastModified - a.lastModified);
+
+  if (sessionPlans.length > 0) {
+    displayPlan(sessionPlans[0].path);
+  }
+  // If no plans for session, keep current plan displayed
 }
 
 /**
@@ -758,7 +792,40 @@ function displayEmptyPlan(): void {
       <p>No plan file loaded</p>
     </div>
   `;
+  updatePlanMeta(null);
+  updatePlanActionButtons();
   renderPlanSelector();
+}
+
+/**
+ * Update the plan metadata display.
+ * Shows the path and last modified time of the current plan.
+ */
+function updatePlanMeta(plan: PlanInfo | null): void {
+  if (!plan) {
+    elements.planMeta.classList.remove('visible');
+    elements.planMeta.innerHTML = '';
+    return;
+  }
+
+  const modifiedDate = new Date(plan.lastModified);
+  const timeAgo = formatTimeAgo(modifiedDate);
+  const fullTime = modifiedDate.toLocaleString();
+
+  // Shorten the path for display (show just ~/.claude/plans/filename.md)
+  const shortPath = plan.path.replace(/^.*\/\.claude\//, '~/.claude/');
+
+  elements.planMeta.innerHTML = `
+    <span class="plan-meta-item">
+      <span class="plan-meta-label">Modified:</span>
+      <span class="plan-meta-value plan-meta-time" title="${escapeHtml(fullTime)}">${escapeHtml(timeAgo)}</span>
+    </span>
+    <span class="plan-meta-item plan-meta-path" title="${escapeHtml(plan.path)}">
+      <span class="plan-meta-label">Path:</span>
+      <span class="plan-meta-value">${escapeHtml(shortPath)}</span>
+    </span>
+  `;
+  elements.planMeta.classList.add('visible');
 }
 
 /**
@@ -938,6 +1005,32 @@ function hidePlanContextMenu(): void {
 }
 
 /**
+ * Show a toast notification.
+ */
+function showToast(message: string, type: 'success' | 'error' = 'success'): void {
+  // Create toast element if it doesn't exist
+  if (!elements.toast) {
+    elements.toast = document.createElement('div');
+    elements.toast.className = 'toast';
+    document.body.appendChild(elements.toast);
+  }
+
+  // Set content and type
+  elements.toast.textContent = message;
+  elements.toast.className = `toast toast-${type}`;
+
+  // Show toast
+  requestAnimationFrame(() => {
+    elements.toast!.classList.add('visible');
+  });
+
+  // Hide after delay
+  setTimeout(() => {
+    elements.toast!.classList.remove('visible');
+  }, 2500);
+}
+
+/**
  * Execute a file action (open or reveal) via the server API.
  */
 async function executeFileAction(action: 'open' | 'reveal', path: string): Promise<void> {
@@ -954,9 +1047,42 @@ async function executeFileAction(action: 'open' | 'reveal', path: string): Promi
 
     if (!result.success) {
       console.error(`[Dashboard] File action failed: ${result.error}`);
+      showToast(result.error || 'Action failed', 'error');
+    } else {
+      // Show success feedback
+      const actionText = action === 'open' ? 'Opened in default app' : 'Revealed in Finder';
+      showToast(actionText, 'success');
     }
   } catch (error) {
     console.error('[Dashboard] Failed to execute file action:', error);
+    showToast('Failed to connect to server', 'error');
+  }
+}
+
+/**
+ * Update the enabled state of plan action buttons.
+ */
+function updatePlanActionButtons(): void {
+  const hasActivePlan = state.currentPlanPath !== null;
+  elements.planOpenBtn.disabled = !hasActivePlan;
+  elements.planRevealBtn.disabled = !hasActivePlan;
+}
+
+/**
+ * Handle toolbar "Open" button click.
+ */
+function handlePlanOpenClick(): void {
+  if (state.currentPlanPath) {
+    executeFileAction('open', state.currentPlanPath);
+  }
+}
+
+/**
+ * Handle toolbar "Reveal" button click.
+ */
+function handlePlanRevealClick(): void {
+  if (state.currentPlanPath) {
+    executeFileAction('reveal', state.currentPlanPath);
   }
 }
 
@@ -1255,10 +1381,9 @@ function applySessionFilter(entry: HTMLElement): void {
 
   if (isThinkingEntry) {
     const entryAgentId = entry.dataset.agent || 'main';
-    // Use the same agent tree matching logic for consistency
+    // isAgentInTree now handles 'main' placeholder entries properly
     const matchesAgent = state.selectedAgent === 'all' ||
-      isAgentInTree(entryAgentId, state.selectedAgent) ||
-      (entryAgentId === 'main' && isRootAgentSelected());
+      isAgentInTree(entryAgentId, state.selectedAgent);
     const matchesText = !state.thinkingFilter ||
       (entry.dataset.content || '').includes(state.thinkingFilter.toLowerCase());
     entry.style.display = (matchesSession && matchesAgent && matchesText) ? '' : 'none';
@@ -1559,6 +1684,18 @@ function renderAgentTabs(): void {
 
 function selectAgent(agentId: string): void {
   state.selectedAgent = agentId;
+  console.log(`[Dashboard] ===== selectAgent called =====`);
+  console.log(`[Dashboard] Selected agent: "${agentId}"`);
+  console.log(`[Dashboard] Agents in state.agents: [${Array.from(state.agents.keys()).map(k => `"${k}"`).join(', ')}]`);
+  console.log(`[Dashboard] Selected session: "${state.selectedSession}"`);
+
+  // Show plan for agent's session
+  if (agentId !== 'all') {
+    const agent = state.agents.get(agentId);
+    if (agent?.sessionId) {
+      displayPlanForSession(agent.sessionId);
+    }
+  }
 
   // Update tab styles
   const tabs = elements.agentTabs.querySelectorAll('.agent-tab');
@@ -1572,10 +1709,28 @@ function selectAgent(agentId: string): void {
 
   // Filter thinking entries by agent
   const entries = elements.thinkingContent.querySelectorAll('.thinking-entry');
-  entries.forEach((entry: Element) => {
+  console.log(`[Dashboard] Total thinking entries to filter: ${entries.length}`);
+  let visibleCount = 0;
+  entries.forEach((entry: Element, index: number) => {
     const el = entry as HTMLElement;
-    applyAgentFilter(el, el.dataset.agent || 'main');
+    const entryAgentId = el.dataset.agent || 'main';
+    const entrySession = el.dataset.session || '';
+
+    // Log first few entries for debugging
+    if (index < 5) {
+      console.log(`[Dashboard] Entry ${index}: agentId="${entryAgentId}", session="${entrySession}"`);
+    }
+
+    applyAgentFilter(el, entryAgentId);
+
+    if (index < 5) {
+      console.log(`[Dashboard] Entry ${index} after filter: display="${el.style.display}"`);
+    }
+
+    if (el.style.display !== 'none') visibleCount++;
   });
+  console.log(`[Dashboard] After filtering: ${visibleCount}/${entries.length} entries visible`);
+  console.log(`[Dashboard] ===== selectAgent complete =====`);
 }
 
 /**
@@ -1585,12 +1740,24 @@ function selectAgent(agentId: string): void {
  * Returns true if:
  * - entryAgentId exactly matches selectedAgentId
  * - entryAgentId is a descendant (child, grandchild, etc.) of selectedAgentId
- * - entryAgentId is not in the agents map AND selectedAgentId is a root agent
- *   (this handles orphaned entries from the main session)
+ * - entryAgentId is 'main' (placeholder for unknown agent) - show for ALL agents
+ * - entryAgentId is not in the agents map - show for root agents (orphaned entries)
  */
 function isAgentInTree(entryAgentId: string, selectedAgentId: string): boolean {
+  console.log(`[Dashboard] isAgentInTree called: entryAgentId="${entryAgentId}", selectedAgentId="${selectedAgentId}"`);
+
   // Exact match
   if (entryAgentId === selectedAgentId) {
+    console.log(`[Dashboard] isAgentInTree: EXACT MATCH -> true`);
+    return true;
+  }
+
+  // IMPORTANT: 'main' is a placeholder used when no agentId is provided
+  // in thinking events (transcript lines often lack agentId).
+  // Show 'main' entries for ALL agents since we can't determine which agent
+  // they actually belong to.
+  if (entryAgentId === 'main') {
+    console.log(`[Dashboard] isAgentInTree: entryAgentId is 'main' -> true`);
     return true;
   }
 
@@ -1598,11 +1765,12 @@ function isAgentInTree(entryAgentId: string, selectedAgentId: string): boolean {
   const entryAgent = state.agents.get(entryAgentId);
 
   // If the entry's agentId is not in the map (orphaned entry),
-  // show it for root agents since it likely came from the main session
+  // show it for root agents since it likely came from a previous session
   if (!entryAgent) {
     const selectedAgent = state.agents.get(selectedAgentId);
-    // Show orphaned entries when a root agent is selected
-    return selectedAgent !== undefined && selectedAgent.parentId === undefined;
+    const result = selectedAgent !== undefined && selectedAgent.parentId === undefined;
+    console.log(`[Dashboard] isAgentInTree: orphaned entry, selectedAgent exists=${selectedAgent !== undefined}, isRoot=${selectedAgent?.parentId === undefined} -> ${result}`);
+    return result;
   }
 
   // Check if entryAgentId is a child/descendant of selectedAgentId
@@ -1611,42 +1779,37 @@ function isAgentInTree(entryAgentId: string, selectedAgentId: string): boolean {
     const agent = state.agents.get(currentId);
     if (!agent) break;
     if (agent.parentId === selectedAgentId) {
+      console.log(`[Dashboard] isAgentInTree: found parent match -> true`);
       return true;
     }
     currentId = agent.parentId;
   }
 
+  console.log(`[Dashboard] isAgentInTree: no match found -> false`);
   return false;
 }
 
 function applyAgentFilter(entry: HTMLElement, entryAgentId: string): void {
-  // Handle the case where 'main' is used as a default placeholder
-  // If no agent with that exact ID exists, treat it as matching any root-level agent
+  console.log(`[Dashboard] applyAgentFilter: entryAgentId="${entryAgentId}", selectedAgent="${state.selectedAgent}", selectedSession="${state.selectedSession}"`);
+
+  // isAgentInTree now handles 'main' placeholder entries properly
   const matchesAgent = state.selectedAgent === 'all' ||
-    isAgentInTree(entryAgentId, state.selectedAgent) ||
-    // Fallback: if entry has 'main' as agentId and no agents exist yet,
-    // or if the selected agent has no matching entries, still show entries
-    // with 'main' agentId if the selected agent appears to be a root agent
-    (entryAgentId === 'main' && isRootAgentSelected());
+    isAgentInTree(entryAgentId, state.selectedAgent);
 
   // Also check text filter
   const matchesText = !state.thinkingFilter ||
     (entry.dataset.content || '').includes(state.thinkingFilter.toLowerCase());
 
   // Also check session filter
-  const sessionMatches = state.selectedSession === 'all' || entry.dataset.session === state.selectedSession;
+  const entrySession = entry.dataset.session || '';
+  const sessionMatches = state.selectedSession === 'all' || entrySession === state.selectedSession;
 
-  entry.style.display = (matchesAgent && matchesText && sessionMatches) ? '' : 'none';
-}
+  console.log(`[Dashboard] applyAgentFilter results: matchesAgent=${matchesAgent}, matchesText=${matchesText}, sessionMatches=${sessionMatches} (entrySession="${entrySession}")`);
 
-/**
- * Check if the selected agent is a root-level agent (no parent).
- * Used as a fallback for matching 'main' agentId entries.
- */
-function isRootAgentSelected(): boolean {
-  if (state.selectedAgent === 'all') return true;
-  const agent = state.agents.get(state.selectedAgent);
-  return agent !== undefined && agent.parentId === undefined;
+  const shouldShow = matchesAgent && matchesText && sessionMatches;
+  console.log(`[Dashboard] applyAgentFilter: shouldShow=${shouldShow}, setting display="${shouldShow ? '' : 'none'}"`);
+
+  entry.style.display = shouldShow ? '' : 'none';
 }
 
 function getAgentColorClass(name: string): string {
@@ -1666,10 +1829,9 @@ function applyThinkingFilter(entry: HTMLElement): void {
   const content = entry.dataset.content || '';
   const entryAgentId = entry.dataset.agent || 'main';
   const matchesText = !state.thinkingFilter || content.includes(state.thinkingFilter.toLowerCase());
-  // Use the same agent tree matching logic as applyAgentFilter
+  // isAgentInTree now handles 'main' placeholder entries properly
   const agentMatches = state.selectedAgent === 'all' ||
-    isAgentInTree(entryAgentId, state.selectedAgent) ||
-    (entryAgentId === 'main' && isRootAgentSelected());
+    isAgentInTree(entryAgentId, state.selectedAgent);
   const sessionMatches = state.selectedSession === 'all' || entry.dataset.session === state.selectedSession;
   entry.style.display = (matchesText && agentMatches && sessionMatches) ? '' : 'none';
 }
@@ -1878,6 +2040,7 @@ function clearAllPanels(): void {
   state.planSelectorOpen = false;
   state.contextMenuPlanPath = null;
   elements.planSelectorText.textContent = 'No active plan';
+  updatePlanMeta(null);
   closePlanSelector();
   hidePlanContextMenu();
   renderPlanSelector();
@@ -1978,6 +2141,27 @@ function handleKeydown(event: KeyboardEvent): void {
         return;
     }
   }
+
+  // Plan file actions with Cmd/Ctrl modifiers
+  if (event.metaKey || event.ctrlKey) {
+    // Cmd+O / Ctrl+O - Open in default app
+    if (event.key.toLowerCase() === 'o' && !event.shiftKey) {
+      if (state.currentPlanPath) {
+        event.preventDefault();
+        handlePlanOpenClick();
+      }
+      return;
+    }
+
+    // Cmd+Shift+R / Ctrl+Shift+R - Reveal in Finder
+    if (event.key.toLowerCase() === 'r' && event.shiftKey) {
+      if (state.currentPlanPath) {
+        event.preventDefault();
+        handlePlanRevealClick();
+      }
+      return;
+    }
+  }
 }
 
 // ============================================
@@ -2066,6 +2250,10 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Plan toolbar action buttons
+elements.planOpenBtn.addEventListener('click', handlePlanOpenClick);
+elements.planRevealBtn.addEventListener('click', handlePlanRevealClick);
+
 // Right-click context menu on plan content
 elements.planContent.addEventListener('contextmenu', handlePlanContextMenu);
 
@@ -2101,3 +2289,4 @@ initViewTabs();
 connect();
 console.log('[Dashboard] Thinking Monitor initialized');
 console.log('[Dashboard] Keyboard shortcuts: 0-9=agents, a/t/o/g/p=views, c=clear, s=scroll, /=search, Esc=clear filters');
+console.log('[Dashboard] Plan shortcuts: Cmd+O=open, Cmd+Shift+R=reveal, right-click=context menu');
