@@ -12,8 +12,8 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createServer, type Server } from 'node:http';
-import { WebSocketServer, WebSocket } from 'ws';
-import { spawn, execSync } from 'node:child_process';
+import { WebSocket } from 'ws';
+import { execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { WebSocketHub } from './websocket-hub.ts';
 import { EventReceiver } from './event-receiver.ts';

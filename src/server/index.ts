@@ -15,6 +15,7 @@ import { dirname, join } from 'node:path';
 import { WebSocketHub } from './websocket-hub.ts';
 import { EventReceiver } from './event-receiver.ts';
 import { StaticServer } from './static-server.ts';
+import { TranscriptWatcher } from './transcript-watcher.ts';
 import { CONFIG } from './types.ts';
 
 // Get the dashboard directory path
@@ -89,6 +90,11 @@ async function main(): Promise<void> {
   const staticServer = new StaticServer(dashboardPath);
   await staticServer.start();
 
+  // Start transcript watcher for thinking blocks
+  const transcriptWatcher = new TranscriptWatcher(hub);
+  await transcriptWatcher.start();
+  console.log(`[Server] Transcript watcher started`);
+
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║  DASHBOARD: http://localhost:${CONFIG.STATIC_PORT}                        ║
@@ -99,6 +105,7 @@ async function main(): Promise<void> {
   const shutdown = async (): Promise<void> => {
     console.log('\n[Server] Shutting down...');
 
+    transcriptWatcher.stop();
     hub.close();
     await staticServer.stop();
 
