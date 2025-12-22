@@ -80,8 +80,8 @@ check_installed() {
         return 1
     fi
 
-    # Check for any of our hooks
-    if jq -e '.hooks.PreToolUse[]?.hooks[]?.command | select(contains("thinking-monitor"))' "$SETTINGS_FILE" > /dev/null 2>&1; then
+    # Check for any of our hooks (look for our hooks directory path)
+    if jq -e --arg dir "$HOOKS_DIR" '.hooks.PreToolUse[]?.hooks[]?.command | select(contains($dir))' "$SETTINGS_FILE" > /dev/null 2>&1; then
         return 0
     fi
 
@@ -167,7 +167,7 @@ install_hooks() {
             ]
         }
     ],
-    "SessionStop": [
+    "SessionEnd": [
         {
             "hooks": [
                 {
@@ -268,13 +268,13 @@ show_status() {
 
         # Show which hooks are registered
         print_info "Registered hooks:"
-        for hook_type in PreToolUse PostToolUse SubagentStart SubagentStop SessionStart SessionStop; do
+        for hook_type in PreToolUse PostToolUse SubagentStart SubagentStop SessionStart SessionEnd; do
             local count
-            count=$(jq -r --arg type "$hook_type" '
+            count=$(jq -r --arg type "$hook_type" --arg dir "$HOOKS_DIR" '
                 .hooks[$type] // [] |
                 map(.hooks // []) |
                 flatten |
-                map(select(.command | contains("thinking-monitor"))) |
+                map(select(.command | contains($dir))) |
                 length
             ' "$SETTINGS_FILE")
 
