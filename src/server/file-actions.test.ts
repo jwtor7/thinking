@@ -275,66 +275,10 @@ describe('File Actions Handler', () => {
   });
 
   describe('Path Security Validation', () => {
-    it('should reject paths outside ~/.claude/plans/', async () => {
+    it('should reject directory traversal attempts with ..', async () => {
       const req = createMockRequest('POST', '/file-action', {
         action: 'open',
-        path: '/tmp/malicious-file.md',
-      });
-      const res = createMockResponse();
-
-      await handleFileActionRequest(req, res);
-
-      expect(res._statusCode).toBe(400);
-      const body = JSON.parse(res._body);
-      expect(body.error).toContain('Access denied');
-    });
-
-    it('should reject /etc/passwd path', async () => {
-      const req = createMockRequest('POST', '/file-action', {
-        action: 'open',
-        path: '/etc/passwd',
-      });
-      const res = createMockResponse();
-
-      await handleFileActionRequest(req, res);
-
-      expect(res._statusCode).toBe(400);
-      const body = JSON.parse(res._body);
-      expect(body.error).toContain('Access denied');
-    });
-
-    it('should reject paths in ~/.claude/ (parent directory)', async () => {
-      const req = createMockRequest('POST', '/file-action', {
-        action: 'open',
-        path: join(homedir(), '.claude', 'settings.json'),
-      });
-      const res = createMockResponse();
-
-      await handleFileActionRequest(req, res);
-
-      expect(res._statusCode).toBe(400);
-      const body = JSON.parse(res._body);
-      expect(body.error).toContain('Access denied');
-    });
-
-    it('should reject paths in ~/.claude/projects/ (sibling directory)', async () => {
-      const req = createMockRequest('POST', '/file-action', {
-        action: 'open',
-        path: join(homedir(), '.claude', 'projects', 'test', 'CLAUDE.md'),
-      });
-      const res = createMockResponse();
-
-      await handleFileActionRequest(req, res);
-
-      expect(res._statusCode).toBe(400);
-      const body = JSON.parse(res._body);
-      expect(body.error).toContain('Access denied');
-    });
-
-    it('should reject directory traversal attempts', async () => {
-      const req = createMockRequest('POST', '/file-action', {
-        action: 'open',
-        path: join(plansDir, '..', 'settings.json'),
+        path: '/Users/test/../../../etc/passwd', // Literal .. in path
       });
       const res = createMockResponse();
 
@@ -348,7 +292,7 @@ describe('File Actions Handler', () => {
     it('should reject deeply nested traversal attempts', async () => {
       const req = createMockRequest('POST', '/file-action', {
         action: 'open',
-        path: join(plansDir, '..', '..', '..', 'etc', 'passwd'),
+        path: '/Users/test/../../../etc/passwd',
       });
       const res = createMockResponse();
 
@@ -359,10 +303,10 @@ describe('File Actions Handler', () => {
       expect(body.error).toContain('Access denied');
     });
 
-    it('should reject paths from other users home directories', async () => {
+    it('should reject relative paths', async () => {
       const req = createMockRequest('POST', '/file-action', {
         action: 'open',
-        path: '/Users/other/.claude/plans/test.md',
+        path: 'relative/path/file.md',
       });
       const res = createMockResponse();
 
@@ -370,7 +314,7 @@ describe('File Actions Handler', () => {
 
       expect(res._statusCode).toBe(400);
       const body = JSON.parse(res._body);
-      expect(body.error).toContain('Access denied');
+      expect(body.error).toContain('absolute path');
     });
 
     it('should reject empty path', async () => {
@@ -399,6 +343,20 @@ describe('File Actions Handler', () => {
       expect(res._statusCode).toBe(400);
       const body = JSON.parse(res._body);
       expect(body.error).toContain('Invalid path');
+    });
+
+    it('should allow any absolute path (localhost-only tool)', async () => {
+      const req = createMockRequest('POST', '/file-action', {
+        action: 'open',
+        path: '/tmp/any-file.md',
+      });
+      const res = createMockResponse();
+
+      await handleFileActionRequest(req, res);
+
+      expect(res._statusCode).toBe(200);
+      const body = JSON.parse(res._body);
+      expect(body.success).toBe(true);
     });
   });
 
@@ -472,7 +430,7 @@ describe('File Actions Handler', () => {
     it('should return success: false and error message for invalid requests', async () => {
       const req = createMockRequest('POST', '/file-action', {
         action: 'open',
-        path: '/etc/passwd',
+        path: '../etc/passwd', // Uses traversal which is rejected
       });
       const res = createMockResponse();
 

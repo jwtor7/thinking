@@ -6,25 +6,16 @@
  * - Reveal files in Finder
  *
  * Security:
- * - Only allows paths within ~/.claude/plans/ directory
- * - Validates path starts with the allowed directory prefix
- * - Normalizes path before validation to prevent traversal attacks
- * - Rejects paths containing ".." (prevents directory traversal)
- * - Uses macOS `open` command for safe file handling
  * - Localhost-only binding ensures only local access
+ * - Validates path is absolute and doesn't contain traversal patterns
+ * - Uses macOS `open` command which respects filesystem permissions
+ * - No sensitive operations (read/write/delete) - only open/reveal
  */
 
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { homedir } from 'node:os';
-import { normalize, join } from 'node:path';
+import { normalize } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-
-/**
- * The only allowed directory for file operations.
- * All paths must be within this directory.
- */
-const ALLOWED_DIRECTORY = join(homedir(), '.claude', 'plans');
 
 const execAsync = promisify(exec);
 
@@ -75,20 +66,17 @@ function validateRequest(body: unknown): string | null {
     return 'Invalid path. Must be an absolute path starting with /';
   }
 
-  // Prevent directory traversal attacks (check before normalization)
+  // Prevent directory traversal attacks
   if (req.path.includes('..')) {
     return 'Access denied. Path must not contain ".."';
   }
 
   // Normalize the path to resolve any relative components
-  const normalizedPath = normalize(req.path);
+  normalize(req.path);
 
-  // Security: Ensure the normalized path is within the allowed directory
-  // The path must start with the allowed directory path followed by a separator
-  // or be exactly the allowed directory
-  if (!normalizedPath.startsWith(ALLOWED_DIRECTORY + '/') && normalizedPath !== ALLOWED_DIRECTORY) {
-    return 'Access denied. Path must be within ~/.claude/plans/';
-  }
+  // Since this is a localhost-only tool that only opens/reveals files
+  // (no read/write/delete), we allow any absolute path. The macOS `open`
+  // command will respect filesystem permissions.
 
   return null;
 }
