@@ -1,0 +1,34 @@
+{
+  "name": "thinking-monitor",
+  "version": "0.1.0",
+  "description": "Real-time monitoring dashboard for Claude Code thinking, agents, and tool activity",
+  "type": "module",
+  "main": "dist/server/index.js",
+  "scripts": {
+    "dev": "node --watch --experimental-strip-types src/server/index.ts",
+    "build": "esbuild src/server/index.ts --bundle --platform=node --format=esm --outdir=dist/server --packages=external && esbuild src/dashboard/app.ts --bundle --format=esm --outdir=dist/dashboard",
+    "start": "node dist/server/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "claude-code",
+    "monitoring",
+    "dashboard",
+    "anthropic"
+  ],
+  "author": "",
+  "license": "MIT",
+  "packageManager": "pnpm@10.26.1",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.13",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.7.2"
+  }
+}
