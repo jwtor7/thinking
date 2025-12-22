@@ -17,6 +17,7 @@ import { EventReceiver } from './event-receiver.ts';
 import { StaticServer } from './static-server.ts';
 import { TranscriptWatcher } from './transcript-watcher.ts';
 import { PlanWatcher } from './plan-watcher.ts';
+import { handleFileActionRequest } from './file-actions.ts';
 import { CONFIG } from './types.ts';
 
 // Get the dashboard directory path
@@ -47,6 +48,12 @@ async function main(): Promise<void> {
 
   // Create HTTP server for WebSocket and event receiver
   const httpServer = createServer(async (req, res) => {
+    // Try to handle as file action request
+    const fileActionHandled = await handleFileActionRequest(req, res);
+    if (fileActionHandled) {
+      return;
+    }
+
     // Try to handle as event receiver request
     const handled = await eventReceiver.handleRequest(req, res);
 
@@ -103,7 +110,13 @@ async function main(): Promise<void> {
 
   // Send current state to newly connected clients
   hub.onClientConnect(async (sendEvent) => {
-    // Send the most recent plan to the new client
+    // Send the list of all available plans
+    const planListEvent = planWatcher.getPlanListEvent();
+    if (planListEvent.plans.length > 0) {
+      sendEvent(planListEvent);
+    }
+
+    // Send the most recent plan content
     const planEvent = await planWatcher.getMostRecentPlanEvent();
     if (planEvent) {
       sendEvent(planEvent);

@@ -837,10 +837,12 @@ body {
 
 .connection-overlay {
   position: fixed;
-  top: 0;
+  /* Position overlay below the navigation bars (header + view tabs + agent bar + session filter)
+     but above the footer, allowing users to interact with navigation while waiting for connection */
+  top: calc(var(--header-height) + var(--agent-bar-height) + var(--agent-bar-height) + var(--agent-bar-height));
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: var(--footer-height);
   background: rgba(13, 17, 23, 0.9);
   display: flex;
   flex-direction: column;
@@ -1408,4 +1410,208 @@ body.keyboard-mode .view-tab-shortcut {
   .view-tab-shortcut {
     display: none;
   }
+}
+
+/* ========================================
+   Plan Selector Dropdown
+   ======================================== */
+
+.plan-selector-wrapper {
+  position: relative;
+}
+
+.plan-selector-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  max-width: 250px;
+}
+
+.plan-selector-btn:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text-primary);
+}
+
+.plan-selector-btn[aria-expanded="true"] {
+  border-color: var(--color-accent-blue);
+  color: var(--color-text-primary);
+}
+
+.plan-selector-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  text-align: left;
+}
+
+.plan-selector-arrow {
+  font-size: 10px;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.plan-selector-btn[aria-expanded="true"] .plan-selector-arrow {
+  transform: rotate(180deg);
+}
+
+.plan-selector-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 200px;
+  max-width: 350px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  list-style: none;
+  padding: var(--spacing-xs);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+}
+
+.plan-selector-dropdown.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.plan-selector-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-sm);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-mono);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.plan-selector-option:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.plan-selector-option.active {
+  background: var(--color-accent-blue);
+  color: white;
+}
+
+.plan-selector-option-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.plan-selector-option-badge {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.plan-selector-option.active .plan-selector-option-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.plan-selector-empty {
+  padding: var(--spacing-md);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+/* ========================================
+   Plan Context Menu
+   ======================================== */
+
+.plan-context-menu {
+  position: fixed;
+  min-width: 180px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  padding: var(--spacing-xs);
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.95);
+  transform-origin: top left;
+  transition: opacity 0.1s ease, transform 0.1s ease, visibility 0.1s ease;
+}
+
+.plan-context-menu.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+}
+
+.plan-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s ease;
+}
+
+.plan-context-menu-item:hover {
+  background: var(--color-bg-hover);
+}
+
+.plan-context-menu-item:active {
+  background: var(--color-border);
+}
+
+.plan-context-menu-icon {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Context menu separator */
+.plan-context-menu-separator {
+  height: 1px;
+  background: var(--color-border);
+  margin: var(--spacing-xs) var(--spacing-sm);
+}
+
+/* Make plan content area contextmenu-aware */
+.panel-plan .panel-content {
+  cursor: context-menu;
 }

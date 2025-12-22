@@ -29,6 +29,7 @@ type MonitorEventType =
   | 'thinking'
   | 'plan_update'
   | 'plan_delete'
+  | 'plan_list'
   | 'connection_status';
 
 interface MonitorEvent {
@@ -82,6 +83,12 @@ interface AppState {
   // Plan tracking for multi-plan support
   plans: Map<string, PlanInfo>;
   currentPlanPath: string | null;
+  // Plan list from server (metadata only, no content)
+  planList: PlanListItem[];
+  // Plan selector dropdown open state
+  planSelectorOpen: boolean;
+  // Context menu state
+  contextMenuPlanPath: string | null;
   // Active view tab for navigation
   activeView: 'all' | 'thinking' | 'tools' | 'agents' | 'plan';
 }
@@ -91,6 +98,13 @@ interface PlanInfo {
   filename: string;
   content: string;
   lastModified: number; // Timestamp from when we received the update
+}
+
+/** Plan metadata from the server's plan list */
+interface PlanListItem {
+  path: string;
+  filename: string;
+  lastModified: number;
 }
 
 interface SessionInfo {
@@ -141,6 +155,9 @@ const state: AppState = {
   selectedSession: 'all',
   plans: new Map(),
   currentPlanPath: null,
+  planList: [],
+  planSelectorOpen: false,
+  contextMenuPlanPath: null,
   activeView: 'all',
 };
 
@@ -183,7 +200,12 @@ const elements = {
   agentsContent: document.getElementById('agents-content')!,
   agentsCount: document.getElementById('agents-count')!,
   planContent: document.getElementById('plan-content')!,
-  planPath: document.getElementById('plan-path')!,
+  planSelectorBtn: document.getElementById('plan-selector-btn')!,
+  planSelectorText: document.getElementById('plan-selector-text')!,
+  planSelectorDropdown: document.getElementById('plan-selector-dropdown')!,
+  planContextMenu: document.getElementById('plan-context-menu')!,
+  contextMenuOpen: document.getElementById('context-menu-open')!,
+  contextMenuReveal: document.getElementById('context-menu-reveal')!,
   serverInfo: document.getElementById('server-info')!,
   eventCount: document.getElementById('event-count')!,
   connectionOverlay: document.getElementById('connection-overlay')!,
@@ -381,6 +403,9 @@ function handleEvent(event: MonitorEvent): void {
       break;
     case 'plan_delete':
       handlePlanDelete(event);
+      break;
+    case 'plan_list':
+      handlePlanList(event);
       break;
     default:
       console.log('[Dashboard] Unhandled event type:', event.type);
@@ -610,6 +635,25 @@ function handleAgentStop(event: MonitorEvent): void {
   }
 }
 
+/**
+ * Handle plan_list event - updates the list of available plans.
+ */
+function handlePlanList(event: MonitorEvent): void {
+  const plans = event.plans as Array<{ path: string; filename: string; lastModified: number }> || [];
+
+  // Update the plan list in state
+  state.planList = plans.map((p) => ({
+    path: p.path,
+    filename: p.filename,
+    lastModified: p.lastModified,
+  }));
+
+  console.log(`[Dashboard] Received plan list with ${state.planList.length} plans`);
+
+  // Update the plan selector dropdown
+  renderPlanSelector();
+}
+
 function handlePlanUpdate(event: MonitorEvent): void {
   const filename = event.filename ? String(event.filename) : 'Unknown plan';
   const path = event.path ? String(event.path) : filename;
@@ -627,8 +671,24 @@ function handlePlanUpdate(event: MonitorEvent): void {
     lastModified,
   });
 
-  // Always show the most recently modified plan
-  displayMostRecentPlan();
+  // Update plan list if this plan isn't already in it
+  const existingIndex = state.planList.findIndex((p) => p.path === path);
+  if (existingIndex >= 0) {
+    state.planList[existingIndex] = { path, filename, lastModified };
+  } else {
+    state.planList.push({ path, filename, lastModified });
+  }
+
+  // Re-sort by lastModified descending
+  state.planList.sort((a, b) => b.lastModified - a.lastModified);
+
+  // Update the selector
+  renderPlanSelector();
+
+  // If this is the current plan or we have no current plan, display it
+  if (!state.currentPlanPath || state.currentPlanPath === path) {
+    displayPlan(path);
+  }
 }
 
 /**
@@ -637,15 +697,7 @@ function handlePlanUpdate(event: MonitorEvent): void {
  */
 function displayMostRecentPlan(): void {
   if (state.plans.size === 0) {
-    state.currentPlanPath = null;
-    elements.planPath.textContent = 'No active plan';
-    elements.planPath.title = '';
-    elements.planContent.innerHTML = `
-      <div class="empty-state">
-        <span class="empty-icon">file</span>
-        <p>No plan file loaded</p>
-      </div>
-    `;
+    displayEmptyPlan();
     return;
   }
 
@@ -658,21 +710,296 @@ function displayMostRecentPlan(): void {
   }
 
   if (!mostRecent) {
+    displayEmptyPlan();
     return;
   }
 
-  state.currentPlanPath = mostRecent.path;
+  displayPlan(mostRecent.path);
+}
 
-  // Show plan count if there are multiple plans
-  const planCountBadge = state.plans.size > 1
-    ? ` (${state.plans.size} plans)`
-    : '';
+/**
+ * Display a specific plan by path.
+ */
+function displayPlan(planPath: string): void {
+  const plan = state.plans.get(planPath);
+  if (!plan) {
+    // Plan content not loaded yet, show loading state
+    state.currentPlanPath = planPath;
+    const listItem = state.planList.find((p) => p.path === planPath);
+    elements.planSelectorText.textContent = listItem?.filename || 'Loading...';
+    elements.planContent.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">...</span>
+        <p>Loading plan content...</p>
+      </div>
+    `;
+    return;
+  }
 
-  elements.planPath.textContent = mostRecent.filename + planCountBadge;
-  elements.planPath.title = `${mostRecent.path}\n\nClick to cycle through ${state.plans.size} plan(s)`;
+  state.currentPlanPath = planPath;
+  elements.planSelectorText.textContent = plan.filename;
   elements.planContent.innerHTML = `
-    <div class="plan-markdown">${renderSimpleMarkdown(mostRecent.content)}</div>
+    <div class="plan-markdown">${renderSimpleMarkdown(plan.content)}</div>
   `;
+
+  // Update selector to show active state
+  renderPlanSelector();
+}
+
+/**
+ * Display empty plan state.
+ */
+function displayEmptyPlan(): void {
+  state.currentPlanPath = null;
+  elements.planSelectorText.textContent = 'No active plan';
+  elements.planContent.innerHTML = `
+    <div class="empty-state">
+      <span class="empty-icon">file</span>
+      <p>No plan file loaded</p>
+    </div>
+  `;
+  renderPlanSelector();
+}
+
+/**
+ * Render the plan selector dropdown options.
+ */
+function renderPlanSelector(): void {
+  const dropdown = elements.planSelectorDropdown;
+
+  if (state.planList.length === 0) {
+    dropdown.innerHTML = `
+      <li class="plan-selector-empty">No plans available</li>
+    `;
+    return;
+  }
+
+  let html = '';
+  for (const plan of state.planList) {
+    const isActive = plan.path === state.currentPlanPath;
+    const date = new Date(plan.lastModified);
+    const timeAgo = formatTimeAgo(date);
+
+    html += `
+      <li>
+        <button
+          class="plan-selector-option${isActive ? ' active' : ''}"
+          data-path="${escapeHtml(plan.path)}"
+          role="option"
+          aria-selected="${isActive}"
+          title="${escapeHtml(plan.path)}"
+        >
+          <span class="plan-selector-option-name">${escapeHtml(plan.filename)}</span>
+          <span class="plan-selector-option-badge">${escapeHtml(timeAgo)}</span>
+        </button>
+      </li>
+    `;
+  }
+
+  dropdown.innerHTML = html;
+
+  // Attach click handlers
+  dropdown.querySelectorAll('.plan-selector-option').forEach((option) => {
+    const optionEl = option as HTMLElement;
+    const path = optionEl.dataset.path;
+
+    // Left-click to select
+    optionEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (path) {
+        selectPlan(path);
+      }
+    });
+
+    // Right-click for context menu
+    optionEl.addEventListener('contextmenu', (e) => {
+      if (path) {
+        handlePlanOptionContextMenu(e as MouseEvent, path);
+      }
+    });
+  });
+}
+
+/**
+ * Select a plan to display.
+ */
+function selectPlan(planPath: string): void {
+  closePlanSelector();
+
+  // Check if we have the content
+  const plan = state.plans.get(planPath);
+  if (plan) {
+    displayPlan(planPath);
+  } else {
+    // We need to request the content from the server
+    // For now, just show loading state - the server will send plan_update
+    state.currentPlanPath = planPath;
+    const listItem = state.planList.find((p) => p.path === planPath);
+    elements.planSelectorText.textContent = listItem?.filename || planPath;
+    elements.planContent.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">...</span>
+        <p>Plan content will load when modified</p>
+      </div>
+    `;
+    renderPlanSelector();
+  }
+}
+
+/**
+ * Toggle the plan selector dropdown.
+ */
+function togglePlanSelector(): void {
+  if (state.planSelectorOpen) {
+    closePlanSelector();
+  } else {
+    openPlanSelector();
+  }
+}
+
+/**
+ * Open the plan selector dropdown.
+ */
+function openPlanSelector(): void {
+  state.planSelectorOpen = true;
+  elements.planSelectorBtn.setAttribute('aria-expanded', 'true');
+  elements.planSelectorDropdown.classList.add('visible');
+}
+
+/**
+ * Close the plan selector dropdown.
+ */
+function closePlanSelector(): void {
+  state.planSelectorOpen = false;
+  elements.planSelectorBtn.setAttribute('aria-expanded', 'false');
+  elements.planSelectorDropdown.classList.remove('visible');
+}
+
+/**
+ * Format a date as a relative time string (e.g., "2m ago", "1h ago").
+ */
+function formatTimeAgo(date: Date): string {
+  const now = Date.now();
+  const diff = now - date.getTime();
+
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) return `${days}d ago`;
+  if (hours > 0) return `${hours}h ago`;
+  if (minutes > 0) return `${minutes}m ago`;
+  return 'just now';
+}
+
+// ============================================
+// Plan Context Menu
+// ============================================
+
+/**
+ * Show the plan context menu at the given position.
+ */
+function showPlanContextMenu(x: number, y: number, planPath: string): void {
+  state.contextMenuPlanPath = planPath;
+
+  const menu = elements.planContextMenu;
+
+  // Position the menu
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+
+  // Ensure menu stays within viewport
+  requestAnimationFrame(() => {
+    const rect = menu.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Adjust if menu goes off right edge
+    if (rect.right > viewportWidth) {
+      menu.style.left = `${x - rect.width}px`;
+    }
+
+    // Adjust if menu goes off bottom edge
+    if (rect.bottom > viewportHeight) {
+      menu.style.top = `${y - rect.height}px`;
+    }
+  });
+
+  menu.classList.add('visible');
+}
+
+/**
+ * Hide the plan context menu.
+ */
+function hidePlanContextMenu(): void {
+  elements.planContextMenu.classList.remove('visible');
+  state.contextMenuPlanPath = null;
+}
+
+/**
+ * Execute a file action (open or reveal) via the server API.
+ */
+async function executeFileAction(action: 'open' | 'reveal', path: string): Promise<void> {
+  try {
+    const response = await fetch('http://localhost:3355/file-action', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action, path }),
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      console.error(`[Dashboard] File action failed: ${result.error}`);
+    }
+  } catch (error) {
+    console.error('[Dashboard] Failed to execute file action:', error);
+  }
+}
+
+/**
+ * Handle context menu "Open in Default App" action.
+ */
+function handleContextMenuOpen(): void {
+  if (state.contextMenuPlanPath) {
+    executeFileAction('open', state.contextMenuPlanPath);
+  }
+  hidePlanContextMenu();
+}
+
+/**
+ * Handle context menu "Reveal in Finder" action.
+ */
+function handleContextMenuReveal(): void {
+  if (state.contextMenuPlanPath) {
+    executeFileAction('reveal', state.contextMenuPlanPath);
+  }
+  hidePlanContextMenu();
+}
+
+/**
+ * Handle right-click on plan content or selector.
+ */
+function handlePlanContextMenu(event: MouseEvent): void {
+  // Only show context menu if we have a current plan
+  if (!state.currentPlanPath) {
+    return;
+  }
+
+  event.preventDefault();
+  showPlanContextMenu(event.clientX, event.clientY, state.currentPlanPath);
+}
+
+/**
+ * Handle right-click on a plan option in the selector dropdown.
+ */
+function handlePlanOptionContextMenu(event: MouseEvent, planPath: string): void {
+  event.preventDefault();
+  event.stopPropagation();
+  showPlanContextMenu(event.clientX, event.clientY, planPath);
 }
 
 function handlePlanDelete(event: MonitorEvent): void {
@@ -681,10 +1008,18 @@ function handlePlanDelete(event: MonitorEvent): void {
   // Remove this plan from our map
   if (path) {
     state.plans.delete(path);
+
+    // Remove from plan list
+    state.planList = state.planList.filter((p) => p.path !== path);
   }
 
-  // Display the next most recent plan (or empty state if none left)
-  displayMostRecentPlan();
+  // Update the selector
+  renderPlanSelector();
+
+  // If this was the current plan, display the next most recent
+  if (state.currentPlanPath === path) {
+    displayMostRecentPlan();
+  }
 }
 
 // ============================================
@@ -920,7 +1255,10 @@ function applySessionFilter(entry: HTMLElement): void {
 
   if (isThinkingEntry) {
     const entryAgentId = entry.dataset.agent || 'main';
-    const matchesAgent = state.selectedAgent === 'all' || entryAgentId === state.selectedAgent;
+    // Use the same agent tree matching logic for consistency
+    const matchesAgent = state.selectedAgent === 'all' ||
+      isAgentInTree(entryAgentId, state.selectedAgent) ||
+      (entryAgentId === 'main' && isRootAgentSelected());
     const matchesText = !state.thinkingFilter ||
       (entry.dataset.content || '').includes(state.thinkingFilter.toLowerCase());
     entry.style.display = (matchesSession && matchesAgent && matchesText) ? '' : 'none';
@@ -1240,8 +1578,56 @@ function selectAgent(agentId: string): void {
   });
 }
 
+/**
+ * Check if an agent is a descendant of (or equal to) another agent.
+ * Used for filtering thinking entries by agent tree.
+ *
+ * Returns true if:
+ * - entryAgentId exactly matches selectedAgentId
+ * - entryAgentId is a descendant (child, grandchild, etc.) of selectedAgentId
+ * - entryAgentId is not in the agents map AND selectedAgentId is a root agent
+ *   (this handles orphaned entries from the main session)
+ */
+function isAgentInTree(entryAgentId: string, selectedAgentId: string): boolean {
+  // Exact match
+  if (entryAgentId === selectedAgentId) {
+    return true;
+  }
+
+  // Check if the entry's agent exists in our map
+  const entryAgent = state.agents.get(entryAgentId);
+
+  // If the entry's agentId is not in the map (orphaned entry),
+  // show it for root agents since it likely came from the main session
+  if (!entryAgent) {
+    const selectedAgent = state.agents.get(selectedAgentId);
+    // Show orphaned entries when a root agent is selected
+    return selectedAgent !== undefined && selectedAgent.parentId === undefined;
+  }
+
+  // Check if entryAgentId is a child/descendant of selectedAgentId
+  let currentId: string | undefined = entryAgentId;
+  while (currentId) {
+    const agent = state.agents.get(currentId);
+    if (!agent) break;
+    if (agent.parentId === selectedAgentId) {
+      return true;
+    }
+    currentId = agent.parentId;
+  }
+
+  return false;
+}
+
 function applyAgentFilter(entry: HTMLElement, entryAgentId: string): void {
-  const matchesAgent = state.selectedAgent === 'all' || entryAgentId === state.selectedAgent;
+  // Handle the case where 'main' is used as a default placeholder
+  // If no agent with that exact ID exists, treat it as matching any root-level agent
+  const matchesAgent = state.selectedAgent === 'all' ||
+    isAgentInTree(entryAgentId, state.selectedAgent) ||
+    // Fallback: if entry has 'main' as agentId and no agents exist yet,
+    // or if the selected agent has no matching entries, still show entries
+    // with 'main' agentId if the selected agent appears to be a root agent
+    (entryAgentId === 'main' && isRootAgentSelected());
 
   // Also check text filter
   const matchesText = !state.thinkingFilter ||
@@ -1251,6 +1637,16 @@ function applyAgentFilter(entry: HTMLElement, entryAgentId: string): void {
   const sessionMatches = state.selectedSession === 'all' || entry.dataset.session === state.selectedSession;
 
   entry.style.display = (matchesAgent && matchesText && sessionMatches) ? '' : 'none';
+}
+
+/**
+ * Check if the selected agent is a root-level agent (no parent).
+ * Used as a fallback for matching 'main' agentId entries.
+ */
+function isRootAgentSelected(): boolean {
+  if (state.selectedAgent === 'all') return true;
+  const agent = state.agents.get(state.selectedAgent);
+  return agent !== undefined && agent.parentId === undefined;
 }
 
 function getAgentColorClass(name: string): string {
@@ -1268,8 +1664,12 @@ function getAgentColorClass(name: string): string {
 
 function applyThinkingFilter(entry: HTMLElement): void {
   const content = entry.dataset.content || '';
+  const entryAgentId = entry.dataset.agent || 'main';
   const matchesText = !state.thinkingFilter || content.includes(state.thinkingFilter.toLowerCase());
-  const agentMatches = state.selectedAgent === 'all' || entry.dataset.agent === state.selectedAgent;
+  // Use the same agent tree matching logic as applyAgentFilter
+  const agentMatches = state.selectedAgent === 'all' ||
+    isAgentInTree(entryAgentId, state.selectedAgent) ||
+    (entryAgentId === 'main' && isRootAgentSelected());
   const sessionMatches = state.selectedSession === 'all' || entry.dataset.session === state.selectedSession;
   entry.style.display = (matchesText && agentMatches && sessionMatches) ? '' : 'none';
 }
@@ -1471,7 +1871,16 @@ function clearAllPanels(): void {
     </div>
   `;
 
-  elements.planPath.textContent = 'No active plan';
+  // Reset plan state
+  state.plans.clear();
+  state.planList = [];
+  state.currentPlanPath = null;
+  state.planSelectorOpen = false;
+  state.contextMenuPlanPath = null;
+  elements.planSelectorText.textContent = 'No active plan';
+  closePlanSelector();
+  hidePlanContextMenu();
+  renderPlanSelector();
 
   // Reset agent tabs
   const agentTabs = elements.agentTabs.querySelectorAll('.agent-tab:not([data-agent="all"])');
@@ -1633,6 +2042,54 @@ const allTab = elements.agentTabs.querySelector('[data-agent="all"]');
 if (allTab) {
   allTab.addEventListener('click', () => selectAgent('all'));
 }
+
+// Plan selector toggle
+elements.planSelectorBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  togglePlanSelector();
+});
+
+// Close plan selector when clicking outside
+document.addEventListener('click', (e) => {
+  if (state.planSelectorOpen) {
+    const target = e.target as HTMLElement;
+    if (!elements.planSelectorBtn.contains(target) && !elements.planSelectorDropdown.contains(target)) {
+      closePlanSelector();
+    }
+  }
+});
+
+// Close plan selector on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && state.planSelectorOpen) {
+    closePlanSelector();
+  }
+});
+
+// Right-click context menu on plan content
+elements.planContent.addEventListener('contextmenu', handlePlanContextMenu);
+
+// Right-click context menu on plan selector button
+elements.planSelectorBtn.addEventListener('contextmenu', handlePlanContextMenu);
+
+// Context menu actions
+elements.contextMenuOpen.addEventListener('click', handleContextMenuOpen);
+elements.contextMenuReveal.addEventListener('click', handleContextMenuReveal);
+
+// Close context menu when clicking outside
+document.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement;
+  if (!elements.planContextMenu.contains(target)) {
+    hidePlanContextMenu();
+  }
+});
+
+// Close context menu on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    hidePlanContextMenu();
+  }
+});
 
 // ============================================
 // Initialize

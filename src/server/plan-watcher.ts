@@ -14,7 +14,7 @@ import { watch, type FSWatcher } from 'node:fs';
 import { readFile, stat, readdir } from 'node:fs/promises';
 import { join, basename, resolve } from 'node:path';
 import { homedir } from 'node:os';
-import type { PlanUpdateEvent, PlanDeleteEvent } from './types.ts';
+import type { PlanUpdateEvent, PlanDeleteEvent, PlanListEvent } from './types.ts';
 import { truncatePayload } from './types.ts';
 import { redactSecrets } from './secrets.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
@@ -436,6 +436,62 @@ export class PlanWatcher {
    */
   getTrackedPlans(): string[] {
     return Array.from(this.trackedPlans.values()).map((p) => p.filename);
+  }
+
+  /**
+   * Get detailed info for all tracked plans.
+   * Returns array sorted by lastModified (most recent first).
+   */
+  getAllPlansInfo(): Array<{ path: string; filename: string; lastModified: number }> {
+    return Array.from(this.trackedPlans.values())
+      .map((p) => ({
+        path: p.path,
+        filename: p.filename,
+        lastModified: p.lastModified,
+      }))
+      .sort((a, b) => b.lastModified - a.lastModified);
+  }
+
+  /**
+   * Get the PlanListEvent containing all tracked plans.
+   */
+  getPlanListEvent(): PlanListEvent {
+    return {
+      type: 'plan_list',
+      timestamp: new Date().toISOString(),
+      plans: this.getAllPlansInfo(),
+    };
+  }
+
+  /**
+   * Get a specific plan's content by path.
+   * Returns null if the plan is not tracked or cannot be read.
+   */
+  async getPlanContent(planPath: string): Promise<PlanUpdateEvent | null> {
+    if (!isValidPlanPath(planPath)) {
+      return null;
+    }
+
+    const tracked = this.trackedPlans.get(planPath);
+    if (!tracked) {
+      return null;
+    }
+
+    try {
+      const content = await readFile(planPath, 'utf-8');
+      const safeContent = redactSecrets(truncatePayload(content) ?? '');
+
+      return {
+        type: 'plan_update',
+        timestamp: new Date().toISOString(),
+        path: tracked.path,
+        filename: tracked.filename,
+        content: safeContent,
+        lastModified: tracked.lastModified,
+      };
+    } catch {
+      return null;
+    }
   }
 
   /**

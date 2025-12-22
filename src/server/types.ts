@@ -23,6 +23,7 @@ export type MonitorEventType =
   // Plan file events (from plan watcher)
   | 'plan_update'
   | 'plan_delete'
+  | 'plan_list'
   // Connection status (internal)
   | 'connection_status';
 
@@ -130,6 +131,19 @@ export interface PlanDeleteEvent extends MonitorEventBase {
 }
 
 /**
+ * Plan list event - sent to provide the full list of available plans.
+ */
+export interface PlanListEvent extends MonitorEventBase {
+  type: 'plan_list';
+  /** List of all available plans */
+  plans: Array<{
+    path: string;
+    filename: string;
+    lastModified: number;
+  }>;
+}
+
+/**
  * Session start event.
  */
 export interface SessionStartEvent extends MonitorEventBase {
@@ -173,6 +187,7 @@ export type MonitorEvent =
   | ThinkingEvent
   | PlanUpdateEvent
   | PlanDeleteEvent
+  | PlanListEvent
   | SessionStartEvent
   | SessionStopEvent
   | ConnectionStatusEvent;
@@ -230,6 +245,7 @@ export function isMonitorEvent(obj: unknown): obj is MonitorEvent {
     'thinking',
     'plan_update',
     'plan_delete',
+    'plan_list',
     'connection_status',
   ];
 

@@ -105,7 +105,17 @@
         <section class="panel panel-plan">
           <header class="panel-header">
             <h2 class="panel-title">PLAN</h2>
-            <span class="panel-info" id="plan-path">No active plan</span>
+            <div class="panel-header-controls">
+              <div class="plan-selector-wrapper">
+                <button class="plan-selector-btn" id="plan-selector-btn" aria-haspopup="listbox" aria-expanded="false" title="Select a plan file">
+                  <span class="plan-selector-text" id="plan-selector-text">No active plan</span>
+                  <span class="plan-selector-arrow">&#9662;</span>
+                </button>
+                <ul class="plan-selector-dropdown" id="plan-selector-dropdown" role="listbox" aria-label="Available plans">
+                  <!-- Plan options will be added dynamically -->
+                </ul>
+              </div>
+            </div>
           </header>
           <div class="panel-content" id="plan-content">
             <div class="empty-state">
@@ -141,6 +151,18 @@
     </footer>
   </div>
 
-  <script type="module" src="app.js"></script>
+  <!-- Plan Context Menu -->
+  <div class="plan-context-menu" id="plan-context-menu" role="menu" aria-label="Plan actions">
+    <button class="plan-context-menu-item" id="context-menu-open" role="menuitem">
+      <span class="plan-context-menu-icon">&#128196;</span>
+      Open in Default App
+    </button>
+    <button class="plan-context-menu-item" id="context-menu-reveal" role="menuitem">
+      <span class="plan-context-menu-icon">&#128193;</span>
+      Reveal in Finder
+    </button>
+  </div>
+
+  <script src="app.js" defer></script>
 </body>
 </html>

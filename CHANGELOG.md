@@ -9,9 +9,14 @@
 - Hook processor TypeScript module (`src/server/hook-processor.ts`) for converting hook inputs to MonitorEvents
 - Hook types module (`src/server/hook-types.ts`) with validation and type definitions
 - Secret redaction module (`src/server/secrets.ts`) with pattern-based detection for API keys, tokens, passwords
+- Plan selector dropdown for switching between multiple plan files
+- Right-click context menu on plans with "Open in Default App" and "Reveal in Finder" actions
+- Server-side file action API endpoint for secure file operations
+- Plan list event type for syncing available plans to dashboard
 
 ### Fixed
 - TypeScript unused variable warning (cleanup from Phase 1 evaluation)
+- Connection overlay now only covers content area, allowing navigation tabs to remain clickable during reconnection
 
 ### Changed
 - Tool inputs and outputs are now redacted for secrets before broadcasting
