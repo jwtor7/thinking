@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Thinking Monitor - Claude Code</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <h1 class="header-title">THINKING MONITOR</h1>
+      <div class="header-controls">
+        <span id="connection-status" class="status status-disconnected">
+          <span class="status-dot"></span>
+          <span class="status-text">Disconnected</span>
+        </span>
+        <button id="clear-btn" class="btn btn-secondary" title="Clear all panels">
+          Clear
+        </button>
+        <label class="toggle">
+          <input type="checkbox" id="auto-scroll" checked>
+          <span class="toggle-label">Auto-scroll</span>
+        </label>
+      </div>
+    </header>
+
+    <!-- Agent Bar -->
+    <nav class="agent-bar" id="agent-bar">
+      <span class="agent-bar-label">AGENTS:</span>
+      <div class="agent-tabs" id="agent-tabs">
+        <button class="agent-tab active" data-agent="all">
+          <span class="agent-dot agent-dot-all"></span>
+          All
+        </button>
+        <!-- Agent tabs will be added dynamically -->
+      </div>
+    </nav>
+
+    <!-- Main Content - 4 Panel Layout -->
+    <main class="panels">
+      <!-- Left Column -->
+      <div class="panel-column">
+        <!-- Thinking Panel -->
+        <section class="panel panel-thinking">
+          <header class="panel-header">
+            <h2 class="panel-title">THINKING</h2>
+            <span class="panel-badge" id="thinking-count">0</span>
+          </header>
+          <div class="panel-content" id="thinking-content">
+            <div class="empty-state">
+              <span class="empty-icon">brain</span>
+              <p>Waiting for thinking content...</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Agent Tree Panel -->
+        <section class="panel panel-agents">
+          <header class="panel-header">
+            <h2 class="panel-title">AGENT TREE</h2>
+            <span class="panel-badge" id="agents-count">0</span>
+          </header>
+          <div class="panel-content" id="agents-content">
+            <div class="empty-state">
+              <span class="empty-icon">users</span>
+              <p>No active agents</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right Column -->
+      <div class="panel-column">
+        <!-- Tool Activity Panel -->
+        <section class="panel panel-tools">
+          <header class="panel-header">
+            <h2 class="panel-title">TOOL ACTIVITY</h2>
+            <span class="panel-badge" id="tools-count">0</span>
+          </header>
+          <div class="panel-content" id="tools-content">
+            <div class="empty-state">
+              <span class="empty-icon">wrench</span>
+              <p>No tool activity yet</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Plan Panel -->
+        <section class="panel panel-plan">
+          <header class="panel-header">
+            <h2 class="panel-title">PLAN</h2>
+            <span class="panel-info" id="plan-path">No active plan</span>
+          </header>
+          <div class="panel-content" id="plan-content">
+            <div class="empty-state">
+              <span class="empty-icon">file</span>
+              <p>No plan file loaded</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <span id="server-info">Server: --</span>
+      <span id="event-count">Events: 0</span>
+    </footer>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
