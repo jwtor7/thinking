@@ -13,6 +13,8 @@ import {
   type MonitorEvent,
   type WebSocketMessage,
   type ConnectionStatusEvent,
+  type ClientRequest,
+  isClientRequest,
   CONFIG,
 } from './types.ts';
 
@@ -26,11 +28,18 @@ interface ConnectedClient {
 /**
  * WebSocket Hub for broadcasting events to connected dashboard clients.
  */
+/** Handler for client requests */
+export type ClientRequestHandler = (
+  request: ClientRequest,
+  sendResponse: (event: MonitorEvent) => void
+) => Promise<void>;
+
 export class WebSocketHub {
   private wss: WebSocketServer | null = null;
   private clients: Map<string, ConnectedClient> = new Map();
   private messageSeq = 0;
   private onClientConnectCallback: ((client: ConnectedClient) => void) | null = null;
+  private clientRequestHandler: ClientRequestHandler | null = null;
 
   /**
    * Attach the WebSocket server to an existing HTTP server.
@@ -92,6 +101,14 @@ export class WebSocketHub {
   }
 
   /**
+   * Set a handler for client requests (e.g., plan_request).
+   * The handler receives the request and a function to send a response back.
+   */
+  onClientRequest(handler: ClientRequestHandler): void {
+    this.clientRequestHandler = handler;
+  }
+
+  /**
    * Handle new WebSocket connection.
    */
   private handleConnection(ws: WebSocket, _req: IncomingMessage): void {
@@ -129,10 +146,9 @@ export class WebSocketHub {
       this.clients.delete(clientId);
     });
 
-    // Handle incoming messages (for future bidirectional features)
+    // Handle incoming messages from clients
     ws.on('message', (data) => {
-      // Currently we don't process client messages, but log for debugging
-      console.log(`[WebSocketHub] Received message from ${clientId}:`, data.toString().slice(0, 100));
+      this.handleClientMessage(client, data.toString());
     });
   }
 
@@ -189,6 +205,38 @@ export class WebSocketHub {
     } catch (error) {
       console.error(
         `[WebSocketHub] Failed to send to ${client.id}:`,
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+    }
+  }
+
+  /**
+   * Handle an incoming message from a client.
+   */
+  private handleClientMessage(client: ConnectedClient, data: string): void {
+    try {
+      const parsed = JSON.parse(data);
+
+      if (isClientRequest(parsed)) {
+        console.log(`[WebSocketHub] Received ${parsed.type} from ${client.id}`);
+
+        if (this.clientRequestHandler) {
+          this.clientRequestHandler(parsed, (event) => this.sendToClient(client, event))
+            .catch((error) => {
+              console.error(
+                `[WebSocketHub] Error handling client request:`,
+                error instanceof Error ? error.message : 'Unknown error'
+              );
+            });
+        } else {
+          console.warn(`[WebSocketHub] No handler registered for client requests`);
+        }
+      } else {
+        console.log(`[WebSocketHub] Unrecognized message from ${client.id}:`, data.slice(0, 100));
+      }
+    } catch (error) {
+      console.error(
+        `[WebSocketHub] Failed to parse message from ${client.id}:`,
         error instanceof Error ? error.message : 'Unknown error'
       );
     }

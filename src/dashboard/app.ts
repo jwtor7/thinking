@@ -434,9 +434,6 @@ function handleThinking(event: MonitorEvent): void {
   const sessionId = event.sessionId;
   const preview = content.slice(0, 80).replace(/\n/g, ' ');
 
-  // Debug: Log the agentId values to diagnose filtering issues
-  console.log(`[Dashboard] Thinking entry agentId: "${agentId}", known agents: [${Array.from(state.agents.keys()).join(', ')}]`);
-
   // Clear empty state if present
   const emptyState = elements.thinkingContent.querySelector('.empty-state');
   if (emptyState) {
@@ -933,23 +930,50 @@ function renderPlanSelector(): void {
 function selectPlan(planPath: string): void {
   closePlanSelector();
 
-  // Check if we have the content
+  // Check if we have the content cached
   const plan = state.plans.get(planPath);
   if (plan) {
     displayPlan(planPath);
   } else {
-    // We need to request the content from the server
-    // For now, just show loading state - the server will send plan_update
+    // Show loading state
     state.currentPlanPath = planPath;
     const listItem = state.planList.find((p) => p.path === planPath);
     elements.planSelectorText.textContent = listItem?.filename || planPath;
     elements.planContent.innerHTML = `
       <div class="empty-state">
         <span class="empty-icon">...</span>
-        <p>Plan content will load when modified</p>
+        <p>Loading plan content...</p>
       </div>
     `;
+    updatePlanMeta(null);
+    updatePlanActionButtons();
     renderPlanSelector();
+
+    // Request the plan content from the server via WebSocket
+    requestPlanContent(planPath);
+  }
+}
+
+/**
+ * Request a specific plan's content from the server.
+ * Sends a plan_request message via WebSocket.
+ */
+function requestPlanContent(planPath: string): void {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.warn('[Dashboard] Cannot request plan content: WebSocket not connected');
+    return;
+  }
+
+  const request = {
+    type: 'plan_request',
+    path: planPath,
+  };
+
+  try {
+    ws.send(JSON.stringify(request));
+    console.log(`[Dashboard] Requested plan content: ${planPath}`);
+  } catch (error) {
+    console.error('[Dashboard] Failed to request plan content:', error);
   }
 }
 
@@ -966,11 +990,31 @@ function togglePlanSelector(): void {
 
 /**
  * Open the plan selector dropdown.
+ * Positions the dropdown using fixed positioning to escape overflow:hidden containers.
  */
 function openPlanSelector(): void {
   state.planSelectorOpen = true;
   elements.planSelectorBtn.setAttribute('aria-expanded', 'true');
-  elements.planSelectorDropdown.classList.add('visible');
+
+  // Calculate position based on button's bounding rect
+  const btnRect = elements.planSelectorBtn.getBoundingClientRect();
+  const dropdown = elements.planSelectorDropdown;
+
+  // Position dropdown below the button, aligned to the right edge
+  dropdown.style.top = `${btnRect.bottom + 4}px`;
+  dropdown.style.right = `${window.innerWidth - btnRect.right}px`;
+  dropdown.style.left = 'auto';
+
+  dropdown.classList.add('visible');
+
+  // Adjust if dropdown would go off-screen at the bottom
+  requestAnimationFrame(() => {
+    const dropdownRect = dropdown.getBoundingClientRect();
+    if (dropdownRect.bottom > window.innerHeight - 10) {
+      // Position above the button instead
+      dropdown.style.top = `${btnRect.top - dropdownRect.height - 4}px`;
+    }
+  });
 }
 
 /**
@@ -1724,10 +1768,6 @@ function renderAgentTabs(): void {
 
 function selectAgent(agentId: string): void {
   state.selectedAgent = agentId;
-  console.log(`[Dashboard] ===== selectAgent called =====`);
-  console.log(`[Dashboard] Selected agent: "${agentId}"`);
-  console.log(`[Dashboard] Agents in state.agents: [${Array.from(state.agents.keys()).map(k => `"${k}"`).join(', ')}]`);
-  console.log(`[Dashboard] Selected session: "${state.selectedSession}"`);
 
   // Show plan for agent's session
   if (agentId !== 'all') {
@@ -1746,28 +1786,11 @@ function selectAgent(agentId: string): void {
 
   // Filter thinking entries by agent
   const entries = elements.thinkingContent.querySelectorAll('.thinking-entry');
-  console.log(`[Dashboard] Total thinking entries to filter: ${entries.length}`);
-  let visibleCount = 0;
-  entries.forEach((entry: Element, index: number) => {
+  entries.forEach((entry: Element) => {
     const el = entry as HTMLElement;
     const entryAgentId = el.dataset.agent || 'main';
-    const entrySession = el.dataset.session || '';
-
-    // Log first few entries for debugging
-    if (index < 5) {
-      console.log(`[Dashboard] Entry ${index}: agentId="${entryAgentId}", session="${entrySession}"`);
-    }
-
     applyAgentFilter(el, entryAgentId);
-
-    if (index < 5) {
-      console.log(`[Dashboard] Entry ${index} after filter: display="${el.style.display}"`);
-    }
-
-    if (el.style.display !== 'none') visibleCount++;
   });
-  console.log(`[Dashboard] After filtering: ${visibleCount}/${entries.length} entries visible`);
-  console.log(`[Dashboard] ===== selectAgent complete =====`);
 }
 
 /**
@@ -1777,39 +1800,37 @@ function selectAgent(agentId: string): void {
  * Returns true if:
  * - entryAgentId exactly matches selectedAgentId
  * - entryAgentId is a descendant (child, grandchild, etc.) of selectedAgentId
- * - entryAgentId is 'main' (placeholder for unknown agent) - show for ALL agents
- * - entryAgentId is not in the agents map - show for root agents (orphaned entries)
+ * - entryAgentId is 'main' or unknown AND selectedAgentId is a root agent (no parent)
+ *   This allows filtering to work while still showing orphaned entries under root agents.
  */
 function isAgentInTree(entryAgentId: string, selectedAgentId: string): boolean {
-  console.log(`[Dashboard] isAgentInTree called: entryAgentId="${entryAgentId}" (type=${typeof entryAgentId}, length=${entryAgentId.length}), selectedAgentId="${selectedAgentId}"`);
-
-  // Exact match
+  // Exact match - always show
   if (entryAgentId === selectedAgentId) {
-    console.log(`[Dashboard] isAgentInTree: EXACT MATCH -> true`);
     return true;
   }
 
-  // IMPORTANT: 'main' is a placeholder used when no agentId is provided
-  // in thinking events (transcript lines often lack agentId).
-  // Show 'main' entries for ALL agents since we can't determine which agent
-  // they actually belong to.
-  // Use case-insensitive comparison and trim for robustness.
   const normalizedEntryAgentId = entryAgentId.trim().toLowerCase();
+  const entryAgent = state.agents.get(entryAgentId);
+  const selectedAgent = state.agents.get(selectedAgentId);
+
+  // Handle 'main' placeholder or empty agentId
+  // These are entries where we don't know the real agent.
+  // Show them only if the selected agent is a ROOT agent (no parent).
+  // This way:
+  // - When "All" is selected, they show (handled by caller)
+  // - When a root agent is selected, they show (likely from main session)
+  // - When a sub-agent is selected, they hide (sub-agents have their own entries)
   if (normalizedEntryAgentId === 'main' || normalizedEntryAgentId === '') {
-    console.log(`[Dashboard] isAgentInTree: entryAgentId is 'main' or empty (normalized: "${normalizedEntryAgentId}") -> true`);
-    return true;
+    // Show for root agents only
+    const isSelectedAgentRoot = selectedAgent !== undefined && selectedAgent.parentId === undefined;
+    return isSelectedAgentRoot;
   }
 
-  // Check if the entry's agent exists in our map
-  const entryAgent = state.agents.get(entryAgentId);
-
-  // If the entry's agentId is not in the map (orphaned entry),
-  // show it for root agents since it likely came from a previous session
+  // If the entry's agentId is not in our map (orphaned from previous session),
+  // show it for root agents since we can't determine its true parent
   if (!entryAgent) {
-    const selectedAgent = state.agents.get(selectedAgentId);
-    const result = selectedAgent !== undefined && selectedAgent.parentId === undefined;
-    console.log(`[Dashboard] isAgentInTree: orphaned entry, selectedAgent exists=${selectedAgent !== undefined}, isRoot=${selectedAgent?.parentId === undefined} -> ${result}`);
-    return result;
+    const isSelectedAgentRoot = selectedAgent !== undefined && selectedAgent.parentId === undefined;
+    return isSelectedAgentRoot;
   }
 
   // Check if entryAgentId is a child/descendant of selectedAgentId
@@ -1818,20 +1839,16 @@ function isAgentInTree(entryAgentId: string, selectedAgentId: string): boolean {
     const agent = state.agents.get(currentId);
     if (!agent) break;
     if (agent.parentId === selectedAgentId) {
-      console.log(`[Dashboard] isAgentInTree: found parent match -> true`);
       return true;
     }
     currentId = agent.parentId;
   }
 
-  console.log(`[Dashboard] isAgentInTree: no match found -> false`);
   return false;
 }
 
 function applyAgentFilter(entry: HTMLElement, entryAgentId: string): void {
-  console.log(`[Dashboard] applyAgentFilter: entryAgentId="${entryAgentId}", selectedAgent="${state.selectedAgent}", selectedSession="${state.selectedSession}"`);
-
-  // isAgentInTree now handles 'main' placeholder entries properly
+  // Check agent filter - isAgentInTree handles 'main' placeholder entries
   const matchesAgent = state.selectedAgent === 'all' ||
     isAgentInTree(entryAgentId, state.selectedAgent);
 
@@ -1843,12 +1860,7 @@ function applyAgentFilter(entry: HTMLElement, entryAgentId: string): void {
   const entrySession = entry.dataset.session || '';
   const sessionMatches = state.selectedSession === 'all' || entrySession === state.selectedSession;
 
-  console.log(`[Dashboard] applyAgentFilter results: matchesAgent=${matchesAgent}, matchesText=${matchesText}, sessionMatches=${sessionMatches} (entrySession="${entrySession}")`);
-
-  const shouldShow = matchesAgent && matchesText && sessionMatches;
-  console.log(`[Dashboard] applyAgentFilter: shouldShow=${shouldShow}, setting display="${shouldShow ? '' : 'none'}"`);
-
-  entry.style.display = shouldShow ? '' : 'none';
+  entry.style.display = (matchesAgent && matchesText && sessionMatches) ? '' : 'none';
 }
 
 function getAgentColorClass(name: string): string {
@@ -2324,6 +2336,13 @@ document.addEventListener('click', (e) => {
 // Close plan selector on Escape key
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && state.planSelectorOpen) {
+    closePlanSelector();
+  }
+});
+
+// Close plan selector on window resize (position would be stale)
+window.addEventListener('resize', () => {
+  if (state.planSelectorOpen) {
     closePlanSelector();
   }
 });

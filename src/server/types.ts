@@ -204,6 +204,42 @@ export interface WebSocketMessage {
 }
 
 /**
+ * Client request types for bidirectional communication.
+ */
+export type ClientRequestType = 'plan_request';
+
+/**
+ * Request from client to fetch a specific plan's content.
+ */
+export interface PlanRequestMessage {
+  type: 'plan_request';
+  /** Path to the plan file to fetch */
+  path: string;
+}
+
+/**
+ * Union type for all client request messages.
+ */
+export type ClientRequest = PlanRequestMessage;
+
+/**
+ * Type guard to check if an object is a valid ClientRequest.
+ */
+export function isClientRequest(obj: unknown): obj is ClientRequest {
+  if (typeof obj !== 'object' || obj === null) {
+    return false;
+  }
+
+  const request = obj as Record<string, unknown>;
+
+  if (request.type === 'plan_request') {
+    return typeof request.path === 'string';
+  }
+
+  return false;
+}
+
+/**
  * Configuration constants.
  */
 export const CONFIG = {

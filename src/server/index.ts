@@ -123,6 +123,19 @@ async function main(): Promise<void> {
     }
   });
 
+  // Handle client requests (e.g., plan_request)
+  hub.onClientRequest(async (request, sendResponse) => {
+    if (request.type === 'plan_request') {
+      console.log(`[Server] Plan content requested: ${request.path}`);
+      const planEvent = await planWatcher.getPlanContent(request.path);
+      if (planEvent) {
+        sendResponse(planEvent);
+      } else {
+        console.warn(`[Server] Plan not found: ${request.path}`);
+      }
+    }
+  });
+
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║  DASHBOARD: http://localhost:${CONFIG.STATIC_PORT}                        ║
