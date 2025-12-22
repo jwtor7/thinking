@@ -12,6 +12,7 @@ import {
   truncatePayload,
   CONFIG,
 } from './types.ts';
+import { redactSecrets } from './secrets.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
 
 /**
@@ -151,19 +152,24 @@ export class EventReceiver {
       return null;
     }
 
-    // Truncate large payloads for specific event types
+    // Process payloads: truncate large content and redact secrets
     const event = { ...parsed };
 
     if ('input' in event && typeof event.input === 'string') {
-      event.input = truncatePayload(event.input);
+      event.input = redactSecrets(truncatePayload(event.input) ?? '');
     }
 
     if ('output' in event && typeof event.output === 'string') {
-      event.output = truncatePayload(event.output);
+      event.output = redactSecrets(truncatePayload(event.output) ?? '');
     }
 
     if ('content' in event && typeof event.content === 'string') {
-      event.content = truncatePayload(event.content);
+      event.content = redactSecrets(truncatePayload(event.content) ?? '');
+    }
+
+    // Also redact secrets from workingDirectory if present
+    if ('workingDirectory' in event && typeof event.workingDirectory === 'string') {
+      event.workingDirectory = redactSecrets(event.workingDirectory);
     }
 
     return event as MonitorEvent;

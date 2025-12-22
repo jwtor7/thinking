@@ -25,7 +25,21 @@ Real-time monitoring dashboard for Claude Code thinking, agents, and tool activi
 ## Installation
 
 ```bash
+# Install dependencies
 pnpm install
+
+# Install Claude Code hooks
+./scripts/setup.sh --install
+```
+
+The setup script registers hooks with Claude Code by updating `~/.claude/settings.json`.
+
+### Setup Commands
+
+```bash
+./scripts/setup.sh --install    # Install hooks
+./scripts/setup.sh --uninstall  # Remove hooks
+./scripts/setup.sh --status     # Check installation status
 ```
 
 ## Usage
@@ -40,6 +54,12 @@ pnpm start
 ```
 
 Then open `http://localhost:3356` in your browser.
+
+### How It Works
+
+1. Start the monitor server (`pnpm dev`)
+2. Open a new Claude Code session (hooks are active per-session)
+3. The dashboard receives real-time events as Claude uses tools and spawns agents
 
 ## Architecture
 
@@ -74,6 +94,11 @@ Claude Code Session
 - XSS prevention via HTML escaping
 
 ## Recent Changes
+
+### 2025-12-22
+- Hook integration with Claude Code (6 hook types)
+- Setup script for automated hook installation
+- Secret redaction module for secure event broadcasting
 
 ### 2025-12-21
 - Initial project setup with TypeScript and pnpm

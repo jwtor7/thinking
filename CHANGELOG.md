@@ -1,5 +1,24 @@
 # Changelog
 
+## 2025-12-22
+
+### Added
+- Hook integration with Claude Code (PreToolUse, PostToolUse, SubagentStart, SubagentStop, SessionStart, SessionStop)
+- Setup script (`scripts/setup.sh`) for automated hook installation with install/uninstall/status commands
+- Universal hook dispatcher script (`hooks/thinking-monitor-hook.sh`) for forwarding events to monitor server
+- Hook processor TypeScript module (`src/server/hook-processor.ts`) for converting hook inputs to MonitorEvents
+- Hook types module (`src/server/hook-types.ts`) with validation and type definitions
+- Secret redaction module (`src/server/secrets.ts`) with pattern-based detection for API keys, tokens, passwords
+
+### Fixed
+- TypeScript unused variable warning (cleanup from Phase 1 evaluation)
+
+### Changed
+- Tool inputs and outputs are now redacted for secrets before broadcasting
+- Working directory paths are redacted in session events
+
+---
+
 ## 2025-12-21
 
 ### Added
