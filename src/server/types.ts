@@ -114,6 +114,8 @@ export interface PlanUpdateEvent extends MonitorEventBase {
   filename: string;
   /** Plan content (markdown) */
   content?: string;
+  /** File modification time in milliseconds since epoch */
+  lastModified?: number;
 }
 
 /**

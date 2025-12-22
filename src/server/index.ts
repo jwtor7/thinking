@@ -16,6 +16,7 @@ import { WebSocketHub } from './websocket-hub.ts';
 import { EventReceiver } from './event-receiver.ts';
 import { StaticServer } from './static-server.ts';
 import { TranscriptWatcher } from './transcript-watcher.ts';
+import { PlanWatcher } from './plan-watcher.ts';
 import { CONFIG } from './types.ts';
 
 // Get the dashboard directory path
@@ -95,6 +96,20 @@ async function main(): Promise<void> {
   await transcriptWatcher.start();
   console.log(`[Server] Transcript watcher started`);
 
+  // Start plan watcher for ~/.claude/plans/ directory
+  const planWatcher = new PlanWatcher(hub);
+  await planWatcher.start();
+  console.log(`[Server] Plan watcher started`);
+
+  // Send current state to newly connected clients
+  hub.onClientConnect(async (sendEvent) => {
+    // Send the most recent plan to the new client
+    const planEvent = await planWatcher.getMostRecentPlanEvent();
+    if (planEvent) {
+      sendEvent(planEvent);
+    }
+  });
+
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║  DASHBOARD: http://localhost:${CONFIG.STATIC_PORT}                        ║
@@ -105,6 +120,7 @@ async function main(): Promise<void> {
   const shutdown = async (): Promise<void> => {
     console.log('\n[Server] Shutting down...');
 
+    planWatcher.stop();
     transcriptWatcher.stop();
     hub.close();
     await staticServer.stop();

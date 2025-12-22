@@ -482,12 +482,32 @@ body {
 .agent-node {
   padding: var(--spacing-xs) var(--spacing-sm);
   margin-bottom: var(--spacing-xs);
+  border-radius: var(--radius-sm);
 }
 
 .agent-node-header {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  cursor: pointer;
+}
+
+.agent-node-header:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.agent-node-selected {
+  background: var(--color-bg-hover);
+  border: 1px solid var(--color-accent-blue);
+}
+
+.agent-node-selected > .agent-node-header::after {
+  content: '(selected)';
+  font-size: var(--font-size-xs);
+  color: var(--color-accent-blue);
+  margin-left: var(--spacing-sm);
 }
 
 .agent-node-dot {
@@ -1213,4 +1233,179 @@ body.keyboard-mode .agent-tab-shortcut {
 .thinking-entry[data-session]:not(:empty) .entry-session-badge,
 .tool-entry[data-session]:not(:empty) .entry-session-badge {
   margin-right: var(--spacing-xs);
+}
+
+/* ========================================
+   Session Filter Bar
+   ======================================== */
+
+.session-filter {
+  display: none;
+  align-items: center;
+  height: var(--agent-bar-height);
+  padding: 0 var(--spacing-lg);
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.session-filter-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.5px;
+  margin-right: var(--spacing-md);
+}
+
+.session-filter-badges {
+  display: flex;
+  gap: var(--spacing-sm);
+  overflow-x: auto;
+}
+
+.session-filter-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  font-family: var(--font-family-mono);
+}
+
+.session-filter-badge:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.session-filter-badge.active {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.session-filter-badge.online .session-filter-dot {
+  box-shadow: 0 0 4px currentColor;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.session-filter-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Responsive: hide session filter on small screens */
+@media (max-width: 600px) {
+  .session-filter {
+    padding: 0 var(--spacing-sm);
+  }
+
+  .session-filter-label {
+    display: none;
+  }
+}
+
+/* ========================================
+   View Navigation Tabs
+   ======================================== */
+
+.view-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--agent-bar-height);
+  padding: 0 var(--spacing-lg);
+  background: var(--color-bg-primary);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  gap: var(--spacing-xs);
+}
+
+.view-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.view-tab:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.view-tab.active {
+  background: var(--color-accent-blue);
+  border-color: var(--color-accent-blue);
+  color: white;
+}
+
+.view-tab-shortcut {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-bg-primary);
+  padding: 1px 4px;
+  border-radius: 2px;
+  margin-left: var(--spacing-xs);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  text-transform: uppercase;
+}
+
+.view-tab.active .view-tab-shortcut {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+body.keyboard-mode .view-tab-shortcut {
+  opacity: 1;
+}
+
+/* Single view layout adjustments */
+.panels.single-view {
+  grid-template-columns: 1fr;
+}
+
+.panels.single-view .panel-column {
+  display: contents;
+}
+
+.panels.single-view .panel {
+  max-height: none;
+  height: 100%;
+}
+
+/* Responsive: compact view tabs on small screens */
+@media (max-width: 600px) {
+  .view-tabs {
+    padding: 0 var(--spacing-sm);
+    gap: 2px;
+  }
+
+  .view-tab {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-xs);
+  }
+
+  .view-tab-shortcut {
+    display: none;
+  }
 }

@@ -41,6 +41,11 @@ interface TrackedFile {
   lastSize: number;
   lastProcessedLine: number;
   watcher?: FSWatcher;
+  /**
+   * Whether this file was discovered on startup (vs created after watcher started).
+   * Files discovered on startup should skip to the end to avoid reading historical data.
+   */
+  isInitialFile: boolean;
 }
 
 /**
@@ -76,6 +81,11 @@ export class TranscriptWatcher {
   private subDirWatchers: Map<string, FSWatcher> = new Map();
   private pollInterval: ReturnType<typeof setInterval> | null = null;
   private isShuttingDown = false;
+  /**
+   * Flag to track if we're in the initial scanning phase.
+   * During initial scan, files should be tracked but not processed (tail -f behavior).
+   */
+  private isInitialScan = true;
 
   /** Polling interval for checking file updates (ms) */
   private static readonly POLL_INTERVAL_MS = 1000;
@@ -148,6 +158,9 @@ export class TranscriptWatcher {
   private async initializeWatching(): Promise<void> {
     console.log(`[TranscriptWatcher] Watching: ${this.projectsDir}`);
 
+    // Mark that we're in initial scan mode - files discovered now should skip to end
+    this.isInitialScan = true;
+
     // Watch the projects directory for new project folders
     try {
       this.projectsWatcher = watch(this.projectsDir, { persistent: false }, (eventType, filename) => {
@@ -167,6 +180,10 @@ export class TranscriptWatcher {
 
     // Scan existing project directories
     await this.scanProjectDirectories();
+
+    // Initial scan complete - files discovered from now on should be processed from the start
+    this.isInitialScan = false;
+    console.log(`[TranscriptWatcher] Initial scan complete, skipped to end of ${this.trackedFiles.size} existing files`);
 
     // Start polling for file updates (fs.watch doesn't reliably report file modifications)
     this.pollInterval = setInterval(() => {
@@ -298,6 +315,10 @@ export class TranscriptWatcher {
 
   /**
    * Start tracking a transcript file.
+   *
+   * CRITICAL: For files discovered during initial scan (startup), we skip ALL existing content
+   * to avoid flooding the dashboard with historical data. We use file SIZE as the marker,
+   * not line count, to ensure we only process bytes written AFTER we start tracking.
    */
   private async trackFile(filePath: string): Promise<void> {
     if (!isValidClaudePath(filePath) || this.trackedFiles.has(filePath)) {
@@ -310,16 +331,27 @@ export class TranscriptWatcher {
         return;
       }
 
-      this.trackedFiles.set(filePath, {
-        path: filePath,
-        lastSize: stats.size,
-        lastProcessedLine: 0,
-      });
-
-      // Process the initial content
-      await this.processFileUpdates(filePath);
+      // ALWAYS skip existing content on startup - only process NEW bytes
+      // This is the "tail -f" behavior: start at end, only show new content
+      if (this.isInitialScan) {
+        // Skip ALL existing content - record current size as "already processed"
+        this.trackedFiles.set(filePath, {
+          path: filePath,
+          lastSize: stats.size,
+          lastProcessedLine: Number.MAX_SAFE_INTEGER, // Will be recalculated on first update
+          isInitialFile: true,
+        });
+        // DO NOT log for every file - too noisy
+      } else {
+        // New file created AFTER watcher started - process from beginning
+        this.trackedFiles.set(filePath, {
+          path: filePath,
+          lastSize: 0, // Start from 0 so first check processes all content
+          lastProcessedLine: 0,
+          isInitialFile: false,
+        });
+      }
     } catch (error) {
-      // File might not exist yet or be inaccessible
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
         console.error(`[TranscriptWatcher] Error tracking file ${filePath}:`, error);
       }
@@ -372,7 +404,16 @@ export class TranscriptWatcher {
       const content = await readFile(filePath, 'utf-8');
       const lines = content.split('\n').filter((line) => line.trim());
 
-      // Process only new lines
+      // For initial files, we set lastProcessedLine to MAX_SAFE_INTEGER as a marker
+      // On first update, reset it to the CURRENT line count (skip all existing)
+      // then only process lines added AFTER this point
+      if (tracked.isInitialFile && tracked.lastProcessedLine === Number.MAX_SAFE_INTEGER) {
+        // First update for an initial file - set baseline to current line count
+        tracked.lastProcessedLine = lines.length;
+        return; // Don't process existing content
+      }
+
+      // Process only new lines (lines added since last check)
       const newLines = lines.slice(tracked.lastProcessedLine);
 
       for (const line of newLines) {

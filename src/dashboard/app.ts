@@ -77,6 +77,20 @@ interface AppState {
   // Session tracking for multi-session support
   sessions: Map<string, SessionInfo>;
   currentSessionId: string | null;
+  // Session filtering - 'all' or a specific session ID
+  selectedSession: string;
+  // Plan tracking for multi-plan support
+  plans: Map<string, PlanInfo>;
+  currentPlanPath: string | null;
+  // Active view tab for navigation
+  activeView: 'all' | 'thinking' | 'tools' | 'agents' | 'plan';
+}
+
+interface PlanInfo {
+  path: string;
+  filename: string;
+  content: string;
+  lastModified: number; // Timestamp from when we received the update
 }
 
 interface SessionInfo {
@@ -124,6 +138,10 @@ const state: AppState = {
   keyboardMode: false,
   sessions: new Map(),
   currentSessionId: null,
+  selectedSession: 'all',
+  plans: new Map(),
+  currentPlanPath: null,
+  activeView: 'all',
 };
 
 // Session colors for visual distinction
@@ -145,9 +163,15 @@ const SESSION_COLORS = [
 const elements = {
   connectionStatus: document.getElementById('connection-status')!,
   sessionIndicator: document.getElementById('session-indicator'),
+  sessionFilter: document.getElementById('session-filter'),
   clearBtn: document.getElementById('clear-btn')!,
   autoScrollCheckbox: document.getElementById('auto-scroll') as HTMLInputElement,
   agentTabs: document.getElementById('agent-tabs')!,
+  viewTabs: document.getElementById('view-tabs'),
+  thinkingPanel: document.querySelector('.panel-thinking') as HTMLElement,
+  toolsPanel: document.querySelector('.panel-tools') as HTMLElement,
+  agentsPanel: document.querySelector('.panel-agents') as HTMLElement,
+  planPanel: document.querySelector('.panel-plan') as HTMLElement,
   thinkingContent: document.getElementById('thinking-content')!,
   thinkingCount: document.getElementById('thinking-count')!,
   thinkingFilter: document.getElementById('thinking-filter') as HTMLInputElement,
@@ -165,6 +189,7 @@ const elements = {
   connectionOverlay: document.getElementById('connection-overlay')!,
   connectionOverlayMessage: document.getElementById('connection-overlay-message')!,
   connectionOverlayRetry: document.getElementById('connection-overlay-retry')!,
+  panels: document.querySelector('.panels') as HTMLElement,
 };
 
 // ============================================
@@ -587,24 +612,79 @@ function handleAgentStop(event: MonitorEvent): void {
 
 function handlePlanUpdate(event: MonitorEvent): void {
   const filename = event.filename ? String(event.filename) : 'Unknown plan';
+  const path = event.path ? String(event.path) : filename;
   const content = event.content ? String(event.content) : '';
+  // Use the actual file modification time if provided, otherwise fall back to current time
+  const lastModified = typeof event.lastModified === 'number'
+    ? event.lastModified
+    : Date.now();
 
-  elements.planPath.textContent = filename;
-  elements.planPath.title = event.path ? String(event.path) : filename;
+  // Store this plan in our map
+  state.plans.set(path, {
+    path,
+    filename,
+    content,
+    lastModified,
+  });
+
+  // Always show the most recently modified plan
+  displayMostRecentPlan();
+}
+
+/**
+ * Display the most recently modified plan in the Plan panel.
+ * If no plans are available, shows an empty state.
+ */
+function displayMostRecentPlan(): void {
+  if (state.plans.size === 0) {
+    state.currentPlanPath = null;
+    elements.planPath.textContent = 'No active plan';
+    elements.planPath.title = '';
+    elements.planContent.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">file</span>
+        <p>No plan file loaded</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Find the most recently modified plan
+  let mostRecent: PlanInfo | null = null;
+  for (const plan of state.plans.values()) {
+    if (!mostRecent || plan.lastModified > mostRecent.lastModified) {
+      mostRecent = plan;
+    }
+  }
+
+  if (!mostRecent) {
+    return;
+  }
+
+  state.currentPlanPath = mostRecent.path;
+
+  // Show plan count if there are multiple plans
+  const planCountBadge = state.plans.size > 1
+    ? ` (${state.plans.size} plans)`
+    : '';
+
+  elements.planPath.textContent = mostRecent.filename + planCountBadge;
+  elements.planPath.title = `${mostRecent.path}\n\nClick to cycle through ${state.plans.size} plan(s)`;
   elements.planContent.innerHTML = `
-    <div class="plan-markdown">${renderSimpleMarkdown(content)}</div>
+    <div class="plan-markdown">${renderSimpleMarkdown(mostRecent.content)}</div>
   `;
 }
 
-function handlePlanDelete(_event: MonitorEvent): void {
-  elements.planPath.textContent = 'No active plan';
-  elements.planPath.title = '';
-  elements.planContent.innerHTML = `
-    <div class="empty-state">
-      <span class="empty-icon">file</span>
-      <p>No plan file loaded</p>
-    </div>
-  `;
+function handlePlanDelete(event: MonitorEvent): void {
+  const path = event.path ? String(event.path) : '';
+
+  // Remove this plan from our map
+  if (path) {
+    state.plans.delete(path);
+  }
+
+  // Display the next most recent plan (or empty state if none left)
+  displayMostRecentPlan();
 }
 
 // ============================================
@@ -727,6 +807,131 @@ function updateSessionIndicator(): void {
   } else {
     indicator.style.display = 'none';
   }
+
+  // Also update the session filter UI
+  updateSessionFilter();
+}
+
+/**
+ * Render the session filter bar with clickable session badges.
+ * Shows when there are multiple sessions to filter between.
+ */
+function updateSessionFilter(): void {
+  // Create session filter element if it doesn't exist
+  let filterEl = elements.sessionFilter;
+
+  if (!filterEl) {
+    filterEl = document.createElement('div');
+    filterEl.id = 'session-filter';
+    filterEl.className = 'session-filter';
+
+    // Insert after agent bar
+    const agentBar = document.getElementById('agent-bar');
+    if (agentBar && agentBar.parentNode) {
+      agentBar.parentNode.insertBefore(filterEl, agentBar.nextSibling);
+    }
+    elements.sessionFilter = filterEl;
+  }
+
+  // Show filter when there are any sessions (even just one)
+  if (state.sessions.size === 0) {
+    filterEl.style.display = 'none';
+    return;
+  }
+
+  filterEl.style.display = 'flex';
+
+  // Build session filter badges
+  let html = '<span class="session-filter-label">SESSIONS:</span>';
+  html += '<div class="session-filter-badges">';
+
+  // "All" option
+  const allActive = state.selectedSession === 'all' ? 'active' : '';
+  html += `<button class="session-filter-badge ${allActive}" data-session="all">
+    <span class="session-filter-dot" style="background: var(--color-text-muted)"></span>
+    All
+  </button>`;
+
+  // Individual session badges
+  for (const [sessionId, session] of state.sessions) {
+    const shortId = sessionId.slice(0, 8);
+    const isActive = state.selectedSession === sessionId ? 'active' : '';
+    const isOnline = session.active ? 'online' : '';
+    const title = session.workingDirectory
+      ? `${sessionId}\n${session.workingDirectory}`
+      : sessionId;
+
+    html += `<button class="session-filter-badge ${isActive} ${isOnline}" data-session="${escapeHtml(sessionId)}" title="${escapeHtml(title)}">
+      <span class="session-filter-dot" style="background: ${session.color}"></span>
+      ${escapeHtml(shortId)}
+    </button>`;
+  }
+
+  html += '</div>';
+  filterEl.innerHTML = html;
+
+  // Attach click handlers using event delegation
+  filterEl.querySelectorAll('.session-filter-badge').forEach((badge) => {
+    badge.addEventListener('click', () => {
+      const sessionId = (badge as HTMLElement).dataset.session || 'all';
+      selectSession(sessionId);
+    });
+  });
+}
+
+/**
+ * Select a session to filter by.
+ */
+function selectSession(sessionId: string): void {
+  state.selectedSession = sessionId;
+  updateSessionFilter();
+  filterAllBySession();
+}
+
+/**
+ * Apply session filter to all thinking and tool entries.
+ */
+function filterAllBySession(): void {
+  // Filter thinking entries
+  const thinkingEntries = elements.thinkingContent.querySelectorAll('.thinking-entry');
+  thinkingEntries.forEach((entry: Element) => {
+    const el = entry as HTMLElement;
+    applySessionFilter(el);
+  });
+
+  // Filter tool entries
+  const toolEntries = elements.toolsContent.querySelectorAll('.tool-entry');
+  toolEntries.forEach((entry: Element) => {
+    const el = entry as HTMLElement;
+    applySessionFilter(el);
+  });
+}
+
+/**
+ * Apply session filter to a single entry element.
+ * Also considers agent filter and text filter.
+ */
+function applySessionFilter(entry: HTMLElement): void {
+  const entrySession = entry.dataset.session || '';
+  const matchesSession = state.selectedSession === 'all' || entrySession === state.selectedSession;
+
+  // Check if this is a thinking entry (has agent filter) or tool entry
+  const isThinkingEntry = entry.classList.contains('thinking-entry');
+
+  if (isThinkingEntry) {
+    const entryAgentId = entry.dataset.agent || 'main';
+    const matchesAgent = state.selectedAgent === 'all' || entryAgentId === state.selectedAgent;
+    const matchesText = !state.thinkingFilter ||
+      (entry.dataset.content || '').includes(state.thinkingFilter.toLowerCase());
+    entry.style.display = (matchesSession && matchesAgent && matchesText) ? '' : 'none';
+  } else {
+    // Tool entry
+    const toolName = entry.dataset.toolName || '';
+    const input = entry.dataset.input || '';
+    const filter = state.toolsFilter.toLowerCase();
+    const matchesText = !filter || toolName.includes(filter) || input.includes(filter);
+    entry.style.display = (matchesSession && matchesText) ? '' : 'none';
+  }
 }
 
 /**
@@ -744,6 +949,119 @@ function getSessionColor(sessionId: string | undefined): string {
 function getShortSessionId(sessionId: string | undefined): string {
   if (!sessionId) return '';
   return sessionId.slice(0, 8);
+}
+
+// ============================================
+// View Navigation
+// ============================================
+
+type ViewType = 'all' | 'thinking' | 'tools' | 'agents' | 'plan';
+
+/**
+ * Create the view navigation tabs if they don't exist.
+ */
+function initViewTabs(): void {
+  // Check if view tabs already exist
+  if (elements.viewTabs) {
+    return;
+  }
+
+  // Create view tabs container
+  const viewTabsContainer = document.createElement('nav');
+  viewTabsContainer.id = 'view-tabs';
+  viewTabsContainer.className = 'view-tabs';
+
+  const views: { id: ViewType; label: string; shortcut: string }[] = [
+    { id: 'all', label: 'All', shortcut: 'a' },
+    { id: 'thinking', label: 'Thinking', shortcut: 't' },
+    { id: 'tools', label: 'Tools', shortcut: 'o' },
+    { id: 'agents', label: 'Agents', shortcut: 'g' },
+    { id: 'plan', label: 'Plan', shortcut: 'p' },
+  ];
+
+  views.forEach((view) => {
+    const tab = document.createElement('button');
+    tab.className = `view-tab${state.activeView === view.id ? ' active' : ''}`;
+    tab.dataset.view = view.id;
+    tab.innerHTML = `${view.label}<span class="view-tab-shortcut">${view.shortcut}</span>`;
+    tab.addEventListener('click', () => selectView(view.id));
+    viewTabsContainer.appendChild(tab);
+  });
+
+  // Insert after the header
+  const header = document.querySelector('.header');
+  if (header && header.parentNode) {
+    header.parentNode.insertBefore(viewTabsContainer, header.nextSibling);
+  }
+
+  elements.viewTabs = viewTabsContainer;
+}
+
+/**
+ * Select a view to display.
+ */
+function selectView(viewId: ViewType): void {
+  state.activeView = viewId;
+  updateViewTabs();
+  applyViewFilter();
+}
+
+/**
+ * Update view tab active states.
+ */
+function updateViewTabs(): void {
+  if (!elements.viewTabs) return;
+
+  const tabs = elements.viewTabs.querySelectorAll('.view-tab');
+  tabs.forEach((tab) => {
+    const tabEl = tab as HTMLElement;
+    if (tabEl.dataset.view === state.activeView) {
+      tabEl.classList.add('active');
+    } else {
+      tabEl.classList.remove('active');
+    }
+  });
+}
+
+/**
+ * Apply the view filter to show/hide panels.
+ */
+function applyViewFilter(): void {
+  const panels = elements.panels;
+  if (!panels) return;
+
+  // Remove any existing view-specific classes
+  panels.classList.remove('view-all', 'view-thinking', 'view-tools', 'view-agents', 'view-plan');
+
+  // Add the current view class
+  panels.classList.add(`view-${state.activeView}`);
+
+  // Show/hide panels based on active view
+  const showAll = state.activeView === 'all';
+
+  if (elements.thinkingPanel) {
+    elements.thinkingPanel.style.display =
+      (showAll || state.activeView === 'thinking') ? '' : 'none';
+  }
+  if (elements.toolsPanel) {
+    elements.toolsPanel.style.display =
+      (showAll || state.activeView === 'tools') ? '' : 'none';
+  }
+  if (elements.agentsPanel) {
+    elements.agentsPanel.style.display =
+      (showAll || state.activeView === 'agents') ? '' : 'none';
+  }
+  if (elements.planPanel) {
+    elements.planPanel.style.display =
+      (showAll || state.activeView === 'plan') ? '' : 'none';
+  }
+
+  // Adjust layout for single-panel view
+  if (!showAll) {
+    panels.classList.add('single-view');
+  } else {
+    panels.classList.remove('single-view');
+  }
 }
 
 // ============================================
@@ -767,6 +1085,9 @@ function renderAgentTree(): void {
   elements.agentsContent.innerHTML = rootAgents
     .map(agent => renderAgentNode(agent))
     .join('');
+
+  // Add click handlers to agent nodes using event delegation
+  attachAgentTreeClickHandlers();
 }
 
 function renderAgentNode(agent: AgentInfo): string {
@@ -774,10 +1095,11 @@ function renderAgentNode(agent: AgentInfo): string {
   const colorClass = getAgentColorClass(agent.name || agent.id);
   const statusClass = getAgentStatusClass(agent);
   const dotActiveClass = agent.active ? 'active' : '';
+  const isSelected = state.selectedAgent === agent.id;
 
   let html = `
-    <div class="agent-node">
-      <div class="agent-node-header">
+    <div class="agent-node${isSelected ? ' agent-node-selected' : ''}" data-agent-id="${escapeHtml(agent.id)}">
+      <div class="agent-node-header" role="button" tabindex="0" title="Click to filter thinking by this agent">
         <span class="agent-node-dot ${dotActiveClass}" style="color: var(${colorClass}); background: var(${colorClass})"></span>
         <span class="agent-node-name">${escapeHtml(agent.name || agent.id.slice(0, 8))}</span>
         <span class="agent-node-id">(${escapeHtml(agent.id.slice(0, 8))})</span>
@@ -791,6 +1113,54 @@ function renderAgentNode(agent: AgentInfo): string {
 
   html += '</div>';
   return html;
+}
+
+/**
+ * Attach click handlers to agent tree nodes for filtering.
+ * Uses event delegation on the agents content container.
+ */
+function attachAgentTreeClickHandlers(): void {
+  const agentNodes = elements.agentsContent.querySelectorAll('.agent-node-header');
+
+  agentNodes.forEach((header) => {
+    const headerEl = header as HTMLElement;
+    const nodeEl = headerEl.closest('.agent-node') as HTMLElement;
+    const agentId = nodeEl?.dataset.agentId;
+
+    if (!agentId) return;
+
+    // Click handler
+    headerEl.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent bubbling to parent agent nodes
+      handleAgentNodeClick(agentId);
+    });
+
+    // Keyboard handler for accessibility
+    headerEl.addEventListener('keydown', (e) => {
+      const keyEvent = e as KeyboardEvent;
+      if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        handleAgentNodeClick(agentId);
+      }
+    });
+  });
+}
+
+/**
+ * Handle a click on an agent node in the Agent Tree panel.
+ * Selects/filters by that agent or toggles back to "all" if already selected.
+ */
+function handleAgentNodeClick(agentId: string): void {
+  // If clicking the already-selected agent, toggle back to "all"
+  if (state.selectedAgent === agentId) {
+    selectAgent('all');
+  } else {
+    selectAgent(agentId);
+  }
+
+  // Re-render the tree to update the selected state visual
+  renderAgentTree();
 }
 
 function getAgentStatusClass(agent: AgentInfo): string {
@@ -877,7 +1247,10 @@ function applyAgentFilter(entry: HTMLElement, entryAgentId: string): void {
   const matchesText = !state.thinkingFilter ||
     (entry.dataset.content || '').includes(state.thinkingFilter.toLowerCase());
 
-  entry.style.display = (matchesAgent && matchesText) ? '' : 'none';
+  // Also check session filter
+  const sessionMatches = state.selectedSession === 'all' || entry.dataset.session === state.selectedSession;
+
+  entry.style.display = (matchesAgent && matchesText && sessionMatches) ? '' : 'none';
 }
 
 function getAgentColorClass(name: string): string {
@@ -895,17 +1268,19 @@ function getAgentColorClass(name: string): string {
 
 function applyThinkingFilter(entry: HTMLElement): void {
   const content = entry.dataset.content || '';
-  const matches = !state.thinkingFilter || content.includes(state.thinkingFilter.toLowerCase());
+  const matchesText = !state.thinkingFilter || content.includes(state.thinkingFilter.toLowerCase());
   const agentMatches = state.selectedAgent === 'all' || entry.dataset.agent === state.selectedAgent;
-  entry.style.display = (matches && agentMatches) ? '' : 'none';
+  const sessionMatches = state.selectedSession === 'all' || entry.dataset.session === state.selectedSession;
+  entry.style.display = (matchesText && agentMatches && sessionMatches) ? '' : 'none';
 }
 
 function applyToolsFilter(entry: HTMLElement): void {
   const toolName = entry.dataset.toolName || '';
   const input = entry.dataset.input || '';
   const filter = state.toolsFilter.toLowerCase();
-  const matches = !filter || toolName.includes(filter) || input.includes(filter);
-  entry.style.display = matches ? '' : 'none';
+  const matchesText = !filter || toolName.includes(filter) || input.includes(filter);
+  const sessionMatches = state.selectedSession === 'all' || entry.dataset.session === state.selectedSession;
+  entry.style.display = (matchesText && sessionMatches) ? '' : 'none';
 }
 
 function filterAllThinking(): void {
@@ -1047,9 +1422,10 @@ function clearAllPanels(): void {
   state.pendingTools.clear();
   state.sessions.clear();
   state.currentSessionId = null;
+  state.selectedSession = 'all';
   state.userScrolledUp = false;
 
-  // Hide session indicator
+  // Hide session indicator and filter
   updateSessionIndicator();
 
   // Update counters
@@ -1172,6 +1548,27 @@ function handleKeydown(event: KeyboardEvent): void {
     (document.activeElement as HTMLElement)?.blur();
     return;
   }
+
+  // View navigation shortcuts
+  if (!event.ctrlKey && !event.metaKey) {
+    switch (event.key.toLowerCase()) {
+      case 'a':
+        selectView('all');
+        return;
+      case 't':
+        selectView('thinking');
+        return;
+      case 'o':
+        selectView('tools');
+        return;
+      case 'g':
+        selectView('agents');
+        return;
+      case 'p':
+        selectView('plan');
+        return;
+    }
+  }
 }
 
 // ============================================
@@ -1241,6 +1638,9 @@ if (allTab) {
 // Initialize
 // ============================================
 
+// Initialize view tabs navigation
+initViewTabs();
+
 connect();
 console.log('[Dashboard] Thinking Monitor initialized');
-console.log('[Dashboard] Keyboard shortcuts: 0-9=agents, c=clear, s=scroll, /=search, Esc=clear filters');
+console.log('[Dashboard] Keyboard shortcuts: 0-9=agents, a/t/o/g/p=views, c=clear, s=scroll, /=search, Esc=clear filters');

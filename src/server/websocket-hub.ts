@@ -30,6 +30,7 @@ export class WebSocketHub {
   private wss: WebSocketServer | null = null;
   private clients: Map<string, ConnectedClient> = new Map();
   private messageSeq = 0;
+  private onClientConnectCallback: ((client: ConnectedClient) => void) | null = null;
 
   /**
    * Attach the WebSocket server to an existing HTTP server.
@@ -81,6 +82,16 @@ export class WebSocketHub {
   }
 
   /**
+   * Set a callback to be called when a new client connects.
+   * Useful for sending initial state to new clients.
+   */
+  onClientConnect(callback: (sendEvent: (event: MonitorEvent) => void) => void): void {
+    this.onClientConnectCallback = (client) => {
+      callback((event) => this.sendToClient(client, event));
+    };
+  }
+
+  /**
    * Handle new WebSocket connection.
    */
   private handleConnection(ws: WebSocket, _req: IncomingMessage): void {
@@ -98,6 +109,11 @@ export class WebSocketHub {
 
     // Send connection status to the new client
     this.sendToClient(client, this.createConnectionStatusEvent('connected'));
+
+    // Call the onClientConnect callback if set (to send initial state)
+    if (this.onClientConnectCallback) {
+      this.onClientConnectCallback(client);
+    }
 
     // Handle client disconnect
     ws.on('close', () => {
