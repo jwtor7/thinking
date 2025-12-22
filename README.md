@@ -1,5 +1,10 @@
 # Thinking Monitor
 
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-10.x-orange?logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Real-time monitoring dashboard for Claude Code thinking, agents, and tool activity.
 
 ## Features
@@ -67,6 +72,15 @@ Claude Code Session
 - Secrets are redacted before display
 - Path validation for file access
 - XSS prevention via HTML escaping
+
+## Recent Changes
+
+### 2025-12-21
+- Initial project setup with TypeScript and pnpm
+- Project structure for server, dashboard, hooks
+- Security-first design documented
+
+*For complete history, see [CHANGELOG.md](./CHANGELOG.md)*
 
 ## License
 
