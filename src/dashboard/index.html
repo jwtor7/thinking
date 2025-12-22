@@ -34,6 +34,7 @@
         <button class="agent-tab active" data-agent="all">
           <span class="agent-dot agent-dot-all"></span>
           All
+          <span class="agent-tab-shortcut">0</span>
         </button>
         <!-- Agent tabs will be added dynamically -->
       </div>
@@ -47,7 +48,13 @@
         <section class="panel panel-thinking">
           <header class="panel-header">
             <h2 class="panel-title">THINKING</h2>
-            <span class="panel-badge" id="thinking-count">0</span>
+            <div class="panel-header-controls">
+              <div class="panel-filter">
+                <input type="text" class="panel-filter-input" id="thinking-filter" placeholder="Filter..." aria-label="Filter thinking entries">
+                <button class="panel-filter-clear panel-filter-hidden" id="thinking-filter-clear" aria-label="Clear filter">x</button>
+              </div>
+              <span class="panel-badge" id="thinking-count">0</span>
+            </div>
           </header>
           <div class="panel-content" id="thinking-content">
             <div class="empty-state">
@@ -78,7 +85,13 @@
         <section class="panel panel-tools">
           <header class="panel-header">
             <h2 class="panel-title">TOOL ACTIVITY</h2>
-            <span class="panel-badge" id="tools-count">0</span>
+            <div class="panel-header-controls">
+              <div class="panel-filter">
+                <input type="text" class="panel-filter-input" id="tools-filter" placeholder="Filter..." aria-label="Filter tool entries">
+                <button class="panel-filter-clear panel-filter-hidden" id="tools-filter-clear" aria-label="Clear filter">x</button>
+              </div>
+              <span class="panel-badge" id="tools-count">0</span>
+            </div>
           </header>
           <div class="panel-content" id="tools-content">
             <div class="empty-state">
@@ -104,9 +117,25 @@
       </div>
     </main>
 
+    <!-- Connection Overlay -->
+    <div class="connection-overlay" id="connection-overlay">
+      <div class="connection-overlay-content">
+        <div class="connection-overlay-icon">...</div>
+        <h2 class="connection-overlay-title">Connecting to Server</h2>
+        <p class="connection-overlay-message" id="connection-overlay-message">Attempting to connect...</p>
+        <button class="connection-overlay-retry" id="connection-overlay-retry">Retry Now</button>
+      </div>
+    </div>
+
     <!-- Footer -->
     <footer class="footer">
       <span id="server-info">Server: --</span>
+      <span class="keyboard-hints">
+        <kbd>0-9</kbd> agents
+        <kbd>c</kbd> clear
+        <kbd>s</kbd> scroll
+        <kbd>/</kbd> search
+      </span>
       <span id="event-count">Events: 0</span>
     </footer>
   </div>

@@ -597,6 +597,501 @@ body {
 }
 
 /* ========================================
+   Collapsible Thinking Blocks
+   ======================================== */
+
+.thinking-entry {
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.thinking-entry.collapsed .thinking-text {
+  display: none;
+}
+
+.thinking-entry-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.thinking-entry-header:hover {
+  background: var(--color-bg-hover);
+  margin: calc(-1 * var(--spacing-sm));
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+}
+
+.thinking-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: var(--spacing-xs);
+  color: var(--color-text-muted);
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.thinking-toggle::before {
+  content: '';
+  border: 4px solid transparent;
+  border-left: 6px solid currentColor;
+  border-right: 0;
+}
+
+.thinking-entry:not(.collapsed) .thinking-toggle {
+  transform: rotate(90deg);
+}
+
+.thinking-entry:not(.collapsed) .thinking-toggle,
+.thinking-entry-header:hover .thinking-toggle {
+  color: var(--color-text-secondary);
+}
+
+.thinking-preview {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  margin-left: var(--spacing-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.thinking-entry:not(.collapsed) .thinking-preview {
+  display: none;
+}
+
+/* ========================================
+   Enhanced Tool Status
+   ======================================== */
+
+.tool-status-error {
+  background: rgba(248, 81, 73, 0.2);
+  color: var(--color-accent-red);
+}
+
+.tool-entry-expandable {
+  cursor: pointer;
+}
+
+.tool-entry-expandable:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.tool-entry.expanded {
+  flex-direction: column;
+  align-items: stretch;
+  background: var(--color-bg-tertiary);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.tool-entry.expanded .tool-entry-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.tool-entry-details {
+  display: none;
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.tool-entry.expanded .tool-entry-details {
+  display: block;
+}
+
+.tool-input-label,
+.tool-output-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-xs);
+}
+
+.tool-input-content,
+.tool-output-content {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-primary);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.tool-duration {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+  margin-left: auto;
+}
+
+/* ========================================
+   Enhanced Agent Tree
+   ======================================== */
+
+.agent-node {
+  transition: background 0.15s ease;
+  border-radius: var(--radius-sm);
+}
+
+.agent-node:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.agent-node-status {
+  font-size: var(--font-size-xs);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: var(--spacing-sm);
+}
+
+.agent-node-status-active {
+  background: rgba(63, 185, 80, 0.2);
+  color: var(--color-accent-green);
+}
+
+.agent-node-status-completed {
+  background: rgba(110, 118, 129, 0.2);
+  color: var(--color-text-muted);
+}
+
+.agent-node-status-failed {
+  background: rgba(248, 81, 73, 0.2);
+  color: var(--color-accent-red);
+}
+
+.agent-node-dot {
+  transition: box-shadow 0.3s ease;
+}
+
+.agent-node-dot.active {
+  box-shadow: 0 0 8px currentColor;
+  animation: agentPulse 2s ease-in-out infinite;
+}
+
+@keyframes agentPulse {
+  0%, 100% { box-shadow: 0 0 4px currentColor; }
+  50% { box-shadow: 0 0 10px currentColor; }
+}
+
+/* ========================================
+   Connection Status Enhancements
+   ======================================== */
+
+.status {
+  transition: all 0.2s ease;
+}
+
+.status-reconnecting {
+  cursor: pointer;
+}
+
+.status-reconnecting:hover {
+  background: var(--color-bg-hover);
+}
+
+.status-reconnecting .status-dot {
+  background: var(--color-status-pending);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.reconnect-countdown {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-left: var(--spacing-xs);
+}
+
+.status-error {
+  color: var(--color-accent-red);
+}
+
+.connection-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(13, 17, 23, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.connection-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.connection-overlay-content {
+  text-align: center;
+  padding: var(--spacing-xl);
+}
+
+.connection-overlay-icon {
+  font-size: 48px;
+  margin-bottom: var(--spacing-lg);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.connection-overlay-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.connection-overlay-message {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.connection-overlay-retry {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--color-accent-blue);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: white;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.connection-overlay-retry:hover {
+  background: #4c96eb;
+}
+
+/* ========================================
+   Filter/Search
+   ======================================== */
+
+.panel-header-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.panel-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 2px var(--spacing-sm);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.panel-filter-input {
+  width: 120px;
+  padding: 2px 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family);
+  outline: none;
+}
+
+.panel-filter-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.panel-filter-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0;
+  line-height: 1;
+}
+
+.panel-filter-clear:hover {
+  color: var(--color-text-secondary);
+}
+
+.panel-filter-hidden {
+  display: none;
+}
+
+/* ========================================
+   Keyboard Shortcut Hints
+   ======================================== */
+
+.agent-tab-shortcut {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-bg-primary);
+  padding: 1px 4px;
+  border-radius: 2px;
+  margin-left: var(--spacing-xs);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.agent-bar:focus-within .agent-tab-shortcut,
+body.keyboard-mode .agent-tab-shortcut {
+  opacity: 1;
+}
+
+/* ========================================
+   Visual Polish - Animations
+   ======================================== */
+
+.thinking-entry {
+  animation: slideIn 0.2s ease-out;
+}
+
+.tool-entry {
+  animation: fadeIn 0.15s ease-out;
+}
+
+.agent-node {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Entry highlight on new */
+.thinking-entry.new,
+.tool-entry.new {
+  animation: highlight 1s ease-out;
+}
+
+@keyframes highlight {
+  0% {
+    background: rgba(88, 166, 255, 0.2);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+/* Smooth transitions for hover states */
+.btn,
+.agent-tab,
+.thinking-entry,
+.tool-entry {
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+/* Focus visible states for accessibility */
+.btn:focus-visible,
+.agent-tab:focus-visible,
+.toggle input:focus-visible,
+.panel-filter-input:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+
+/* Scrollbar fade on inactive */
+.panel-content {
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+
+.panel-content:hover,
+.panel-content:focus-within {
+  scrollbar-color: var(--color-bg-hover) transparent;
+}
+
+/* ========================================
+   Keyboard Hints in Footer
+   ======================================== */
+
+.keyboard-hints {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.keyboard-hints kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  font-family: var(--font-family-mono);
+  font-size: 10px;
+  margin-right: 2px;
+}
+
+/* ========================================
+   Tool Entry Output Sections
+   ======================================== */
+
+.tool-input-section,
+.tool-output-section {
+  margin-bottom: var(--spacing-sm);
+}
+
+.tool-input-section:last-child,
+.tool-output-section:last-child {
+  margin-bottom: 0;
+}
+
+/* ========================================
+   Auto-scroll Indicator
+   ======================================== */
+
+.panel-content.scroll-paused::after {
+  content: 'Scroll paused';
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: block;
+  padding: 2px var(--spacing-sm);
+  background: var(--color-accent-yellow);
+  color: var(--color-bg-primary);
+  font-size: var(--font-size-xs);
+  text-align: center;
+  opacity: 0.9;
+}
+
+/* ========================================
    Responsive
    ======================================== */
 
@@ -608,4 +1103,114 @@ body {
   .panel-column {
     max-height: 50vh;
   }
+
+  .panel-filter-input {
+    width: 80px;
+  }
+
+  .agent-tab-shortcut {
+    display: none;
+  }
+
+  .keyboard-hints {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .header-title {
+    font-size: var(--font-size-md);
+  }
+
+  .header-controls {
+    gap: var(--spacing-sm);
+  }
+
+  .toggle-label {
+    display: none;
+  }
+
+  .btn {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  .agent-bar {
+    padding: 0 var(--spacing-sm);
+  }
+
+  .agent-bar-label {
+    display: none;
+  }
+
+  .panels {
+    padding: var(--spacing-sm);
+    gap: var(--spacing-sm);
+  }
+
+  .panel-header {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  .panel-filter {
+    display: none;
+  }
+}
+
+/* ========================================
+   Session Indicator & Badges
+   ======================================== */
+
+.session-indicator {
+  display: none;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.session-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.session-id {
+  font-family: var(--font-family-mono);
+  cursor: help;
+}
+
+.session-count {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+/* Session badge on entries */
+.entry-session-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-family: var(--font-family-mono);
+  font-weight: 500;
+  color: var(--color-bg-primary);
+  cursor: help;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.entry-session-badge:hover {
+  opacity: 1;
+}
+
+/* Subtle badge styling when there's only one session */
+.thinking-entry[data-session]:not(:empty) .entry-session-badge,
+.tool-entry[data-session]:not(:empty) .entry-session-badge {
+  margin-right: var(--spacing-xs);
 }
