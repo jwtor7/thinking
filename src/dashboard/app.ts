@@ -5,7 +5,7 @@
  * real-time events in the dashboard panels.
  *
  * Phase 4 Polish Features:
- * - Collapsible thinking blocks with toggle controls
+ * - Thinking blocks (non-collapsible, always expanded for readability)
  * - Enhanced tool call visualization with timing and expandable details
  * - Improved agent tree visualization with status indicators
  * - Smart auto-scroll (pauses when user scrolls up)
@@ -476,7 +476,7 @@ function handleThinking(event: MonitorEvent): void {
     emptyState.remove();
   }
 
-  // Create thinking entry with collapsible toggle
+  // Create thinking entry (non-collapsible, always expanded)
   const entry = document.createElement('div');
   entry.className = 'thinking-entry new';
   entry.dataset.agent = agentId;
@@ -489,8 +489,7 @@ function handleThinking(event: MonitorEvent): void {
     : '';
 
   entry.innerHTML = `
-    <div class="thinking-entry-header" role="button" tabindex="0" aria-expanded="true">
-      <span class="thinking-toggle" aria-hidden="true"></span>
+    <div class="thinking-entry-header">
       <span class="thinking-time">${escapeHtml(time)}</span>
       ${sessionBadge}
       <span class="thinking-agent">${escapeHtml(agentDisplayName)}</span>
@@ -498,18 +497,6 @@ function handleThinking(event: MonitorEvent): void {
     </div>
     <div class="thinking-text">${escapeHtml(content)}</div>
   `;
-
-  // Add click handler for collapsing
-  const header = entry.querySelector('.thinking-entry-header');
-  if (header) {
-    header.addEventListener('click', () => toggleThinkingEntry(entry));
-    header.addEventListener('keydown', (e) => {
-      if ((e as KeyboardEvent).key === 'Enter' || (e as KeyboardEvent).key === ' ') {
-        e.preventDefault();
-        toggleThinkingEntry(entry);
-      }
-    });
-  }
 
   // Apply filter visibility
   applyThinkingFilter(entry);
@@ -519,14 +506,6 @@ function handleThinking(event: MonitorEvent): void {
 
   // Remove 'new' class after animation
   setTimeout(() => entry.classList.remove('new'), 1000);
-}
-
-function toggleThinkingEntry(entry: HTMLElement): void {
-  entry.classList.toggle('collapsed');
-  const header = entry.querySelector('.thinking-entry-header');
-  if (header) {
-    header.setAttribute('aria-expanded', entry.classList.contains('collapsed') ? 'false' : 'true');
-  }
 }
 
 function handleToolStart(event: MonitorEvent): void {

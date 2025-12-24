@@ -2,7 +2,7 @@
  * Phase 4 Dashboard Polish - Comprehensive Evaluation Tests
  *
  * Tests to verify Phase 4 requirements from PRD:
- * - Collapsible thinking blocks
+ * - Thinking blocks (non-collapsible, always expanded)
  * - Enhanced tool visualization with timing
  * - Smart auto-scroll behavior
  * - Event filtering
@@ -115,38 +115,27 @@ describe('Phase 4: Dashboard Polish', () => {
     });
   });
 
-  describe('Collapsible Thinking Blocks', () => {
-    it('should have thinking-entry class with collapsed state', () => {
-      expect(stylesCssContent).toContain('.thinking-entry.collapsed');
+  describe('Thinking Blocks (non-collapsible)', () => {
+    it('should have thinking-entry class', () => {
+      expect(stylesCssContent).toContain('.thinking-entry');
     });
 
-    it('should hide thinking-text when collapsed', () => {
-      expect(stylesCssContent).toContain('.thinking-entry.collapsed .thinking-text');
-      expect(stylesCssContent).toContain('display: none');
+    it('should have thinking-entry-header for metadata', () => {
+      expect(appTsContent).toContain('thinking-entry-header');
+      expect(stylesCssContent).toContain('.thinking-entry-header');
     });
 
-    it('should have toggle control with arrow indicator', () => {
-      expect(stylesCssContent).toContain('.thinking-toggle');
-      expect(stylesCssContent).toContain('transform: rotate(90deg)');
+    it('should always show thinking-text content', () => {
+      // Verify thinking-text is rendered without collapse logic
+      expect(appTsContent).toContain('thinking-text');
+      // Verify no toggle function exists for thinking entries
+      expect(appTsContent).not.toContain('toggleThinkingEntry');
     });
 
-    it('should have click handler for collapsing', () => {
-      expect(appTsContent).toContain('toggleThinkingEntry');
-      expect(appTsContent).toContain("entry.classList.toggle('collapsed')");
-    });
-
-    it('should update aria-expanded on toggle for accessibility', () => {
-      expect(appTsContent).toContain("setAttribute('aria-expanded'");
-    });
-
-    it('should have keyboard support for toggle (Enter/Space)', () => {
-      expect(appTsContent).toContain("'Enter'");
-      expect(appTsContent).toContain("' '"); // Space key
-    });
-
-    it('should show preview when collapsed', () => {
-      expect(appTsContent).toContain('thinking-preview');
-      expect(stylesCssContent).toContain('.thinking-preview');
+    it('should not have interactive collapse controls', () => {
+      // Verify no toggle indicator in thinking entries
+      expect(appTsContent).not.toMatch(/thinking-entry.*role.*button/);
+      expect(appTsContent).not.toMatch(/thinking-entry.*aria-expanded/);
     });
   });
 
@@ -388,13 +377,9 @@ describe('Phase 4: Dashboard Polish', () => {
       expect(indexHtmlContent).toContain('aria-label="Clear filter"');
     });
 
-    it('should have role=button on toggle header', () => {
-      expect(appTsContent).toContain('role="button"');
-    });
-
-    it('should have tabindex on toggle header', () => {
-      expect(appTsContent).toContain('tabindex="0"');
-    });
+    // Note: role="button" and tabindex tests removed since thinking blocks
+    // are no longer collapsible/interactive. Tool entries still have these
+    // attributes for their collapse functionality.
 
     it('should have focus-visible styles', () => {
       expect(stylesCssContent).toContain(':focus-visible');
