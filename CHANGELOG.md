@@ -1,5 +1,22 @@
 # Changelog
 
+## 2025-12-23
+
+### Changed
+- Replaced Agents panel with Todo panel for tracking task progress
+- Updated navigation to view-based system (All/Thinking/Tools/Todo/Plan)
+- Keyboard shortcuts changed from 0-9 agent switching to a/t/o/d/p view switching
+- Simplified dashboard layout with session-based filtering instead of agent tabs
+
+### Added
+- Todo panel displays current task list with status indicators (pending/in-progress/completed)
+- Screenshot utility script for capturing Arc browser window (`pnpm screenshot`)
+
+### Fixed
+- Updated 8 test specifications to match current view-based navigation architecture
+
+---
+
 ## 2025-12-22
 
 ### Added

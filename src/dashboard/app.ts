@@ -11,7 +11,7 @@
  * - Smart auto-scroll (pauses when user scrolls up)
  * - Event type filtering (thinking filter, tool filter)
  * - Connection status with reconnect countdown
- * - Keyboard shortcuts for agent switching (1-9, 0 for All)
+ * - Keyboard shortcuts for view switching
  * - Improved responsiveness
  */
 
@@ -67,7 +67,6 @@ interface AppState {
   thinkingCount: number;
   toolsCount: number;
   agentsCount: number;
-  selectedAgent: string;
   agents: Map<string, AgentInfo>;
   pendingTools: Map<string, ToolInfo>;
   thinkingFilter: string;
@@ -90,7 +89,9 @@ interface AppState {
   // Context menu state
   contextMenuFilePath: string | null;
   // Active view tab for navigation
-  activeView: 'all' | 'thinking' | 'tools' | 'agents' | 'plan';
+  activeView: 'all' | 'thinking' | 'tools' | 'todo' | 'plan';
+  // Todo tracking
+  todos: TodoItem[];
 }
 
 interface PlanInfo {
@@ -137,6 +138,12 @@ interface ToolInfo {
   element?: HTMLElement;
 }
 
+interface TodoItem {
+  content: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  activeForm: string;
+}
+
 const state: AppState = {
   connected: false,
   autoScroll: true,
@@ -145,7 +152,6 @@ const state: AppState = {
   thinkingCount: 0,
   toolsCount: 0,
   agentsCount: 0,
-  selectedAgent: 'all',
   agents: new Map(),
   pendingTools: new Map(),
   thinkingFilter: '',
@@ -162,6 +168,7 @@ const state: AppState = {
   planSelectorOpen: false,
   contextMenuFilePath: null,
   activeView: 'all',
+  todos: [],
 };
 
 // Session colors for visual distinction
@@ -186,11 +193,10 @@ const elements = {
   sessionFilter: document.getElementById('session-filter'),
   clearBtn: document.getElementById('clear-btn')!,
   autoScrollCheckbox: document.getElementById('auto-scroll') as HTMLInputElement,
-  agentTabs: document.getElementById('agent-tabs')!,
   viewTabs: document.getElementById('view-tabs'),
   thinkingPanel: document.querySelector('.panel-thinking') as HTMLElement,
   toolsPanel: document.querySelector('.panel-tools') as HTMLElement,
-  agentsPanel: document.querySelector('.panel-agents') as HTMLElement,
+  todoPanel: document.querySelector('.panel-todo') as HTMLElement,
   planPanel: document.querySelector('.panel-plan') as HTMLElement,
   thinkingContent: document.getElementById('thinking-content')!,
   thinkingCount: document.getElementById('thinking-count')!,
@@ -200,8 +206,8 @@ const elements = {
   toolsCount: document.getElementById('tools-count')!,
   toolsFilter: document.getElementById('tools-filter') as HTMLInputElement,
   toolsFilterClear: document.getElementById('tools-filter-clear')!,
-  agentsContent: document.getElementById('agents-content')!,
-  agentsCount: document.getElementById('agents-count')!,
+  todoContent: document.getElementById('todo-content')!,
+  todoCount: document.getElementById('todo-count')!,
   planContent: document.getElementById('plan-content')!,
   planMeta: document.getElementById('plan-meta')!,
   planOpenBtn: document.getElementById('plan-open-btn') as HTMLButtonElement,
@@ -214,6 +220,7 @@ const elements = {
   contextMenuReveal: document.getElementById('context-menu-reveal')!,
   serverInfo: document.getElementById('server-info')!,
   eventCount: document.getElementById('event-count')!,
+  agentsCount: document.getElementById('agents-count'),
   connectionOverlay: document.getElementById('connection-overlay')!,
   connectionOverlayMessage: document.getElementById('connection-overlay-message')!,
   connectionOverlayRetry: document.getElementById('connection-overlay-retry')!,
@@ -478,9 +485,6 @@ function handleThinking(event: MonitorEvent): void {
   // Apply filter visibility
   applyThinkingFilter(entry);
 
-  // Apply agent filter
-  applyAgentFilter(entry, agentId);
-
   appendAndTrim(elements.thinkingContent, entry);
   smartScroll(elements.thinkingContent);
 
@@ -502,6 +506,7 @@ function handleToolStart(event: MonitorEvent): void {
   const input = event.input ? String(event.input) : undefined;
   const time = formatTime(event.timestamp);
   const sessionId = event.sessionId;
+  const agentId = event.agentId || 'main';
 
   state.toolsCount++;
   elements.toolsCount.textContent = String(state.toolsCount);
@@ -517,39 +522,56 @@ function handleToolStart(event: MonitorEvent): void {
     ? `<span class="entry-session-badge" style="background: ${getSessionColor(sessionId)}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>`
     : '';
 
-  // Create tool entry with expandable details
+  // Generate preview text for collapsed state
+  const preview = summarizeInput(input);
+
+  // Get a readable agent name - look up in agents map or use truncated ID
+  const agent = state.agents.get(agentId);
+  const agentDisplayName = agent?.name || (agentId === 'main' ? 'main' : agentId.slice(0, 12));
+
+  // Create tool entry with collapsible structure (collapsed by default)
   const entry = document.createElement('div');
-  entry.className = 'tool-entry tool-entry-expandable new';
+  entry.className = 'tool-entry collapsed new';
   entry.id = `tool-${toolCallId}`;
   entry.dataset.toolName = toolName.toLowerCase();
   entry.dataset.session = sessionId || '';
   entry.dataset.input = (input || '').toLowerCase();
+  entry.dataset.agent = agentId;
 
   entry.innerHTML = `
     <div class="tool-entry-header">
-      <span class="tool-time">${escapeHtml(time)}</span>
-      ${sessionBadge}
-      <span class="tool-name">${escapeHtml(toolName)}</span>
-      <span class="tool-detail">${renderToolDetail(input)}</span>
-      <span class="tool-status tool-status-pending">running</span>
+      <div class="tool-header-line1">
+        <span class="tool-toggle"></span>
+        <span class="tool-time">${escapeHtml(time)}</span>
+        ${sessionBadge}
+      </div>
+      <div class="tool-header-line2">
+        <span class="tool-agent">${escapeHtml(agentDisplayName)}</span>
+        <span class="tool-name">${escapeHtml(toolName)}</span>
+        <span class="tool-preview">${escapeHtml(preview)}</span>
+      </div>
     </div>
     <div class="tool-entry-details">
       <div class="tool-input-section">
         <div class="tool-input-label">INPUT</div>
         <div class="tool-input-content">${escapeHtml(input || '(none)')}</div>
       </div>
-      <div class="tool-output-section">
-        <div class="tool-output-label">OUTPUT</div>
-        <div class="tool-output-content">Waiting for result...</div>
-      </div>
     </div>
   `;
 
-  // Add click handler for expanding
+  // Add click handler for toggling collapse state
   entry.addEventListener('click', (e) => {
-    // Don't toggle if clicking on a link or button inside
-    if ((e.target as HTMLElement).closest('a, button')) return;
-    entry.classList.toggle('expanded');
+    const target = e.target as HTMLElement;
+    // Don't toggle if clicking inside details (for text selection)
+    if (!entry.classList.contains('collapsed') &&
+        target.closest('.tool-entry-details')) {
+      return;
+    }
+    // Don't toggle if clicking links/buttons/file paths
+    if (target.closest('a, button, .tool-file-path')) {
+      return;
+    }
+    entry.classList.toggle('collapsed');
   });
 
   // Track pending tool
@@ -573,34 +595,28 @@ function handleToolStart(event: MonitorEvent): void {
 
 function handleToolEnd(event: MonitorEvent): void {
   const toolCallId = String(event.toolCallId || '');
+  const toolName = String(event.toolName || '');
   const output = event.output ? String(event.output) : undefined;
+  const input = event.input ? String(event.input) : undefined;
   const durationMs = event.durationMs as number | undefined;
+
+  // Check if this is a TodoWrite tool call and parse todos
+  if (toolName === 'TodoWrite') {
+    parseTodoWriteInput(input);
+  }
 
   // Update existing entry if found
   const entry = document.getElementById(`tool-${toolCallId}`);
   if (entry) {
-    const statusEl = entry.querySelector('.tool-status');
-    if (statusEl) {
-      const isError = event.status === 'error' || (output && output.toLowerCase().includes('error'));
-      statusEl.className = `tool-status ${isError ? 'tool-status-error' : 'tool-status-done'}`;
-      statusEl.textContent = isError ? 'error' : 'done';
-    }
-
-    // Add duration if available
+    // Add duration if available (append to line 2)
     if (durationMs !== undefined) {
-      const headerEl = entry.querySelector('.tool-entry-header');
-      if (headerEl && !headerEl.querySelector('.tool-duration')) {
+      const line2El = entry.querySelector('.tool-header-line2');
+      if (line2El && !line2El.querySelector('.tool-duration')) {
         const durationEl = document.createElement('span');
         durationEl.className = 'tool-duration';
         durationEl.textContent = formatDuration(durationMs);
-        headerEl.appendChild(durationEl);
+        line2El.appendChild(durationEl);
       }
-    }
-
-    // Update output in details section
-    const outputEl = entry.querySelector('.tool-output-content');
-    if (outputEl) {
-      outputEl.textContent = output || '(no output)';
     }
   }
 
@@ -624,10 +640,11 @@ function handleAgentStart(event: MonitorEvent): void {
   });
 
   state.agentsCount = state.agents.size;
-  elements.agentsCount.textContent = String(state.agentsCount);
+  if (elements.agentsCount) {
+    elements.agentsCount.textContent = String(state.agentsCount);
+  }
 
   renderAgentTree();
-  renderAgentTabs();
 }
 
 function handleAgentStop(event: MonitorEvent): void {
@@ -639,7 +656,6 @@ function handleAgentStop(event: MonitorEvent): void {
     agent.status = (event.status as AgentInfo['status']) || 'success';
     agent.endTime = event.timestamp;
     renderAgentTree();
-    renderAgentTabs();
   }
 }
 
@@ -785,48 +801,42 @@ function displayPlan(planPath: string): void {
 }
 
 /**
- * Display the most recent plan for a given agent.
- * Falls back to session-based lookup if no agent-specific plan found.
- * If no plans found, keeps the current plan displayed.
+ * Display the most recent plan for a given session.
+ * Shows the most recently modified plan that matches the sessionId.
+ * If no plans found for the session, shows empty state.
  */
-function displayPlanForAgent(agentId: string): void {
-  const agent = state.agents.get(agentId);
-
-  // First, try to find a plan directly associated with this agent
-  const agentPlans = Array.from(state.plans.values())
-    .filter((p) => p.agentId === agentId)
+function displayPlanForSession(sessionId: string): void {
+  // Find plans associated with this session
+  const sessionPlans = Array.from(state.plans.values())
+    .filter((p) => p.sessionId === sessionId)
     .sort((a, b) => b.lastModified - a.lastModified);
 
-  if (agentPlans.length > 0) {
-    displayPlan(agentPlans[0].path);
+  if (sessionPlans.length > 0) {
+    displayPlan(sessionPlans[0].path);
     return;
   }
 
-  // Fall back to session-based lookup
-  if (agent?.sessionId) {
-    const sessionPlans = Array.from(state.plans.values())
-      .filter((p) => p.sessionId === agent.sessionId)
-      .sort((a, b) => b.lastModified - a.lastModified);
-
-    if (sessionPlans.length > 0) {
-      displayPlan(sessionPlans[0].path);
-      return;
-    }
-  }
-
-  // If no plans found, keep current plan displayed
+  // If no plans found for this session, show empty state
+  displayEmptyPlan();
 }
 
 /**
  * Display empty plan state.
+ * Shows a helpful message depending on the current context.
  */
 function displayEmptyPlan(): void {
   state.currentPlanPath = null;
   elements.planSelectorText.textContent = 'No active plan';
+
+  // Show different message based on whether "All" sessions is selected
+  const message = state.selectedSession === 'all' && state.sessions.size > 0
+    ? 'Select a session to view its plan'
+    : 'No plan file loaded';
+
   elements.planContent.innerHTML = `
     <div class="empty-state">
       <span class="empty-icon">file</span>
-      <p>No plan file loaded</p>
+      <p>${message}</p>
     </div>
   `;
   updatePlanMeta(null);
@@ -1370,10 +1380,10 @@ function updateSessionFilter(): void {
     filterEl.id = 'session-filter';
     filterEl.className = 'session-filter';
 
-    // Insert after agent bar
-    const agentBar = document.getElementById('agent-bar');
-    if (agentBar && agentBar.parentNode) {
-      agentBar.parentNode.insertBefore(filterEl, agentBar.nextSibling);
+    // Insert after view tabs (or header if no view tabs)
+    const viewTabs = elements.viewTabs || document.querySelector('.header');
+    if (viewTabs && viewTabs.parentNode) {
+      viewTabs.parentNode.insertBefore(filterEl, viewTabs.nextSibling);
     }
     elements.sessionFilter = filterEl;
   }
@@ -1426,11 +1436,21 @@ function updateSessionFilter(): void {
 
 /**
  * Select a session to filter by.
+ * Also updates the plan display to show plans for the selected session.
  */
 function selectSession(sessionId: string): void {
   state.selectedSession = sessionId;
   updateSessionFilter();
   filterAllBySession();
+
+  // Update plan display based on session selection
+  if (sessionId === 'all') {
+    // With "All" selected, it's unclear which session a plan belongs to, so show empty
+    displayEmptyPlan();
+  } else {
+    // Show the most recent plan for the selected session
+    displayPlanForSession(sessionId);
+  }
 }
 
 /**
@@ -1454,23 +1474,19 @@ function filterAllBySession(): void {
 
 /**
  * Apply session filter to a single entry element.
- * Also considers agent filter and text filter.
+ * Also considers text filter.
  */
 function applySessionFilter(entry: HTMLElement): void {
   const entrySession = entry.dataset.session || '';
   const matchesSession = state.selectedSession === 'all' || entrySession === state.selectedSession;
 
-  // Check if this is a thinking entry (has agent filter) or tool entry
+  // Check if this is a thinking entry or tool entry
   const isThinkingEntry = entry.classList.contains('thinking-entry');
 
   if (isThinkingEntry) {
-    const entryAgentId = entry.dataset.agent || 'main';
-    // isAgentInTree now handles 'main' placeholder entries properly
-    const matchesAgent = state.selectedAgent === 'all' ||
-      isAgentInTree(entryAgentId, state.selectedAgent);
     const matchesText = !state.thinkingFilter ||
       (entry.dataset.content || '').includes(state.thinkingFilter.toLowerCase());
-    entry.style.display = (matchesSession && matchesAgent && matchesText) ? '' : 'none';
+    entry.style.display = (matchesSession && matchesText) ? '' : 'none';
   } else {
     // Tool entry
     const toolName = entry.dataset.toolName || '';
@@ -1502,7 +1518,7 @@ function getShortSessionId(sessionId: string | undefined): string {
 // View Navigation
 // ============================================
 
-type ViewType = 'all' | 'thinking' | 'tools' | 'agents' | 'plan';
+type ViewType = 'all' | 'thinking' | 'tools' | 'todo' | 'plan';
 
 /**
  * Create the view navigation tabs if they don't exist.
@@ -1522,7 +1538,7 @@ function initViewTabs(): void {
     { id: 'all', label: 'All', shortcut: 'a' },
     { id: 'thinking', label: 'Thinking', shortcut: 't' },
     { id: 'tools', label: 'Tools', shortcut: 'o' },
-    { id: 'agents', label: 'Agents', shortcut: 'g' },
+    { id: 'todo', label: 'Todo', shortcut: 'd' },
     { id: 'plan', label: 'Plan', shortcut: 'p' },
   ];
 
@@ -1578,7 +1594,7 @@ function applyViewFilter(): void {
   if (!panels) return;
 
   // Remove any existing view-specific classes
-  panels.classList.remove('view-all', 'view-thinking', 'view-tools', 'view-agents', 'view-plan');
+  panels.classList.remove('view-all', 'view-thinking', 'view-tools', 'view-todo', 'view-plan');
 
   // Add the current view class
   panels.classList.add(`view-${state.activeView}`);
@@ -1594,9 +1610,9 @@ function applyViewFilter(): void {
     elements.toolsPanel.style.display =
       (showAll || state.activeView === 'tools') ? '' : 'none';
   }
-  if (elements.agentsPanel) {
-    elements.agentsPanel.style.display =
-      (showAll || state.activeView === 'agents') ? '' : 'none';
+  if (elements.todoPanel) {
+    elements.todoPanel.style.display =
+      (showAll || state.activeView === 'todo') ? '' : 'none';
   }
   if (elements.planPanel) {
     elements.planPanel.style.display =
@@ -1615,261 +1631,75 @@ function applyViewFilter(): void {
 // Rendering
 // ============================================
 
+/**
+ * Stub for agent tree rendering.
+ * The agent tree panel was replaced with the todo panel.
+ * This function is kept as a no-op to prevent errors from agent_start/stop handlers.
+ */
 function renderAgentTree(): void {
-  if (state.agents.size === 0) {
-    elements.agentsContent.innerHTML = `
+  // No-op: Agent tree panel has been replaced with todo panel
+}
+
+// ============================================
+// Todo Panel
+// ============================================
+
+/**
+ * Parse TodoWrite tool input to extract todo items.
+ * The input is a JSON string with a "todos" array.
+ */
+function parseTodoWriteInput(input: string | undefined): void {
+  if (!input) return;
+
+  try {
+    const parsed = JSON.parse(input);
+    if (parsed.todos && Array.isArray(parsed.todos)) {
+      handleTodoUpdate(parsed.todos);
+    }
+  } catch (e) {
+    console.warn('[Dashboard] Failed to parse TodoWrite input:', e);
+  }
+}
+
+/**
+ * Update the todo state and re-render the panel.
+ */
+function handleTodoUpdate(todos: TodoItem[]): void {
+  state.todos = todos;
+  elements.todoCount.textContent = String(todos.length);
+  renderTodoPanel();
+}
+
+/**
+ * Render the TODO panel with current todo items.
+ */
+function renderTodoPanel(): void {
+  if (state.todos.length === 0) {
+    elements.todoContent.innerHTML = `
       <div class="empty-state">
-        <span class="empty-icon">users</span>
-        <p>No active agents</p>
+        <span class="empty-icon">checklist</span>
+        <p>No todos</p>
       </div>
     `;
     return;
   }
 
-  // Find root agents (no parent)
-  const rootAgents = Array.from(state.agents.values()).filter(a => !a.parentId);
+  const html = state.todos.map((todo, index) => {
+    const statusClass = `todo-status-${todo.status}`;
+    const itemClass = todo.status === 'in_progress' ? 'todo-item todo-item-active' : 'todo-item';
 
-  elements.agentsContent.innerHTML = rootAgents
-    .map(agent => renderAgentNode(agent))
-    .join('');
+    // Choose the display text based on status
+    const displayText = todo.status === 'in_progress' ? todo.activeForm : todo.content;
 
-  // Add click handlers to agent nodes using event delegation
-  attachAgentTreeClickHandlers();
-}
-
-function renderAgentNode(agent: AgentInfo): string {
-  const children = Array.from(state.agents.values()).filter(a => a.parentId === agent.id);
-  const colorClass = getAgentColorClass(agent.name || agent.id);
-  const statusClass = getAgentStatusClass(agent);
-  const dotActiveClass = agent.active ? 'active' : '';
-  const isSelected = state.selectedAgent === agent.id;
-
-  let html = `
-    <div class="agent-node${isSelected ? ' agent-node-selected' : ''}" data-agent-id="${escapeHtml(agent.id)}">
-      <div class="agent-node-header" role="button" tabindex="0" title="Click to filter thinking by this agent">
-        <span class="agent-node-dot ${dotActiveClass}" style="color: var(${colorClass}); background: var(${colorClass})"></span>
-        <span class="agent-node-name">${escapeHtml(agent.name || agent.id.slice(0, 8))}</span>
-        <span class="agent-node-id">(${escapeHtml(agent.id.slice(0, 8))})</span>
-        <span class="agent-node-status ${statusClass}">${getAgentStatusText(agent)}</span>
+    return `
+      <div class="${itemClass}" data-index="${index}">
+        <span class="todo-status ${statusClass}"></span>
+        <span class="todo-content">${escapeHtml(displayText)}</span>
       </div>
-  `;
-
-  if (children.length > 0) {
-    html += `<div class="agent-node-children">${children.map(c => renderAgentNode(c)).join('')}</div>`;
-  }
-
-  html += '</div>';
-  return html;
-}
-
-/**
- * Attach click handlers to agent tree nodes for filtering.
- * Uses event delegation on the agents content container.
- */
-function attachAgentTreeClickHandlers(): void {
-  const agentNodes = elements.agentsContent.querySelectorAll('.agent-node-header');
-
-  agentNodes.forEach((header) => {
-    const headerEl = header as HTMLElement;
-    const nodeEl = headerEl.closest('.agent-node') as HTMLElement;
-    const agentId = nodeEl?.dataset.agentId;
-
-    if (!agentId) return;
-
-    // Click handler
-    headerEl.addEventListener('click', (e) => {
-      e.stopPropagation(); // Prevent bubbling to parent agent nodes
-      handleAgentNodeClick(agentId);
-    });
-
-    // Keyboard handler for accessibility
-    headerEl.addEventListener('keydown', (e) => {
-      const keyEvent = e as KeyboardEvent;
-      if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
-        e.preventDefault();
-        e.stopPropagation();
-        handleAgentNodeClick(agentId);
-      }
-    });
-  });
-}
-
-/**
- * Handle a click on an agent node in the Agent Tree panel.
- * Selects/filters by that agent or toggles back to "all" if already selected.
- */
-function handleAgentNodeClick(agentId: string): void {
-  // If clicking the already-selected agent, toggle back to "all"
-  if (state.selectedAgent === agentId) {
-    selectAgent('all');
-  } else {
-    selectAgent(agentId);
-  }
-
-  // Re-render the tree to update the selected state visual
-  renderAgentTree();
-}
-
-function getAgentStatusClass(agent: AgentInfo): string {
-  if (agent.active) return 'agent-node-status-active';
-  switch (agent.status) {
-    case 'success': return 'agent-node-status-completed';
-    case 'failure': return 'agent-node-status-failed';
-    case 'cancelled': return 'agent-node-status-completed';
-    default: return 'agent-node-status-completed';
-  }
-}
-
-function getAgentStatusText(agent: AgentInfo): string {
-  if (agent.active) return 'running';
-  return agent.status || 'done';
-}
-
-function renderAgentTabs(): void {
-  // Keep the "All" tab
-  const allTab = elements.agentTabs.querySelector('[data-agent="all"]');
-  elements.agentTabs.innerHTML = '';
-  if (allTab) {
-    // Re-add with keyboard shortcut hint
-    const newAllTab = document.createElement('button');
-    newAllTab.className = `agent-tab${state.selectedAgent === 'all' ? ' active' : ''}`;
-    newAllTab.dataset.agent = 'all';
-    newAllTab.innerHTML = `
-      <span class="agent-dot agent-dot-all"></span>
-      All
-      <span class="agent-tab-shortcut">0</span>
     `;
-    newAllTab.addEventListener('click', () => selectAgent('all'));
-    elements.agentTabs.appendChild(newAllTab);
-  }
+  }).join('');
 
-  // Add agent tabs with keyboard shortcuts
-  let shortcutIndex = 1;
-  for (const agent of state.agents.values()) {
-    const tab = document.createElement('button');
-    tab.className = `agent-tab${state.selectedAgent === agent.id ? ' active' : ''}`;
-    tab.dataset.agent = agent.id;
-
-    const dotClass = agent.active ? 'agent-dot-active' : '';
-    const colorVar = getAgentColorClass(agent.name || agent.id);
-    const shortcut = shortcutIndex <= 9 ? shortcutIndex : '';
-
-    tab.innerHTML = `
-      <span class="agent-dot ${dotClass}" style="background: var(${colorVar})"></span>
-      ${escapeHtml(agent.name || agent.id.slice(0, 8))}
-      ${shortcut ? `<span class="agent-tab-shortcut">${shortcut}</span>` : ''}
-    `;
-
-    tab.addEventListener('click', () => selectAgent(agent.id));
-    elements.agentTabs.appendChild(tab);
-    shortcutIndex++;
-  }
-}
-
-function selectAgent(agentId: string): void {
-  state.selectedAgent = agentId;
-
-  // Show plan for agent's session
-  if (agentId !== 'all') {
-    displayPlanForAgent(agentId);
-  }
-
-  // Update tab styles
-  const tabs = elements.agentTabs.querySelectorAll('.agent-tab');
-  tabs.forEach((tab: Element) => {
-    if ((tab as HTMLElement).dataset.agent === agentId) {
-      tab.classList.add('active');
-    } else {
-      tab.classList.remove('active');
-    }
-  });
-
-  // Filter thinking entries by agent
-  const entries = elements.thinkingContent.querySelectorAll('.thinking-entry');
-  entries.forEach((entry: Element) => {
-    const el = entry as HTMLElement;
-    const entryAgentId = el.dataset.agent || 'main';
-    applyAgentFilter(el, entryAgentId);
-  });
-}
-
-/**
- * Check if an agent is a descendant of (or equal to) another agent.
- * Used for filtering thinking entries by agent tree.
- *
- * Returns true if:
- * - entryAgentId exactly matches selectedAgentId
- * - entryAgentId is a descendant (child, grandchild, etc.) of selectedAgentId
- * - entryAgentId is 'main' or unknown AND selectedAgentId is a root agent (no parent)
- *   This allows filtering to work while still showing orphaned entries under root agents.
- */
-function isAgentInTree(entryAgentId: string, selectedAgentId: string): boolean {
-  // Exact match - always show
-  if (entryAgentId === selectedAgentId) {
-    return true;
-  }
-
-  const normalizedEntryAgentId = entryAgentId.trim().toLowerCase();
-  const entryAgent = state.agents.get(entryAgentId);
-  const selectedAgent = state.agents.get(selectedAgentId);
-
-  // Handle 'main' placeholder or empty agentId
-  // These are entries where we don't know the real agent.
-  // Show them only if the selected agent is a ROOT agent (no parent).
-  // This way:
-  // - When "All" is selected, they show (handled by caller)
-  // - When a root agent is selected, they show (likely from main session)
-  // - When a sub-agent is selected, they hide (sub-agents have their own entries)
-  if (normalizedEntryAgentId === 'main' || normalizedEntryAgentId === '') {
-    // Show for root agents only
-    const isSelectedAgentRoot = selectedAgent !== undefined && selectedAgent.parentId === undefined;
-    return isSelectedAgentRoot;
-  }
-
-  // If the entry's agentId is not in our map (orphaned from previous session),
-  // show it for root agents since we can't determine its true parent
-  if (!entryAgent) {
-    const isSelectedAgentRoot = selectedAgent !== undefined && selectedAgent.parentId === undefined;
-    return isSelectedAgentRoot;
-  }
-
-  // Check if entryAgentId is a child/descendant of selectedAgentId
-  let currentId: string | undefined = entryAgentId;
-  while (currentId) {
-    const agent = state.agents.get(currentId);
-    if (!agent) break;
-    if (agent.parentId === selectedAgentId) {
-      return true;
-    }
-    currentId = agent.parentId;
-  }
-
-  return false;
-}
-
-function applyAgentFilter(entry: HTMLElement, entryAgentId: string): void {
-  // Check agent filter - isAgentInTree handles 'main' placeholder entries
-  const matchesAgent = state.selectedAgent === 'all' ||
-    isAgentInTree(entryAgentId, state.selectedAgent);
-
-  // Also check text filter
-  const matchesText = !state.thinkingFilter ||
-    (entry.dataset.content || '').includes(state.thinkingFilter.toLowerCase());
-
-  // Also check session filter
-  const entrySession = entry.dataset.session || '';
-  const sessionMatches = state.selectedSession === 'all' || entrySession === state.selectedSession;
-
-  entry.style.display = (matchesAgent && matchesText && sessionMatches) ? '' : 'none';
-}
-
-function getAgentColorClass(name: string): string {
-  const lowerName = name.toLowerCase();
-  if (lowerName.includes('main')) return '--color-agent-main';
-  if (lowerName.includes('explore')) return '--color-agent-explore';
-  if (lowerName.includes('plan')) return '--color-agent-plan';
-  if (lowerName.includes('debug')) return '--color-agent-debug';
-  return '--color-accent-blue';
+  elements.todoContent.innerHTML = html;
 }
 
 // ============================================
@@ -1878,13 +1708,9 @@ function getAgentColorClass(name: string): string {
 
 function applyThinkingFilter(entry: HTMLElement): void {
   const content = entry.dataset.content || '';
-  const entryAgentId = entry.dataset.agent || 'main';
   const matchesText = !state.thinkingFilter || content.includes(state.thinkingFilter.toLowerCase());
-  // isAgentInTree now handles 'main' placeholder entries properly
-  const agentMatches = state.selectedAgent === 'all' ||
-    isAgentInTree(entryAgentId, state.selectedAgent);
   const sessionMatches = state.selectedSession === 'all' || entry.dataset.session === state.selectedSession;
-  entry.style.display = (matchesText && agentMatches && sessionMatches) ? '' : 'none';
+  entry.style.display = (matchesText && sessionMatches) ? '' : 'none';
 }
 
 function applyToolsFilter(entry: HTMLElement): void {
@@ -2080,11 +1906,14 @@ function clearAllPanels(): void {
   // Hide session indicator and filter
   updateSessionIndicator();
 
+  // Reset todos
+  state.todos = [];
+
   // Update counters
   elements.eventCount.textContent = 'Events: 0';
   elements.thinkingCount.textContent = '0';
   elements.toolsCount.textContent = '0';
-  elements.agentsCount.textContent = '0';
+  elements.todoCount.textContent = '0';
 
   // Clear filters
   state.thinkingFilter = '';
@@ -2109,10 +1938,10 @@ function clearAllPanels(): void {
     </div>
   `;
 
-  elements.agentsContent.innerHTML = `
+  elements.todoContent.innerHTML = `
     <div class="empty-state">
-      <span class="empty-icon">users</span>
-      <p>No active agents</p>
+      <span class="empty-icon">checklist</span>
+      <p>No todos</p>
     </div>
   `;
 
@@ -2135,15 +1964,6 @@ function clearAllPanels(): void {
   hidePlanContextMenu();
   renderPlanSelector();
 
-  // Reset agent tabs
-  const agentTabs = elements.agentTabs.querySelectorAll('.agent-tab:not([data-agent="all"])');
-  agentTabs.forEach((tab: Element) => tab.remove());
-
-  state.selectedAgent = 'all';
-  const allTab = elements.agentTabs.querySelector('[data-agent="all"]');
-  if (allTab) {
-    allTab.classList.add('active');
-  }
 }
 
 // ============================================
@@ -2161,21 +1981,6 @@ function handleKeydown(event: KeyboardEvent): void {
   if (!state.keyboardMode) {
     state.keyboardMode = true;
     document.body.classList.add('keyboard-mode');
-  }
-
-  // Number keys 0-9 for agent switching
-  if (event.key >= '0' && event.key <= '9') {
-    const index = parseInt(event.key, 10);
-
-    if (index === 0) {
-      selectAgent('all');
-    } else {
-      const agents = Array.from(state.agents.values());
-      if (agents[index - 1]) {
-        selectAgent(agents[index - 1].id);
-      }
-    }
-    return;
   }
 
   // 'c' to clear
@@ -2223,8 +2028,8 @@ function handleKeydown(event: KeyboardEvent): void {
       case 'o':
         selectView('tools');
         return;
-      case 'g':
-        selectView('agents');
+      case 'd':
+        selectView('todo');
         return;
       case 'p':
         selectView('plan');
@@ -2311,12 +2116,6 @@ document.addEventListener('mousedown', () => {
   document.body.classList.remove('keyboard-mode');
 });
 
-// Handle "All" tab click (initial setup)
-const allTab = elements.agentTabs.querySelector('[data-agent="all"]');
-if (allTab) {
-  allTab.addEventListener('click', () => selectAgent('all'));
-}
-
 // Plan selector toggle
 elements.planSelectorBtn.addEventListener('click', (e) => {
   e.stopPropagation();
@@ -2398,5 +2197,5 @@ initViewTabs();
 
 connect();
 console.log('[Dashboard] Thinking Monitor initialized');
-console.log('[Dashboard] Keyboard shortcuts: 0-9=agents, a/t/o/g/p=views, c=clear, s=scroll, /=search, Esc=clear filters');
+console.log('[Dashboard] Keyboard shortcuts: a/t/o/g/p=views, c=clear, s=scroll, /=search, Esc=clear filters');
 console.log('[Dashboard] Plan shortcuts: Cmd+O=open, Cmd+Shift+R=reveal, right-click=context menu');

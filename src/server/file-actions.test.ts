@@ -12,7 +12,7 @@ import { join } from 'node:path';
 
 // Mock child_process to avoid actually executing commands
 vi.mock('node:child_process', () => ({
-  exec: vi.fn((cmd, callback) => {
+  exec: vi.fn((_cmd, callback) => {
     // Simulate successful execution for valid commands
     if (callback) {
       callback(null, '', '');
@@ -75,6 +75,7 @@ function createMockResponse(): ServerResponse & {
     _body: string;
   };
 
+  // @ts-expect-error - simplified mock signature
   res.writeHead = (code: number, hdrs?: Record<string, string>) => {
     statusCode = code;
     if (hdrs) Object.assign(headers, hdrs);

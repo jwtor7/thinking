@@ -212,80 +212,6 @@ body {
 }
 
 /* ========================================
-   Agent Bar
-   ======================================== */
-
-.agent-bar {
-  display: flex;
-  align-items: center;
-  height: var(--agent-bar-height);
-  padding: 0 var(--spacing-lg);
-  background: var(--color-bg-secondary);
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
-}
-
-.agent-bar-label {
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  letter-spacing: 0.5px;
-  margin-right: var(--spacing-md);
-}
-
-.agent-tabs {
-  display: flex;
-  gap: var(--spacing-sm);
-  overflow-x: auto;
-}
-
-.agent-tab {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.agent-tab:hover {
-  background: var(--color-bg-tertiary);
-  color: var(--color-text-primary);
-}
-
-.agent-tab.active {
-  background: var(--color-bg-tertiary);
-  border-color: var(--color-border);
-  color: var(--color-text-primary);
-}
-
-.agent-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.agent-dot-all {
-  background: var(--color-text-muted);
-}
-
-.agent-dot-active {
-  box-shadow: 0 0 4px currentColor;
-}
-
-.agent-dot-main { background: var(--color-agent-main); }
-.agent-dot-explore { background: var(--color-agent-explore); }
-.agent-dot-plan { background: var(--color-agent-plan); }
-.agent-dot-debug { background: var(--color-agent-debug); }
-
-/* ========================================
    Panels
    ======================================== */
 
@@ -452,32 +378,6 @@ body {
   color: var(--color-accent-green);
 }
 
-.tool-detail {
-  color: var(--color-text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-}
-
-.tool-status {
-  font-size: var(--font-size-xs);
-  padding: 1px 6px;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-.tool-status-pending {
-  background: rgba(210, 153, 34, 0.2);
-  color: var(--color-accent-yellow);
-}
-
-.tool-status-done {
-  background: rgba(63, 185, 80, 0.2);
-  color: var(--color-accent-green);
-}
-
 /* Agent Tree */
 .agent-node {
   padding: var(--spacing-xs) var(--spacing-sm);
@@ -489,25 +389,6 @@ body {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  cursor: pointer;
-}
-
-.agent-node-header:focus-visible {
-  outline: 2px solid var(--color-accent-blue);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-.agent-node-selected {
-  background: var(--color-bg-hover);
-  border: 1px solid var(--color-accent-blue);
-}
-
-.agent-node-selected > .agent-node-header::after {
-  content: '(selected)';
-  font-size: var(--font-size-xs);
-  color: var(--color-accent-blue);
-  margin-left: var(--spacing-sm);
 }
 
 .agent-node-dot {
@@ -684,58 +565,117 @@ body {
 }
 
 /* ========================================
-   Enhanced Tool Status
+   Collapsible Tool Entries
    ======================================== */
 
-.tool-status-error {
-  background: rgba(248, 81, 73, 0.2);
-  color: var(--color-accent-red);
-}
-
-.tool-entry-expandable {
+.tool-entry {
   cursor: pointer;
+  flex-direction: column;
+  align-items: stretch;
 }
 
-.tool-entry-expandable:hover {
+.tool-entry:hover {
   background: var(--color-bg-tertiary);
 }
 
-.tool-entry.expanded {
+.tool-entry-header {
+  display: flex;
   flex-direction: column;
-  align-items: stretch;
+  gap: 2px;
+}
+
+/* Two-line layout for collapsed tool entries */
+.tool-header-line1,
+.tool-header-line2 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.tool-header-line2 {
+  padding-left: 20px; /* Align with content after the toggle */
+}
+
+/* Agent name in tool entries */
+.tool-agent {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-accent-purple);
+  flex-shrink: 0;
+}
+
+/* Toggle arrow indicator */
+.tool-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-muted);
+  transition: transform 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.tool-toggle::before {
+  content: '';
+  border: 4px solid transparent;
+  border-left: 6px solid currentColor;
+  border-right: 0;
+}
+
+.tool-entry:not(.collapsed) .tool-toggle {
+  transform: rotate(90deg);
+}
+
+.tool-entry:not(.collapsed) .tool-toggle,
+.tool-entry:hover .tool-toggle {
+  color: var(--color-text-secondary);
+}
+
+/* Preview text shown when collapsed */
+.tool-preview {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Hide preview when expanded */
+.tool-entry:not(.collapsed) .tool-preview {
+  display: none;
+}
+
+/* Tool entry details section */
+.tool-entry-details {
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border-light);
+}
+
+/* Hide details when collapsed */
+.tool-entry.collapsed .tool-entry-details {
+  display: none;
+}
+
+/* Expanded state styling */
+.tool-entry:not(.collapsed) {
   background: var(--color-bg-tertiary);
   padding: var(--spacing-sm);
   border-radius: var(--radius-sm);
   margin-bottom: var(--spacing-sm);
 }
 
-.tool-entry.expanded .tool-entry-header {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-sm);
-}
-
-.tool-entry-details {
-  display: none;
-  margin-top: var(--spacing-sm);
-  padding-top: var(--spacing-sm);
-  border-top: 1px solid var(--color-border-light);
-}
-
-.tool-entry.expanded .tool-entry-details {
-  display: block;
-}
-
-.tool-input-label,
-.tool-output-label {
+.tool-input-label {
   font-size: var(--font-size-xs);
   font-weight: 600;
   color: var(--color-text-muted);
   margin-bottom: var(--spacing-xs);
 }
 
-.tool-input-content,
-.tool-output-content {
+.tool-input-content {
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
@@ -850,9 +790,9 @@ body {
 
 .connection-overlay {
   position: fixed;
-  /* Position overlay below the navigation bars (header + view tabs + agent bar + session filter)
+  /* Position overlay below the navigation bars (header + view tabs + session filter)
      but above the footer, allowing users to interact with navigation while waiting for connection */
-  top: calc(var(--header-height) + var(--agent-bar-height) + var(--agent-bar-height) + var(--agent-bar-height));
+  top: calc(var(--header-height) + var(--agent-bar-height) + var(--agent-bar-height));
   left: 0;
   right: 0;
   bottom: var(--footer-height);
@@ -974,23 +914,6 @@ body {
    Keyboard Shortcut Hints
    ======================================== */
 
-.agent-tab-shortcut {
-  font-size: 9px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  background: var(--color-bg-primary);
-  padding: 1px 4px;
-  border-radius: 2px;
-  margin-left: var(--spacing-xs);
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.agent-bar:focus-within .agent-tab-shortcut,
-body.keyboard-mode .agent-tab-shortcut {
-  opacity: 1;
-}
-
 /* ========================================
    Visual Polish - Animations
    ======================================== */
@@ -1094,16 +1017,14 @@ body.keyboard-mode .agent-tab-shortcut {
 }
 
 /* ========================================
-   Tool Entry Output Sections
+   Tool Entry Input Section
    ======================================== */
 
-.tool-input-section,
-.tool-output-section {
+.tool-input-section {
   margin-bottom: var(--spacing-sm);
 }
 
-.tool-input-section:last-child,
-.tool-output-section:last-child {
+.tool-input-section:last-child {
   margin-bottom: 0;
 }
 
@@ -1143,10 +1064,6 @@ body.keyboard-mode .agent-tab-shortcut {
     width: 80px;
   }
 
-  .agent-tab-shortcut {
-    display: none;
-  }
-
   .keyboard-hints {
     display: none;
   }
@@ -1167,14 +1084,6 @@ body.keyboard-mode .agent-tab-shortcut {
 
   .btn {
     padding: var(--spacing-xs) var(--spacing-sm);
-  }
-
-  .agent-bar {
-    padding: 0 var(--spacing-sm);
-  }
-
-  .agent-bar-label {
-    display: none;
   }
 
   .panels {
@@ -1804,4 +1713,96 @@ body.keyboard-mode .view-tab-shortcut {
 .toast-error {
   border-color: var(--color-accent-red);
   border-left: 4px solid var(--color-accent-red);
+}
+
+/* ========================================
+   TODO Panel Styles
+   ======================================== */
+
+.todo-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-xs);
+  transition: background 0.15s ease;
+}
+
+.todo-item:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.todo-item-active {
+  background: rgba(88, 166, 255, 0.1);
+  border-left: 3px solid var(--color-accent-blue);
+  padding-left: calc(var(--spacing-sm) - 3px);
+}
+
+.todo-item-active:hover {
+  background: rgba(88, 166, 255, 0.15);
+}
+
+.todo-status {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+}
+
+/* Pending: gray circle outline */
+.todo-status-pending {
+  border: 2px solid var(--color-text-muted);
+  background: transparent;
+}
+
+/* In Progress: blue with pulsing animation */
+.todo-status-in_progress {
+  border: 2px solid var(--color-accent-blue);
+  background: var(--color-accent-blue);
+  box-shadow: 0 0 8px var(--color-accent-blue);
+  animation: todoPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes todoPulse {
+  0%, 100% {
+    box-shadow: 0 0 4px var(--color-accent-blue);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 12px var(--color-accent-blue);
+    opacity: 0.8;
+  }
+}
+
+/* Completed: green checkmark */
+.todo-status-completed {
+  border: 2px solid var(--color-accent-green);
+  background: var(--color-accent-green);
+}
+
+.todo-status-completed::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  width: 4px;
+  height: 7px;
+  border: solid var(--color-bg-primary);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.todo-content {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  line-height: 1.4;
+}
+
+.todo-item-active .todo-content {
+  color: var(--color-accent-blue);
+  font-weight: 500;
 }

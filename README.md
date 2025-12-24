@@ -95,6 +95,11 @@ Claude Code Session
 
 ## Recent Changes
 
+### 2025-12-23
+- Replaced Agents panel with Todo panel for task tracking
+- View-based navigation (a/t/o/d/p keyboard shortcuts)
+- Screenshot utility for Arc browser
+
 ### 2025-12-22
 - Hook integration with Claude Code (6 hook types)
 - Setup script for automated hook installation
@@ -102,8 +107,6 @@ Claude Code Session
 
 ### 2025-12-21
 - Initial project setup with TypeScript and pnpm
-- Project structure for server, dashboard, hooks
-- Security-first design documented
 
 *For complete history, see [CHANGELOG.md](./CHANGELOG.md)*
 

@@ -27,19 +27,6 @@
       </div>
     </header>
 
-    <!-- Agent Bar -->
-    <nav class="agent-bar" id="agent-bar">
-      <span class="agent-bar-label">AGENTS:</span>
-      <div class="agent-tabs" id="agent-tabs">
-        <button class="agent-tab active" data-agent="all">
-          <span class="agent-dot agent-dot-all"></span>
-          All
-          <span class="agent-tab-shortcut">0</span>
-        </button>
-        <!-- Agent tabs will be added dynamically -->
-      </div>
-    </nav>
-
     <!-- Main Content - 4 Panel Layout -->
     <main class="panels">
       <!-- Left Column -->
@@ -64,16 +51,16 @@
           </div>
         </section>
 
-        <!-- Agent Tree Panel -->
-        <section class="panel panel-agents">
+        <!-- TODO Panel -->
+        <section class="panel panel-todo">
           <header class="panel-header">
-            <h2 class="panel-title">AGENT TREE</h2>
-            <span class="panel-badge" id="agents-count">0</span>
+            <h2 class="panel-title">TODO</h2>
+            <span class="panel-badge" id="todo-count">0</span>
           </header>
-          <div class="panel-content" id="agents-content">
+          <div class="panel-content" id="todo-content">
             <div class="empty-state">
-              <span class="empty-icon">users</span>
-              <p>No active agents</p>
+              <span class="empty-icon">checklist</span>
+              <p>No todos</p>
             </div>
           </div>
         </section>
@@ -152,8 +139,7 @@
     <footer class="footer">
       <span id="server-info">Server: --</span>
       <span class="keyboard-hints">
-        <kbd>a</kbd><kbd>t</kbd><kbd>o</kbd><kbd>g</kbd><kbd>p</kbd> views
-        <kbd>0-9</kbd> agents
+        <kbd>a</kbd><kbd>t</kbd><kbd>o</kbd><kbd>d</kbd><kbd>p</kbd> views
         <kbd>c</kbd> clear
         <kbd>s</kbd> scroll
         <kbd>/</kbd> search

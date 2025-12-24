@@ -1,6 +1,6 @@
 {
   "name": "thinking-monitor",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Real-time monitoring dashboard for Claude Code thinking, agents, and tool activity",
   "type": "module",
   "main": "dist/server/index.js",
@@ -11,7 +11,8 @@
     "build:server": "esbuild src/server/index.ts --bundle --platform=node --format=esm --outdir=dist/server --packages=external",
     "build:dashboard": "esbuild src/dashboard/app.ts --bundle --format=iife --outfile=src/dashboard/app.js",
     "start": "node dist/server/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "screenshot": "scripts/screenshot-arc.sh"
   },
   "keywords": [
     "claude-code",
