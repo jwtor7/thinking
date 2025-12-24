@@ -208,6 +208,48 @@ const SESSION_COLORS = [
   '#8b949e', // gray
 ];
 
+// Agent colors for visual distinction in tool activity panel
+// Each agent type gets a consistent color for quick identification
+const AGENT_COLORS: Record<string, string> = {
+  'main': '#8b949e',                // gray - main conversation (default)
+  'code-implementer': '#3fb950',    // green - implementation work
+  'code-test-evaluator': '#39c5cf', // cyan/teal - testing/evaluation
+  'haiku-general-agent': '#db6d28', // orange - haiku agent
+  'opus-general-purpose': '#d29922', // gold/yellow - opus general purpose
+  'general-purpose': '#58a6ff',      // blue - general purpose (sonnet)
+};
+
+// Fallback colors for agents not in the predefined list
+const AGENT_FALLBACK_COLORS = [
+  '#f85149', // red
+  '#a371f7', // purple
+  '#ff7b72', // coral
+  '#7ee787', // light green
+  '#79c0ff', // light blue
+  '#ffa657', // peach
+];
+
+/**
+ * Get the display color for an agent.
+ * Returns a consistent color based on the agent name.
+ * Known agents get predefined colors; unknown agents cycle through fallback colors.
+ */
+function getAgentColor(agentName: string): string {
+  // Check for predefined color
+  if (AGENT_COLORS[agentName]) {
+    return AGENT_COLORS[agentName];
+  }
+
+  // For unknown agents, generate a consistent color based on name hash
+  let hash = 0;
+  for (let i = 0; i < agentName.length; i++) {
+    hash = ((hash << 5) - hash) + agentName.charCodeAt(i);
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  const index = Math.abs(hash) % AGENT_FALLBACK_COLORS.length;
+  return AGENT_FALLBACK_COLORS[index];
+}
+
 // ============================================
 // DOM Elements
 // ============================================
@@ -488,11 +530,14 @@ function handleThinking(event: MonitorEvent): void {
     ? `<span class="entry-session-badge" style="background: ${getSessionColor(sessionId)}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>`
     : '';
 
+  // Get agent color for visual distinction
+  const agentColor = getAgentColor(agentDisplayName);
+
   entry.innerHTML = `
     <div class="thinking-entry-header">
       <span class="thinking-time">${escapeHtml(time)}</span>
       ${sessionBadge}
-      <span class="thinking-agent">${escapeHtml(agentDisplayName)}</span>
+      <span class="thinking-agent" style="color: ${agentColor}">${escapeHtml(agentDisplayName)}</span>
       <span class="thinking-preview">${escapeHtml(preview)}...</span>
     </div>
     <div class="thinking-text">${escapeHtml(content)}</div>
@@ -548,6 +593,9 @@ function handleToolStart(event: MonitorEvent): void {
   // Get the display name for this agent
   const agentDisplayName = getAgentDisplayName(agentId);
 
+  // Get agent color for visual distinction
+  const agentColor = getAgentColor(agentDisplayName);
+
   // Create tool entry with collapsible structure (collapsed by default)
   const entry = document.createElement('div');
   entry.className = 'tool-entry collapsed new';
@@ -565,7 +613,7 @@ function handleToolStart(event: MonitorEvent): void {
         ${sessionBadge}
       </div>
       <div class="tool-header-line2">
-        <span class="tool-agent">${escapeHtml(agentDisplayName)}</span>
+        <span class="tool-agent" style="color: ${agentColor}">${escapeHtml(agentDisplayName)}</span>
         <span class="tool-name">${escapeHtml(toolName)}</span>
         <span class="tool-preview">${escapeHtml(preview)}</span>
       </div>
@@ -614,8 +662,6 @@ function handleToolStart(event: MonitorEvent): void {
 
 function handleToolEnd(event: MonitorEvent): void {
   const toolCallId = String(event.toolCallId || '');
-  const toolName = String(event.toolName || '');
-  const output = event.output ? String(event.output) : undefined;
   const durationMs = event.durationMs as number | undefined;
 
   // Note: TodoWrite is handled in handleToolStart since tool_end doesn't include input
@@ -1399,6 +1445,8 @@ function handleSessionStop(event: MonitorEvent): void {
 
 /**
  * Update the session indicator in the header.
+ * Shows the currently selected session (from the filter bar) rather than just the active session.
+ * This ensures the header badge stays in sync with the user's session selection.
  */
 function updateSessionIndicator(): void {
   // Create the session indicator element if it doesn't exist in the DOM
@@ -1421,8 +1469,22 @@ function updateSessionIndicator(): void {
     elements.sessionIndicator = indicator;
   }
 
-  if (state.currentSessionId) {
-    const session = state.sessions.get(state.currentSessionId);
+  // Determine which session to display in the header:
+  // - If a specific session is selected in the filter, show that session
+  // - If "all" is selected, show a summary or the current active session
+  const displaySessionId = state.selectedSession !== 'all'
+    ? state.selectedSession
+    : state.currentSessionId;
+
+  if (state.selectedSession === 'all' && state.sessions.size > 0) {
+    // "All" is selected - show the count of sessions
+    indicator.innerHTML = `
+      <span class="session-dot" style="background: var(--color-text-muted)"></span>
+      <span class="session-id">All (${state.sessions.size})</span>
+    `;
+    indicator.style.display = 'flex';
+  } else if (displaySessionId) {
+    const session = state.sessions.get(displaySessionId);
     if (session) {
       const shortId = session.id.slice(0, 8);
       const title = session.workingDirectory
@@ -1437,7 +1499,7 @@ function updateSessionIndicator(): void {
       indicator.style.display = 'flex';
     }
   } else if (state.sessions.size > 0) {
-    // Show count of sessions if no active session
+    // Fallback: show count of sessions if no session to display
     indicator.innerHTML = `
       <span class="session-dot" style="background: var(--color-text-muted)"></span>
       <span class="session-id">${state.sessions.size} session(s)</span>
@@ -1500,10 +1562,16 @@ function updateSessionFilter(): void {
       ? `${sessionId}\n${session.workingDirectory}`
       : sessionId;
 
-    html += `<button class="session-filter-badge ${isActive} ${isOnline}" data-session="${escapeHtml(sessionId)}" title="${escapeHtml(title)}">
-      <span class="session-filter-dot" style="background: ${session.color}"></span>
-      ${escapeHtml(shortId)}
-    </button>`;
+    // Only show clear button for inactive sessions that have stored todos
+    const hasTodos = state.sessionTodos.has(sessionId) && (state.sessionTodos.get(sessionId)?.length ?? 0) > 0;
+    const showClearBtn = !session.active && hasTodos;
+
+    html += `<div class="session-filter-badge-wrapper">
+      <button class="session-filter-badge ${isActive} ${isOnline}" data-session="${escapeHtml(sessionId)}" title="${escapeHtml(title)}">
+        <span class="session-filter-dot" style="background: ${session.color}"></span>
+        ${escapeHtml(shortId)}
+      </button>${showClearBtn ? `<button class="session-clear-btn" data-session="${escapeHtml(sessionId)}" title="Clear todos for this session">x</button>` : ''}
+    </div>`;
   }
 
   html += '</div>';
@@ -1516,6 +1584,17 @@ function updateSessionFilter(): void {
       selectSession(sessionId);
     });
   });
+
+  // Attach click handlers for session clear buttons
+  filterEl.querySelectorAll('.session-clear-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent session selection
+      const sessionId = (btn as HTMLElement).dataset.session;
+      if (sessionId) {
+        clearSessionTodos(sessionId);
+      }
+    });
+  });
 }
 
 /**
@@ -1524,7 +1603,7 @@ function updateSessionFilter(): void {
  */
 function selectSession(sessionId: string): void {
   state.selectedSession = sessionId;
-  updateSessionFilter();
+  updateSessionIndicator(); // Updates both header indicator and filter bar
   filterAllBySession();
 
   // Update plan display based on session selection
@@ -1775,8 +1854,17 @@ function handleTodoUpdate(todos: TodoItem[], sessionId: string | undefined): voi
   // Persist to localStorage
   saveTodosToStorage();
 
-  // If this is for the current session, update the displayed todos
-  if (effectiveSessionId === state.currentSessionId || !state.currentSessionId) {
+  // Only update displayed todos if:
+  // 1. "All" is NOT selected (we only show todos for a specific session), AND
+  // 2. Either this is for the selected session, OR the selected session matches
+  if (state.selectedSession === 'all') {
+    // When "All" is selected, don't display any todos
+    // (user must select a specific session to see todos)
+    return;
+  }
+
+  // Update display if this update is for the selected session
+  if (effectiveSessionId === state.selectedSession) {
     state.todos = todos;
     elements.todoCount.textContent = String(todos.length);
     renderTodoPanel();
@@ -1786,18 +1874,59 @@ function handleTodoUpdate(todos: TodoItem[], sessionId: string | undefined): voi
 /**
  * Update the displayed todos based on the current session.
  * Called when switching sessions to show the appropriate todos.
+ * Respects the user's session filter selection.
  */
 function updateTodosForCurrentSession(): void {
-  if (!state.currentSessionId) {
-    // No active session, clear todos
+  // If "All" is selected, don't display any todos
+  // (user must select a specific session to see todos)
+  if (state.selectedSession === 'all') {
     state.todos = [];
-  } else {
-    // Get todos for the current session, or empty array if none
-    state.todos = state.sessionTodos.get(state.currentSessionId) || [];
+    elements.todoCount.textContent = '0';
+    renderTodoPanel();
+    return;
   }
+
+  // Use the selected session filter, not the active session
+  const sessionToShow = state.selectedSession;
+  state.todos = state.sessionTodos.get(sessionToShow) || [];
 
   elements.todoCount.textContent = String(state.todos.length);
   renderTodoPanel();
+}
+
+/**
+ * Clear todos for a specific session.
+ * Removes from state, updates localStorage, and refreshes UI.
+ * Also removes the session from the sessions map if it's inactive.
+ */
+function clearSessionTodos(sessionId: string): void {
+  console.log(`[Dashboard] Clearing todos for session: ${sessionId}`);
+
+  // Remove todos for this session
+  state.sessionTodos.delete(sessionId);
+
+  // If this was the currently displayed session, clear the display
+  if (state.currentSessionId === sessionId || state.selectedSession === sessionId) {
+    state.todos = [];
+    elements.todoCount.textContent = '0';
+    renderTodoPanel();
+  }
+
+  // Remove inactive session from sessions map (cleanup stale sessions)
+  const session = state.sessions.get(sessionId);
+  if (session && !session.active) {
+    state.sessions.delete(sessionId);
+  }
+
+  // Persist the updated state
+  saveTodosToStorage();
+
+  // Refresh the session filter UI
+  updateSessionFilter();
+  updateSessionIndicator();
+
+  // Show feedback
+  showToast('Session todos cleared', 'success');
 }
 
 /**
@@ -1880,10 +2009,15 @@ function restoreTodosFromStorage(): void {
  */
 function renderTodoPanel(): void {
   if (state.todos.length === 0) {
+    // Show different message based on whether "All" sessions is selected
+    const message = state.selectedSession === 'all' && state.sessions.size > 0
+      ? 'Select a session to view its todos'
+      : 'No todos';
+
     elements.todoContent.innerHTML = `
       <div class="empty-state">
         <span class="empty-icon">checklist</span>
-        <p>No todos</p>
+        <p>${message}</p>
       </div>
     `;
     return;
@@ -2029,45 +2163,6 @@ function summarizeInput(input: string | undefined): string {
   }
 
   return input;
-}
-
-/**
- * Extract file path from tool input (if present).
- * Returns null if no file path found.
- */
-function extractFilePath(input: string | undefined): string | null {
-  if (!input) return null;
-
-  // Match absolute paths - be careful to handle JSON-escaped paths
-  const pathMatch = input.match(/\/[^\s"'\\]+/);
-  return pathMatch ? pathMatch[0] : null;
-}
-
-/**
- * Render the tool detail, making file paths interactive for context menu.
- * Returns HTML string with file paths wrapped in a clickable span.
- *
- * Security: Always escapes user content using escapeHtml(summarizeInput(input))
- * pattern to prevent XSS attacks.
- */
-function renderToolDetail(input: string | undefined): string {
-  const filePath = extractFilePath(input);
-
-  if (filePath) {
-    const summary = summarizeInput(input);
-    if (summary.includes(filePath)) {
-      // Wrap the file path in an interactive span
-      const escapedPath = escapeHtml(filePath);
-      const escapedSummary = escapeHtml(summary);
-      return escapedSummary.replace(
-        escapedPath,
-        `<span class="tool-file-path" data-path="${escapedPath}" title="Right-click for file actions">${escapedPath}</span>`
-      );
-    }
-  }
-
-  // Default case: escape the summarized input for XSS safety
-  return escapeHtml(summarizeInput(input));
 }
 
 function appendAndTrim(container: HTMLElement, element: HTMLElement): void {

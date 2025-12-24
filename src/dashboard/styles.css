@@ -1184,6 +1184,43 @@ body {
   flex-shrink: 0;
 }
 
+/* Session badge wrapper for positioning clear button */
+.session-filter-badge-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+/* Session clear button (X) */
+.session-clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 2px;
+  padding: 0;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.session-clear-btn:hover {
+  background: var(--color-accent-red);
+  border-color: var(--color-accent-red);
+  color: white;
+}
+
+.session-clear-btn:active {
+  transform: scale(0.9);
+}
+
 /* Responsive: hide session filter on small screens */
 @media (max-width: 600px) {
   .session-filter {
