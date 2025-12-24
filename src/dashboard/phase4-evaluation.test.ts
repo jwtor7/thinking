@@ -43,7 +43,9 @@ describe('Phase 4: Dashboard Polish', () => {
     });
 
     it('should escape agent ID in thinking entries', () => {
-      expect(appTsContent).toContain('escapeHtml(agentId)');
+      // Agent display name is derived from agentId via getAgentDisplayName()
+      // and then properly escaped before rendering
+      expect(appTsContent).toContain('escapeHtml(agentDisplayName)');
     });
 
     it('should escape preview in thinking entries', () => {
@@ -84,7 +86,7 @@ describe('Phase 4: Dashboard Polish', () => {
 
       // 1. All thinking entries use escapeHtml for user content
       expect(appTsContent).toContain('escapeHtml(time)');
-      expect(appTsContent).toContain('escapeHtml(agentId)');
+      expect(appTsContent).toContain('escapeHtml(agentDisplayName)'); // Agent name derived from getAgentDisplayName()
       expect(appTsContent).toContain('escapeHtml(preview)');
       expect(appTsContent).toContain('escapeHtml(content)');
 

@@ -54,6 +54,7 @@ const RECONNECT_BASE_DELAY_MS = 1000;
 const RECONNECT_MAX_DELAY_MS = 30000;
 const MAX_ENTRIES = 500; // Max entries per panel to prevent memory issues
 const SCROLL_THRESHOLD = 50; // Pixels from bottom to consider "at bottom"
+const STORAGE_KEY_TODOS = 'thinking-monitor-session-todos';
 
 // ============================================
 // State
@@ -90,7 +91,9 @@ interface AppState {
   contextMenuFilePath: string | null;
   // Active view tab for navigation
   activeView: 'all' | 'thinking' | 'tools' | 'todo' | 'plan';
-  // Todo tracking
+  // Todo tracking - maps session ID to todos for that session
+  sessionTodos: SessionTodosMap;
+  // Current session's todos (derived from sessionTodos based on currentSessionId)
   todos: TodoItem[];
 }
 
@@ -130,6 +133,17 @@ interface AgentInfo {
   endTime?: string;
 }
 
+/**
+ * Stack of active agent IDs, ordered by start time (most recent last).
+ * Used to determine which agent context applies to tool calls that
+ * don't have an explicit agentId.
+ *
+ * When a subagent starts, its ID is pushed onto the stack.
+ * When a subagent stops, its ID is removed from the stack.
+ * The top of the stack represents the currently active agent.
+ */
+type AgentContextStack = string[];
+
 interface ToolInfo {
   id: string;
   name: string;
@@ -143,6 +157,9 @@ interface TodoItem {
   status: 'pending' | 'in_progress' | 'completed';
   activeForm: string;
 }
+
+// Map of session ID to todo items for that session
+type SessionTodosMap = Map<string, TodoItem[]>;
 
 const state: AppState = {
   connected: false,
@@ -168,8 +185,16 @@ const state: AppState = {
   planSelectorOpen: false,
   contextMenuFilePath: null,
   activeView: 'all',
+  sessionTodos: new Map(),
   todos: [],
 };
+
+/**
+ * Stack of currently active agent IDs.
+ * The last element is the most deeply nested active agent.
+ * 'main' represents the main conversation (no subagent).
+ */
+const agentContextStack: AgentContextStack = ['main'];
 
 // Session colors for visual distinction
 const SESSION_COLORS = [
@@ -437,9 +462,13 @@ function handleThinking(event: MonitorEvent): void {
 
   const content = String(event.content || '');
   const time = formatTime(event.timestamp);
-  const agentId = event.agentId || 'main';
   const sessionId = event.sessionId;
   const preview = content.slice(0, 80).replace(/\n/g, ' ');
+
+  // Determine agent context (same logic as tool calls)
+  const eventAgentId = event.agentId;
+  const agentId = eventAgentId || getCurrentAgentContext();
+  const agentDisplayName = getAgentDisplayName(agentId);
 
   // Clear empty state if present
   const emptyState = elements.thinkingContent.querySelector('.empty-state');
@@ -464,7 +493,7 @@ function handleThinking(event: MonitorEvent): void {
       <span class="thinking-toggle" aria-hidden="true"></span>
       <span class="thinking-time">${escapeHtml(time)}</span>
       ${sessionBadge}
-      <span class="thinking-agent">${escapeHtml(agentId)}</span>
+      <span class="thinking-agent">${escapeHtml(agentDisplayName)}</span>
       <span class="thinking-preview">${escapeHtml(preview)}...</span>
     </div>
     <div class="thinking-text">${escapeHtml(content)}</div>
@@ -506,7 +535,19 @@ function handleToolStart(event: MonitorEvent): void {
   const input = event.input ? String(event.input) : undefined;
   const time = formatTime(event.timestamp);
   const sessionId = event.sessionId;
-  const agentId = event.agentId || 'main';
+
+  // Determine agent context:
+  // 1. Use explicit agentId from the event if provided
+  // 2. Otherwise, use the current agent context from the stack
+  // This handles the case where tool calls from subagents don't include agentId
+  const eventAgentId = event.agentId;
+  const agentId = eventAgentId || getCurrentAgentContext();
+
+  // Parse TodoWrite at tool_start - this is when we have the input
+  // (tool_end events don't include the input, only the output)
+  if (toolName === 'TodoWrite') {
+    parseTodoWriteInput(input, sessionId);
+  }
 
   state.toolsCount++;
   elements.toolsCount.textContent = String(state.toolsCount);
@@ -525,9 +566,8 @@ function handleToolStart(event: MonitorEvent): void {
   // Generate preview text for collapsed state
   const preview = summarizeInput(input);
 
-  // Get a readable agent name - look up in agents map or use truncated ID
-  const agent = state.agents.get(agentId);
-  const agentDisplayName = agent?.name || (agentId === 'main' ? 'main' : agentId.slice(0, 12));
+  // Get the display name for this agent
+  const agentDisplayName = getAgentDisplayName(agentId);
 
   // Create tool entry with collapsible structure (collapsed by default)
   const entry = document.createElement('div');
@@ -597,13 +637,9 @@ function handleToolEnd(event: MonitorEvent): void {
   const toolCallId = String(event.toolCallId || '');
   const toolName = String(event.toolName || '');
   const output = event.output ? String(event.output) : undefined;
-  const input = event.input ? String(event.input) : undefined;
   const durationMs = event.durationMs as number | undefined;
 
-  // Check if this is a TodoWrite tool call and parse todos
-  if (toolName === 'TodoWrite') {
-    parseTodoWriteInput(input);
-  }
+  // Note: TodoWrite is handled in handleToolStart since tool_end doesn't include input
 
   // Update existing entry if found
   const entry = document.getElementById(`tool-${toolCallId}`);
@@ -639,6 +675,10 @@ function handleAgentStart(event: MonitorEvent): void {
     startTime: event.timestamp,
   });
 
+  // Push this agent onto the context stack
+  // Tool calls that follow will be associated with this agent
+  pushAgentContext(agentId);
+
   state.agentsCount = state.agents.size;
   if (elements.agentsCount) {
     elements.agentsCount.textContent = String(state.agentsCount);
@@ -655,6 +695,10 @@ function handleAgentStop(event: MonitorEvent): void {
     agent.active = false;
     agent.status = (event.status as AgentInfo['status']) || 'success';
     agent.endTime = event.timestamp;
+
+    // Pop this agent from the context stack
+    popAgentContext(agentId);
+
     renderAgentTree();
   }
 }
@@ -693,6 +737,57 @@ function findActiveAgent(): AgentInfo | undefined {
     }
   }
   return activeAgent;
+}
+
+/**
+ * Get the current agent context from the stack.
+ * Returns the agent ID of the most recently started active agent.
+ * If no subagents are active, returns 'main'.
+ */
+function getCurrentAgentContext(): string {
+  return agentContextStack[agentContextStack.length - 1] || 'main';
+}
+
+/**
+ * Push an agent onto the context stack when it starts.
+ */
+function pushAgentContext(agentId: string): void {
+  if (agentId && agentId !== 'main') {
+    agentContextStack.push(agentId);
+    console.log(`[Dashboard] Agent context pushed: ${agentId}, stack depth: ${agentContextStack.length}`);
+  }
+}
+
+/**
+ * Pop an agent from the context stack when it stops.
+ * Removes the agent from wherever it is in the stack (handles out-of-order stops).
+ */
+function popAgentContext(agentId: string): void {
+  if (agentId && agentId !== 'main') {
+    const index = agentContextStack.indexOf(agentId);
+    if (index > 0) { // Don't remove 'main' at index 0
+      agentContextStack.splice(index, 1);
+      console.log(`[Dashboard] Agent context popped: ${agentId}, stack depth: ${agentContextStack.length}`);
+    }
+  }
+}
+
+/**
+ * Get the display name for an agent ID.
+ * First looks up in the agents map, then falls back to truncated ID or 'main'.
+ */
+function getAgentDisplayName(agentId: string): string {
+  if (agentId === 'main') {
+    return 'main';
+  }
+
+  const agent = state.agents.get(agentId);
+  if (agent?.name) {
+    return agent.name;
+  }
+
+  // Fallback: truncate the agent ID for display
+  return agentId.length > 16 ? agentId.slice(0, 16) : agentId;
 }
 
 function handlePlanUpdate(event: MonitorEvent): void {
@@ -1249,11 +1344,15 @@ function handlePlanDelete(event: MonitorEvent): void {
 /**
  * Track a session from any event that includes a sessionId.
  * Creates the session if it doesn't exist.
+ * Updates the todo panel when switching to a different session.
  */
 function trackSession(sessionId: string, timestamp: string): void {
   if (!sessionId) return;
 
-  if (!state.sessions.has(sessionId)) {
+  const isNewSession = !state.sessions.has(sessionId);
+  const isSessionSwitch = state.currentSessionId !== null && state.currentSessionId !== sessionId;
+
+  if (isNewSession) {
     const colorIndex = state.sessions.size % SESSION_COLORS.length;
     state.sessions.set(sessionId, {
       id: sessionId,
@@ -1267,6 +1366,12 @@ function trackSession(sessionId: string, timestamp: string): void {
 
   // Update current session
   state.currentSessionId = sessionId;
+
+  // When switching to a different session, update the todo panel
+  if (isSessionSwitch || isNewSession) {
+    console.log(`[Dashboard] Session switch detected, updating todos for: ${sessionId}`);
+    updateTodosForCurrentSession();
+  }
 }
 
 /**
@@ -1450,6 +1555,19 @@ function selectSession(sessionId: string): void {
   } else {
     // Show the most recent plan for the selected session
     displayPlanForSession(sessionId);
+  }
+
+  // Update todo display based on session selection
+  if (sessionId === 'all') {
+    // With "All" selected, show empty todos (user can select a specific session)
+    state.todos = [];
+    elements.todoCount.textContent = '0';
+    renderTodoPanel();
+  } else {
+    // Show todos for the selected session
+    state.todos = state.sessionTodos.get(sessionId) || [];
+    elements.todoCount.textContent = String(state.todos.length);
+    renderTodoPanel();
   }
 }
 
@@ -1647,14 +1765,18 @@ function renderAgentTree(): void {
 /**
  * Parse TodoWrite tool input to extract todo items.
  * The input is a JSON string with a "todos" array.
+ * Associates todos with the given session ID.
  */
-function parseTodoWriteInput(input: string | undefined): void {
-  if (!input) return;
+function parseTodoWriteInput(input: string | undefined, sessionId: string | undefined): void {
+  if (!input) {
+    return;
+  }
 
   try {
     const parsed = JSON.parse(input);
+
     if (parsed.todos && Array.isArray(parsed.todos)) {
-      handleTodoUpdate(parsed.todos);
+      handleTodoUpdate(parsed.todos, sessionId);
     }
   } catch (e) {
     console.warn('[Dashboard] Failed to parse TodoWrite input:', e);
@@ -1663,11 +1785,115 @@ function parseTodoWriteInput(input: string | undefined): void {
 
 /**
  * Update the todo state and re-render the panel.
+ * Stores todos per session and updates the display based on the current session.
+ * Persists to localStorage for survival across page refreshes.
  */
-function handleTodoUpdate(todos: TodoItem[]): void {
-  state.todos = todos;
-  elements.todoCount.textContent = String(todos.length);
+function handleTodoUpdate(todos: TodoItem[], sessionId: string | undefined): void {
+  // Store todos for this session
+  const effectiveSessionId = sessionId || state.currentSessionId || 'unknown';
+  state.sessionTodos.set(effectiveSessionId, todos);
+
+  // Persist to localStorage
+  saveTodosToStorage();
+
+  // If this is for the current session, update the displayed todos
+  if (effectiveSessionId === state.currentSessionId || !state.currentSessionId) {
+    state.todos = todos;
+    elements.todoCount.textContent = String(todos.length);
+    renderTodoPanel();
+  }
+}
+
+/**
+ * Update the displayed todos based on the current session.
+ * Called when switching sessions to show the appropriate todos.
+ */
+function updateTodosForCurrentSession(): void {
+  if (!state.currentSessionId) {
+    // No active session, clear todos
+    state.todos = [];
+  } else {
+    // Get todos for the current session, or empty array if none
+    state.todos = state.sessionTodos.get(state.currentSessionId) || [];
+  }
+
+  elements.todoCount.textContent = String(state.todos.length);
   renderTodoPanel();
+}
+
+/**
+ * Save session todos to localStorage for persistence across refreshes.
+ * Converts the Map to a serializable format.
+ */
+function saveTodosToStorage(): void {
+  try {
+    // Convert Map to array of [sessionId, todos] entries for JSON serialization
+    const entries: Array<[string, TodoItem[]]> = Array.from(state.sessionTodos.entries());
+    localStorage.setItem(STORAGE_KEY_TODOS, JSON.stringify(entries));
+    console.log(`[Dashboard] Saved ${entries.length} session(s) of todos to localStorage`);
+  } catch (error) {
+    console.warn('[Dashboard] Failed to save todos to localStorage:', error);
+  }
+}
+
+/**
+ * Restore session todos from localStorage on page load.
+ * Reconstructs the Map from the stored array format.
+ */
+function restoreTodosFromStorage(): void {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_TODOS);
+    if (!stored) {
+      console.log('[Dashboard] No stored todos found in localStorage');
+      return;
+    }
+
+    const entries: Array<[string, TodoItem[]]> = JSON.parse(stored);
+    if (!Array.isArray(entries)) {
+      console.warn('[Dashboard] Invalid stored todos format, clearing');
+      localStorage.removeItem(STORAGE_KEY_TODOS);
+      return;
+    }
+
+    // Reconstruct the sessionTodos map
+    state.sessionTodos = new Map(entries);
+    console.log(`[Dashboard] Restored ${state.sessionTodos.size} session(s) of todos from localStorage`);
+
+    // If there's exactly one session, auto-select it to display its todos
+    if (state.sessionTodos.size === 1) {
+      const [sessionId, todos] = entries[0];
+      state.currentSessionId = sessionId;
+      state.selectedSession = sessionId;
+      state.todos = todos;
+      elements.todoCount.textContent = String(todos.length);
+
+      // Also restore the session in the sessions map for UI consistency
+      if (!state.sessions.has(sessionId)) {
+        const colorIndex = state.sessions.size % SESSION_COLORS.length;
+        state.sessions.set(sessionId, {
+          id: sessionId,
+          startTime: new Date().toISOString(),
+          active: false, // Will be updated when we reconnect
+          color: SESSION_COLORS[colorIndex],
+        });
+      }
+    } else if (state.sessionTodos.size > 1) {
+      // Multiple sessions - restore session entries for filter UI
+      for (const [sessionId] of entries) {
+        if (!state.sessions.has(sessionId)) {
+          const colorIndex = state.sessions.size % SESSION_COLORS.length;
+          state.sessions.set(sessionId, {
+            id: sessionId,
+            startTime: new Date().toISOString(),
+            active: false,
+            color: SESSION_COLORS[colorIndex],
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('[Dashboard] Failed to restore todos from localStorage:', error);
+  }
 }
 
 /**
@@ -1686,7 +1912,13 @@ function renderTodoPanel(): void {
 
   const html = state.todos.map((todo, index) => {
     const statusClass = `todo-status-${todo.status}`;
-    const itemClass = todo.status === 'in_progress' ? 'todo-item todo-item-active' : 'todo-item';
+    // Add completed class for strikethrough styling
+    let itemClass = 'todo-item';
+    if (todo.status === 'in_progress') {
+      itemClass += ' todo-item-active';
+    } else if (todo.status === 'completed') {
+      itemClass += ' todo-item-completed';
+    }
 
     // Choose the display text based on status
     const displayText = todo.status === 'in_progress' ? todo.activeForm : todo.content;
@@ -1903,11 +2135,24 @@ function clearAllPanels(): void {
   state.selectedSession = 'all';
   state.userScrolledUp = false;
 
+  // Reset agent context stack to just 'main'
+  agentContextStack.length = 0;
+  agentContextStack.push('main');
+
   // Hide session indicator and filter
   updateSessionIndicator();
 
-  // Reset todos
+  // Reset todos (both session-specific map and current display)
+  state.sessionTodos.clear();
   state.todos = [];
+
+  // Clear persisted todos from localStorage
+  try {
+    localStorage.removeItem(STORAGE_KEY_TODOS);
+    console.log('[Dashboard] Cleared todos from localStorage');
+  } catch (error) {
+    console.warn('[Dashboard] Failed to clear todos from localStorage:', error);
+  }
 
   // Update counters
   elements.eventCount.textContent = 'Events: 0';
@@ -2194,6 +2439,17 @@ document.addEventListener('keydown', (e) => {
 
 // Initialize view tabs navigation
 initViewTabs();
+
+// Restore persisted todos from localStorage before connecting
+restoreTodosFromStorage();
+
+// Update UI with restored state
+if (state.todos.length > 0) {
+  renderTodoPanel();
+}
+if (state.sessions.size > 0) {
+  updateSessionIndicator();
+}
 
 connect();
 console.log('[Dashboard] Thinking Monitor initialized');
