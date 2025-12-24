@@ -11,9 +11,12 @@
 ### Added
 - Todo panel displays current task list with status indicators (pending/in-progress/completed)
 - Screenshot utility script for capturing Arc browser window (`pnpm screenshot`)
+- Version bump automation script (`pnpm version:patch/minor/major`)
+- Test script (`pnpm test`)
 
 ### Fixed
 - Updated 8 test specifications to match current view-based navigation architecture
+- Fixed hardcoded version in types.ts (was still 0.1.0)
 
 ---
 

@@ -12,7 +12,11 @@
     "build:dashboard": "esbuild src/dashboard/app.ts --bundle --format=iife --outfile=src/dashboard/app.js",
     "start": "node dist/server/index.js",
     "typecheck": "tsc --noEmit",
-    "screenshot": "scripts/screenshot-arc.sh"
+    "test": "vitest run",
+    "screenshot": "scripts/screenshot-arc.sh",
+    "version:patch": "scripts/bump-version.sh patch",
+    "version:minor": "scripts/bump-version.sh minor",
+    "version:major": "scripts/bump-version.sh major"
   },
   "keywords": [
     "claude-code",
