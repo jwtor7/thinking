@@ -327,9 +327,12 @@ describe('Phase 1.4: Basic HTML Dashboard Shell', () => {
     expect(content).toContain('id="connection-status"');
     expect(content).toContain('id="thinking-content"');
     expect(content).toContain('id="tools-content"');
-    expect(content).toContain('id="agents-content"');
+    // Agent panel was replaced with todo panel in current implementation
+    expect(content).toContain('id="todo-content"');
     expect(content).toContain('id="plan-content"');
-    expect(content).toContain('id="agent-tabs"');
+    // Agent tabs were replaced with view-tabs (created dynamically in app.ts)
+    // The footer contains keyboard hints showing the view shortcuts
+    expect(content).toContain('keyboard-hints');
   });
 
   it('should include required stylesheets and scripts', async () => {

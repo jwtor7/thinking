@@ -62,12 +62,15 @@ describe('Phase 4: Dashboard Polish', () => {
       expect(appTsContent).toContain('escapeHtml(summarizeInput(input))');
     });
 
-    it('should escape agent name in agent nodes', () => {
-      expect(appTsContent).toMatch(/escapeHtml\(agent\.name/);
+    it('should escape session ID in session badges', () => {
+      // Agent tree was replaced with session-based filtering
+      // Session IDs are now displayed in entry badges
+      expect(appTsContent).toMatch(/escapeHtml\(sessionId/);
     });
 
-    it('should escape agent ID in agent nodes', () => {
-      expect(appTsContent).toMatch(/escapeHtml\(agent\.id/);
+    it('should escape short session ID in session indicators', () => {
+      // Session IDs are displayed in badges using getShortSessionId
+      expect(appTsContent).toMatch(/escapeHtml\(getShortSessionId/);
     });
 
     it('should escape markdown content before rendering', () => {
@@ -89,20 +92,16 @@ describe('Phase 4: Dashboard Polish', () => {
       expect(appTsContent).toContain('escapeHtml(toolName)');
       expect(appTsContent).toContain('escapeHtml(summarizeInput(input))');
 
-      // 3. Agent nodes use escapeHtml for user content
-      expect(appTsContent).toMatch(/escapeHtml\(agent\.name/);
-      expect(appTsContent).toMatch(/escapeHtml\(agent\.id/);
+      // 3. Session badges use escapeHtml for user content
+      // (Agent tree was replaced with session-based filtering)
+      expect(appTsContent).toMatch(/escapeHtml\(sessionId/);
+      expect(appTsContent).toMatch(/escapeHtml\(getShortSessionId/);
 
       // 4. Markdown rendering escapes before processing
       expect(appTsContent).toMatch(/let html = escapeHtml\(content\)/);
 
-      // 5. renderAgentNode (used by innerHTML assignment) escapes its content
-      const renderAgentNodeMatch = appTsContent.match(
-        /function renderAgentNode[\s\S]*?return html;/
-      );
-      expect(renderAgentNodeMatch).toBeTruthy();
-      expect(renderAgentNodeMatch![0]).toContain('escapeHtml(agent.name');
-      expect(renderAgentNodeMatch![0]).toContain('escapeHtml(agent.id');
+      // 5. Todo panel escapes content
+      expect(appTsContent).toContain('escapeHtml(displayText)');
 
       // 6. The escapeHtml function uses the secure DOM-based method
       const escapeHtmlMatch = appTsContent.match(
@@ -170,14 +169,16 @@ describe('Phase 4: Dashboard Polish', () => {
       expect(appTsContent).toContain("toFixed(1)");
     });
 
-    it('should have expandable tool details', () => {
-      expect(appTsContent).toContain('tool-entry-expandable');
-      expect(stylesCssContent).toContain('.tool-entry.expanded');
+    it('should have collapsible tool details', () => {
+      // Tool entries start collapsed and can be expanded by clicking
+      expect(appTsContent).toContain("entry.className = 'tool-entry collapsed");
+      expect(appTsContent).toContain("entry.classList.toggle('collapsed')");
+      expect(stylesCssContent).toContain('.tool-entry.collapsed');
     });
 
-    it('should show input and output sections when expanded', () => {
+    it('should show input section in tool details', () => {
       expect(appTsContent).toContain('tool-input-section');
-      expect(appTsContent).toContain('tool-output-section');
+      expect(appTsContent).toContain('tool-entry-details');
     });
 
     it('should have status indicators (pending, done, error)', () => {
@@ -311,10 +312,16 @@ describe('Phase 4: Dashboard Polish', () => {
       expect(appTsContent).toContain('handleKeydown');
     });
 
-    it('should support 0-9 for agent switching', () => {
-      expect(appTsContent).toMatch(/event\.key\s*>=\s*['"]0['"]/);
-      expect(appTsContent).toMatch(/event\.key\s*<=\s*['"]9['"]/);
-      expect(appTsContent).toContain("selectAgent('all')");
+    it('should support a/t/o/d/p for view switching', () => {
+      // Agent tabs were replaced with view tabs (All/Thinking/Tools/Todo/Plan)
+      expect(appTsContent).toContain("case 'a':");
+      expect(appTsContent).toContain("case 't':");
+      expect(appTsContent).toContain("case 'o':");
+      expect(appTsContent).toContain("case 'd':");
+      expect(appTsContent).toContain("case 'p':");
+      expect(appTsContent).toContain("selectView('all')");
+      expect(appTsContent).toContain("selectView('thinking')");
+      expect(appTsContent).toContain("selectView('tools')");
     });
 
     it('should support c for clear', () => {
@@ -395,8 +402,10 @@ describe('Phase 4: Dashboard Polish', () => {
       expect(indexHtmlContent).toContain('<header');
       expect(indexHtmlContent).toContain('<main');
       expect(indexHtmlContent).toContain('<footer');
-      expect(indexHtmlContent).toContain('<nav');
       expect(indexHtmlContent).toContain('<section');
+      // Navigation is created dynamically via initViewTabs() which creates a <nav> element
+      expect(appTsContent).toContain("viewTabsContainer.id = 'view-tabs'");
+      expect(appTsContent).toContain("viewTabsContainer.className = 'view-tabs'");
     });
   });
 
