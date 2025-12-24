@@ -252,7 +252,7 @@ export const CONFIG = {
   /** Maximum payload size in bytes */
   MAX_PAYLOAD_SIZE: 10 * 1024, // 10KB
   /** Server version */
-  VERSION: '0.1.0',
+  VERSION: '0.3.0',
 } as const;
 
 /**

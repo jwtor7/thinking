@@ -181,10 +181,10 @@ describe('Phase 4: Dashboard Polish', () => {
       expect(appTsContent).toContain('tool-entry-details');
     });
 
-    it('should have status indicators (pending, done, error)', () => {
-      expect(appTsContent).toContain('tool-status-pending');
-      expect(appTsContent).toContain('tool-status-done');
-      expect(appTsContent).toContain('tool-status-error');
+    it('should track tool status (pending via Map, completion states)', () => {
+      // Tools are tracked as pending via pendingTools Map
+      expect(appTsContent).toContain('pendingTools');
+      expect(appTsContent).toContain("status?: 'running' | 'success' | 'failure' | 'cancelled'");
     });
   });
 

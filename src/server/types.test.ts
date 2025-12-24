@@ -83,7 +83,7 @@ describe('isMonitorEvent', () => {
       type: 'connection_status',
       timestamp: '2025-12-21T00:00:00Z',
       status: 'connected',
-      serverVersion: '0.1.0',
+      serverVersion: '0.3.0',
       clientCount: 1,
     };
     expect(isMonitorEvent(event)).toBe(true);
