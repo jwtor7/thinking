@@ -9,12 +9,12 @@ Real-time monitoring dashboard for Claude Code thinking, agents, and tool activi
 
 ## Features
 
-- **Thinking Panel** - Live stream of Claude's reasoning process
-- **Tool Activity** - Track tool calls (Read, Edit, Bash, etc.) in real-time
-- **Agent Tracking** - Monitor main session and subagents with status
-- **Plan Viewer** - Display active plan files
-- **Multi-Agent Switching** - Toggle between concurrent agent thinking streams
-- **Click-to-Open** - Open thinking/plans in your Markdown Viewer app
+- **Thinking Panel** - Live stream of Claude's reasoning process with collapsible entries
+- **Tool Activity** - Track tool calls in real-time with two-line collapsed view showing agent and input
+- **Todo Panel** - Monitor task progress from TodoWrite events (pending/in-progress/completed)
+- **Plan Viewer** - Display plan files for the selected session
+- **Session Filtering** - Filter all panels by Claude Code session
+- **Click-to-Open** - Right-click file paths to open or reveal in Finder
 
 ## Requirements
 

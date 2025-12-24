@@ -7,6 +7,9 @@
 - Updated navigation to view-based system (All/Thinking/Tools/Todo/Plan)
 - Keyboard shortcuts changed from 0-9 agent switching to a/t/o/d/p view switching
 - Simplified dashboard layout with session-based filtering instead of agent tabs
+- Tool activity panel: collapsible entries (start collapsed), two-line collapsed view showing agent name
+- Tool activity panel: removed OUTPUT section and running status indicator
+- Plan viewer shows plan for selected session only; empty state when "All" sessions selected
 
 ### Added
 - Todo panel displays current task list with status indicators (pending/in-progress/completed)
