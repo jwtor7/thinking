@@ -970,8 +970,9 @@ function handlePlanUpdate(event: MonitorEvent): void {
   // Update the selector
   renderPlanSelector();
 
-  // If this is the current plan or we have no current plan, display it
-  if (!state.currentPlanPath || state.currentPlanPath === path) {
+  // Only update the display if this plan is currently being shown
+  // Never auto-display plans when "All" sessions is selected (plans are session-specific)
+  if (state.selectedSession !== 'all' && state.currentPlanPath === path) {
     displayPlan(path);
   }
 }
@@ -1477,9 +1478,15 @@ function handlePlanDelete(event: MonitorEvent): void {
   // Update the selector
   renderPlanSelector();
 
-  // If this was the current plan, display the next most recent
+  // If this was the current plan, handle the fallback
   if (state.currentPlanPath === path) {
-    displayMostRecentPlan();
+    if (state.selectedSession === 'all') {
+      // When "All" is selected, show empty state (plans are session-specific)
+      displayEmptyPlan();
+    } else {
+      // When a specific session is selected, show the next most recent
+      displayMostRecentPlan();
+    }
   }
 }
 
@@ -1733,8 +1740,8 @@ function selectSession(sessionId: string): void {
 
   // Show the plan associated with this session (if any)
   if (sessionId === 'all') {
-    // When "All" is selected, show the most recently modified plan
-    displayMostRecentPlan();
+    // When "All" is selected, show empty state - plans are session-specific
+    displayEmptyPlan();
   } else {
     // Check if this session has an associated plan
     const associatedPlanPath = state.sessionPlanMap.get(sessionId);
