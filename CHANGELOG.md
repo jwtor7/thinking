@@ -1,5 +1,21 @@
 # Changelog
 
+## 2025-12-28
+
+### Added
+- Session-specific todos with localStorage persistence
+- Agent context stack - shows agent names (code-implementer, haiku-general-agent, etc.) in tool activity instead of "main"
+- Distinct agent colors in tool activity (green for code-implementer, cyan for code-test-evaluator, orange for haiku-general-agent, etc.)
+- Clear button (X) to remove stale session todos from localStorage
+- Header session badge syncs with selected session filter
+- Playwright MCP integration for browser automation testing
+
+### Fixed
+- Fixed crash when clicking THINKING pane (removed collapsibility)
+- Hide todos/plan panels when "All" sessions is selected
+
+---
+
 ## 2025-12-23
 
 ### Changed

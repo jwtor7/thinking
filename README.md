@@ -95,6 +95,13 @@ Claude Code Session
 
 ## Recent Changes
 
+### 2025-12-28
+- Session-specific todos with localStorage persistence
+- Agent context stack in tool activity panel
+- Distinct agent colors for different tools
+- Playwright MCP integration for browser automation
+- Fixed crash in THINKING pane
+
 ### 2025-12-23
 - Replaced Agents panel with Todo panel for task tracking
 - View-based navigation (a/t/o/d/p keyboard shortcuts)
@@ -104,9 +111,6 @@ Claude Code Session
 - Hook integration with Claude Code (6 hook types)
 - Setup script for automated hook installation
 - Secret redaction module for secure event broadcasting
-
-### 2025-12-21
-- Initial project setup with TypeScript and pnpm
 
 *For complete history, see [CHANGELOG.md](./CHANGELOG.md)*
 
