@@ -2319,6 +2319,9 @@ function clearAllPanels(): void {
   agentContextStack.length = 0;
   agentContextStack.push('main');
 
+  // Clear session-plan associations to prevent memory leak
+  state.sessionPlanMap.clear();
+
   // Hide session indicator and filter
   updateSessionIndicator();
 

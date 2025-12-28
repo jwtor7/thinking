@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.7] - 2025-12-28
+
+### Fixed
+- Memory leak: `sessionPlanMap` now cleared in `clearAllPanels()` to prevent unbounded growth
+- Test suite: Updated test assertions to match refactored code patterns (all 416 tests pass)
+
+---
+
 ## [0.4.6] - 2025-12-28
 
 ### Fixed
