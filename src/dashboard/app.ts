@@ -281,6 +281,30 @@ function initCssColors(): void {
 }
 
 /**
+ * Get a consistent color for a session ID using a hash.
+ * This ensures the same session ID always gets the same color,
+ * and different session IDs are likely to get different colors.
+ */
+function getSessionColorByHash(sessionId: string): string {
+  initCssColors();
+  if (!sessionId || SESSION_COLORS.length === 0) {
+    return 'var(--color-text-muted)';
+  }
+
+  // Simple hash function for session ID
+  let hash = 0;
+  for (let i = 0; i < sessionId.length; i++) {
+    const char = sessionId.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+
+  // Use absolute value and modulo to get color index
+  const colorIndex = Math.abs(hash) % SESSION_COLORS.length;
+  return SESSION_COLORS[colorIndex];
+}
+
+/**
  * Get the display color for an agent.
  * Returns a consistent color based on the agent name.
  * Known agents get predefined colors; unknown agents cycle through fallback colors.
@@ -627,10 +651,10 @@ function handleToolStart(event: MonitorEvent): void {
     parseTodoWriteInput(input, sessionId);
   }
 
-  // Detect plan file writes (Write or Edit to ~/.claude/plans/)
+  // Detect plan file access (Read, Write, or Edit to ~/.claude/plans/)
   // and associate the plan with the current session
-  if ((toolName === 'Write' || toolName === 'Edit') && input && sessionId) {
-    detectPlanWrite(input, sessionId);
+  if ((toolName === 'Read' || toolName === 'Write' || toolName === 'Edit') && input && sessionId) {
+    detectPlanAccess(input, sessionId);
   }
 
   state.toolsCount++;
@@ -943,8 +967,9 @@ function handlePlanUpdate(event: MonitorEvent): void {
   // Find the currently active (running) agent to associate with this plan
   const activeAgent = findActiveAgent();
 
-  // Note: Session-plan associations are made via Write/Edit tool events in handleToolStart,
-  // not here. plan_update events from PlanWatcher don't have reliable session context.
+  // Note: Session-plan associations are made via Read/Write/Edit tool events
+  // in handleToolStart (detectPlanAccess), not here. plan_update events from
+  // PlanWatcher don't have reliable session context.
 
   // Store this plan in our map
   state.plans.set(path, {
@@ -952,7 +977,7 @@ function handlePlanUpdate(event: MonitorEvent): void {
     filename,
     content,
     lastModified,
-    sessionId: event.sessionId || state.currentSessionId || undefined,
+    sessionId: event.sessionId || undefined,
     agentId: activeAgent?.id,
   });
 
@@ -970,9 +995,22 @@ function handlePlanUpdate(event: MonitorEvent): void {
   // Update the selector
   renderPlanSelector();
 
-  // Only update the display if this plan is currently being shown
-  // Never auto-display plans when "All" sessions is selected (plans are session-specific)
-  if (state.selectedSession !== 'all' && state.currentPlanPath === path) {
+  // Display logic:
+  // 1. Always update if this plan is already being shown (e.g., user manually selected it)
+  // 2. Auto-display if this plan is associated with the selected session (via sessionPlanMap)
+  const isCurrentPlan = state.currentPlanPath === path;
+
+  // Check if the selected session is associated with this plan
+  const selectedSessionPlan = state.selectedSession !== 'all'
+    ? state.sessionPlanMap.get(state.selectedSession)
+    : null;
+  const isSelectedSessionPlan = selectedSessionPlan === path;
+
+  if (isCurrentPlan) {
+    // Plan was manually selected or is being updated - always display
+    displayPlan(path);
+  } else if (isSelectedSessionPlan) {
+    // Auto-display for the selected session's associated plan
     displayPlan(path);
   }
 }
@@ -1506,14 +1544,11 @@ function trackSession(sessionId: string, timestamp: string): void {
   const isSessionSwitch = state.currentSessionId !== null && state.currentSessionId !== sessionId;
 
   if (isNewSession) {
-    // Ensure CSS colors are initialized
-    initCssColors();
-    const colorIndex = state.sessions.size % SESSION_COLORS.length;
     state.sessions.set(sessionId, {
       id: sessionId,
       startTime: timestamp,
       active: true,
-      color: SESSION_COLORS[colorIndex],
+      color: getSessionColorByHash(sessionId),
     });
     console.log(`[Dashboard] New session tracked: ${sessionId}`);
     updateSessionIndicator();
@@ -1538,15 +1573,12 @@ function handleSessionStart(event: MonitorEvent): void {
 
   console.log(`[Dashboard] Session started: ${sessionId}`, { workingDirectory });
 
-  // Ensure CSS colors are initialized
-  initCssColors();
-  const colorIndex = state.sessions.size % SESSION_COLORS.length;
   state.sessions.set(sessionId, {
     id: sessionId,
     workingDirectory,
     startTime: event.timestamp,
     active: true,
-    color: SESSION_COLORS[colorIndex],
+    color: getSessionColorByHash(sessionId),
   });
 
   state.currentSessionId = sessionId;
@@ -1964,11 +1996,12 @@ function renderAgentTree(): void {
 // ============================================
 
 /**
- * Detect if a Write or Edit tool is targeting a plan file.
+ * Detect if a Read, Write, or Edit tool is targeting a plan file.
  * If so, associate that plan with the given session ID.
  * This allows us to show the correct plan when the user filters by session.
+ * Tracking Read operations catches sessions started with `claude --plan`.
  */
-function detectPlanWrite(input: string, sessionId: string): void {
+function detectPlanAccess(input: string, sessionId: string): void {
   try {
     // The input is typically JSON with a file_path field
     const parsed = JSON.parse(input);
@@ -2139,9 +2172,6 @@ function restoreTodosFromStorage(): void {
     state.sessionTodos = new Map(entries);
     console.log(`[Dashboard] Restored ${state.sessionTodos.size} session(s) of todos from localStorage`);
 
-    // Ensure CSS colors are initialized before using SESSION_COLORS
-    initCssColors();
-
     // If there's exactly one session, auto-select it to display its todos
     if (state.sessionTodos.size === 1) {
       const [sessionId, todos] = entries[0];
@@ -2152,24 +2182,22 @@ function restoreTodosFromStorage(): void {
 
       // Also restore the session in the sessions map for UI consistency
       if (!state.sessions.has(sessionId)) {
-        const colorIndex = state.sessions.size % SESSION_COLORS.length;
         state.sessions.set(sessionId, {
           id: sessionId,
           startTime: new Date().toISOString(),
           active: false, // Will be updated when we reconnect
-          color: SESSION_COLORS[colorIndex],
+          color: getSessionColorByHash(sessionId),
         });
       }
     } else if (state.sessionTodos.size > 1) {
       // Multiple sessions - restore session entries for filter UI
       for (const [sessionId] of entries) {
         if (!state.sessions.has(sessionId)) {
-          const colorIndex = state.sessions.size % SESSION_COLORS.length;
           state.sessions.set(sessionId, {
             id: sessionId,
             startTime: new Date().toISOString(),
             active: false,
-            color: SESSION_COLORS[colorIndex],
+            color: getSessionColorByHash(sessionId),
           });
         }
       }
