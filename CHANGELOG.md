@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.6] - 2025-12-28
+
+### Fixed
+- Session-plan associations now work reliably via Write/Edit tool events only
+- Removed flaky plan_update fallback that caused incorrect associations on page load
+
+---
+
 ## [0.4.5] - 2025-12-28
 
 ### Fixed

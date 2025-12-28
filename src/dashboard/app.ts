@@ -836,15 +836,8 @@ function handlePlanUpdate(event: MonitorEvent): void {
   // Find the currently active (running) agent to associate with this plan
   const activeAgent = findActiveAgent();
 
-  // Determine the session to associate with this plan update
-  const effectiveSessionId = event.sessionId || state.currentSessionId;
-
-  // Associate this plan with the current session (if any)
-  // This captures plan modifications even when we don't see the Write/Edit tool event
-  if (effectiveSessionId) {
-    state.sessionPlanMap.set(effectiveSessionId, path);
-    console.log(`[Dashboard] Plan update: session ${effectiveSessionId.slice(0, 8)} associated with ${filename}`);
-  }
+  // Note: Session-plan associations are made via Write/Edit tool events in handleToolStart,
+  // not here. plan_update events from PlanWatcher don't have reliable session context.
 
   // Store this plan in our map
   state.plans.set(path, {
@@ -852,7 +845,7 @@ function handlePlanUpdate(event: MonitorEvent): void {
     filename,
     content,
     lastModified,
-    sessionId: effectiveSessionId || undefined,
+    sessionId: event.sessionId || state.currentSessionId || undefined,
     agentId: activeAgent?.id,
   });
 
