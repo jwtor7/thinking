@@ -316,9 +316,15 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-bg-tertiary);
+  background: var(--color-surface-glass, rgba(22, 27, 34, 0.85));
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
+  /* Phase 4: Sticky with blur backdrop */
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .panel-title {
@@ -391,22 +397,51 @@ body {
    Content Items
    ======================================== */
 
-/* Thinking Entry */
+/* ========================================
+   Phase 4: Thinking Entry Redesign
+   ======================================== */
+
 .thinking-entry {
-  padding: var(--spacing-sm);
-  margin-bottom: var(--spacing-sm);
-  background: var(--color-bg-tertiary);
-  border-radius: var(--radius-sm);
+  position: relative;
+  padding: var(--spacing-md) var(--spacing-lg);
+  padding-left: calc(var(--spacing-lg) + 4px);
   border-left: 3px solid var(--color-accent-blue);
+  background: var(--color-surface-1, var(--color-bg-secondary));
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  margin-bottom: var(--spacing-sm);
+  transition: background var(--duration-fast, 100ms) ease;
+}
+
+.thinking-entry:hover {
+  background: var(--color-surface-2, var(--color-bg-tertiary));
 }
 
 .thinking-entry-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: var(--spacing-sm);
   margin-bottom: var(--spacing-xs);
+  gap: var(--spacing-sm);
 }
 
+/* Agent badge on the left side of header */
+.thinking-entry-agent {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium, 500);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-3, var(--color-bg-hover));
+}
+
+/* Time on the right side of header */
+.thinking-entry-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+  margin-left: auto;
+}
+
+/* Legacy class names for backward compatibility */
 .thinking-time {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
@@ -415,32 +450,150 @@ body {
 
 .thinking-agent {
   font-size: var(--font-size-xs);
-  font-weight: 600;
-  color: var(--color-accent-blue);
+  font-weight: var(--font-weight-medium, 500);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-3, var(--color-bg-hover));
 }
 
+/* Content area with improved typography */
+.thinking-entry-content,
 .thinking-text {
   font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed, 1.75);
   color: var(--color-text-primary);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-/* Tool Entry */
+/* ========================================
+   Phase 4: Tool Entry Card-Based Redesign
+   ======================================== */
+
 .tool-entry {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  margin-bottom: var(--spacing-xs);
-  border-radius: var(--radius-sm);
+  background: var(--color-surface-1, var(--color-bg-secondary));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-sm);
+  overflow: hidden;
   font-size: var(--font-size-sm);
 }
 
 .tool-entry:hover {
-  background: var(--color-bg-tertiary);
+  border-color: var(--color-border-light);
 }
 
+/* Tool entry header - clickable area */
+.tool-entry-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  transition: background var(--duration-fast, 100ms);
+}
+
+.tool-entry-header:hover {
+  background: var(--color-hover-overlay, rgba(255,255,255,0.05));
+}
+
+/* Status icons */
+.tool-entry-status {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.tool-entry-status-running {
+  color: var(--color-accent-yellow);
+}
+
+.tool-entry-status-running::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.tool-entry-status-complete {
+  color: var(--color-accent-green);
+}
+
+.tool-entry-status-complete::before {
+  content: '\\2713'; /* checkmark */
+}
+
+.tool-entry-status-error {
+  color: var(--color-accent-red);
+}
+
+.tool-entry-status-error::before {
+  content: '\\2715'; /* X */
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Tool name styling */
+.tool-entry-name {
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--color-text-primary);
+  flex: 1;
+}
+
+/* Duration badge */
+.tool-entry-duration {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--color-text-muted);
+  padding: 2px 6px;
+  background: var(--color-surface-3, var(--color-bg-hover));
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* Agent badge in tool entries */
+.tool-entry-agent {
+  font-size: var(--font-size-xs);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* Chevron for collapse/expand */
+.tool-entry-chevron {
+  transition: transform var(--duration-fast, 100ms);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.tool-entry.expanded .tool-entry-chevron,
+.tool-entry:not(.collapsed) .tool-entry-chevron {
+  transform: rotate(90deg);
+}
+
+/* Tool entry details section */
+.tool-entry-details {
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-0, var(--color-bg-primary));
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Legacy tool-time and tool-name for backward compatibility */
 .tool-time {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
@@ -449,7 +602,7 @@ body {
 }
 
 .tool-name {
-  font-weight: 600;
+  font-weight: var(--font-weight-medium, 500);
   color: var(--color-accent-green);
 }
 
@@ -533,6 +686,87 @@ body {
   padding: 0;
 }
 
+/* Enhanced markdown list styling */
+.plan-markdown ul,
+.plan-markdown ol {
+  margin: var(--spacing-sm) 0;
+  padding-left: var(--spacing-xl);
+  color: var(--color-text-secondary);
+}
+
+.plan-markdown li {
+  margin-bottom: var(--spacing-xs);
+  line-height: var(--line-height-relaxed);
+}
+
+.plan-markdown li::marker {
+  color: var(--color-text-muted);
+}
+
+/* Task list styling */
+.plan-markdown li.task-list-item {
+  list-style: none;
+  margin-left: calc(-1 * var(--spacing-lg));
+}
+
+.plan-markdown .task-checkbox {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: var(--spacing-sm);
+  border: 2px solid var(--color-text-muted);
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.plan-markdown .task-checkbox.checked {
+  background: var(--color-accent-green);
+  border-color: var(--color-accent-green);
+  position: relative;
+}
+
+.plan-markdown .task-checkbox.checked::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  width: 4px;
+  height: 7px;
+  border: solid var(--color-bg-primary);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* Blockquote styling */
+.plan-markdown blockquote {
+  margin: var(--spacing-sm) 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-left: 3px solid var(--color-accent-blue);
+  background: var(--color-surface-1, var(--color-bg-secondary));
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* Horizontal rule */
+.plan-markdown hr {
+  margin: var(--spacing-md) 0;
+  border: none;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Link styling */
+.plan-markdown a {
+  color: var(--color-accent-blue);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--duration-fast, 100ms);
+}
+
+.plan-markdown a:hover {
+  border-bottom-color: var(--color-accent-blue);
+}
+
 /* ========================================
    Footer
    ======================================== */
@@ -597,23 +831,13 @@ body {
 }
 
 /* ========================================
-   Collapsible Tool Entries
+   Collapsible Tool Entries (Phase 4 Updated)
    ======================================== */
 
 .tool-entry {
   cursor: pointer;
   flex-direction: column;
   align-items: stretch;
-}
-
-.tool-entry:hover {
-  background: var(--color-bg-tertiary);
-}
-
-.tool-entry-header {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
 /* Two-line layout for collapsed tool entries */
@@ -624,15 +848,21 @@ body {
   gap: var(--spacing-sm);
 }
 
+.tool-header-line1 {
+  /* Status icon, time, and session badge */
+}
+
 .tool-header-line2 {
-  padding-left: 20px; /* Align with content after the toggle */
+  padding-left: 28px; /* Align with content after the status icon */
 }
 
 /* Agent name in tool entries */
 .tool-agent {
   font-size: var(--font-size-xs);
-  font-weight: 500;
-  color: var(--color-accent-purple);
+  font-weight: var(--font-weight-medium, 500);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-3, var(--color-bg-hover));
   flex-shrink: 0;
 }
 
@@ -641,10 +871,10 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   color: var(--color-text-muted);
-  transition: transform 0.15s ease, color 0.15s ease;
+  transition: transform var(--duration-fast, 100ms) ease, color var(--duration-fast, 100ms) ease;
   flex-shrink: 0;
 }
 
@@ -680,24 +910,19 @@ body {
   display: none;
 }
 
-/* Tool entry details section */
-.tool-entry-details {
-  margin-top: var(--spacing-sm);
-  padding-top: var(--spacing-sm);
-  border-top: 1px solid var(--color-border-light);
-}
-
-/* Hide details when collapsed */
+/* Hide details when collapsed (using CSS, not removing from DOM) */
 .tool-entry.collapsed .tool-entry-details {
   display: none;
 }
 
-/* Expanded state styling */
+/* Tool entry running state */
+.tool-entry.tool-running {
+  border-left: 3px solid var(--color-accent-yellow);
+}
+
+/* Expanded card styling */
 .tool-entry:not(.collapsed) {
-  background: var(--color-bg-tertiary);
-  padding: var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  margin-bottom: var(--spacing-sm);
+  border-color: var(--color-accent-blue);
 }
 
 .tool-input-label {
@@ -1242,9 +1467,10 @@ body {
 }
 
 .session-filter-badge.active {
-  background: var(--color-bg-tertiary);
-  border-color: var(--color-border);
+  background: var(--color-surface-3, var(--color-bg-tertiary));
+  border-color: var(--color-accent-blue);
   color: var(--color-text-primary);
+  box-shadow: 0 0 0 1px var(--color-accent-blue);
 }
 
 .session-filter-badge.online .session-filter-dot {
@@ -1881,6 +2107,43 @@ body.keyboard-mode .view-tab-shortcut {
   text-decoration: line-through;
   color: var(--color-text-muted);
   opacity: 0.7;
+}
+
+/* ========================================
+   TODO Progress Bar
+   ======================================== */
+
+.todo-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-surface-1, var(--color-bg-secondary));
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.todo-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--color-bg-tertiary);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.todo-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent-green), var(--color-accent-cyan));
+  border-radius: 3px;
+  transition: width var(--duration-normal, 200ms) var(--ease-out, ease-out);
+}
+
+.todo-progress-text {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--color-text-muted);
+  min-width: 50px;
+  text-align: right;
 }
 
 /* ========================================

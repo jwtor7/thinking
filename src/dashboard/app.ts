@@ -2342,24 +2342,42 @@ function saveSessionPlanAssociation(sessionId: string, planPath: string): void {
 
 /**
  * Render the TODO panel with current todo items.
+ * Includes a progress bar showing completion percentage.
  */
 function renderTodoPanel(): void {
   if (state.todos.length === 0) {
     // Show different message based on whether "All" sessions is selected
     const message = state.selectedSession === 'all' && state.sessions.size > 0
       ? 'Select a session to view its todos'
-      : 'No todos';
+      : 'No active tasks';
 
     elements.todoContent.innerHTML = `
       <div class="empty-state">
-        <span class="empty-icon">checklist</span>
-        <p>${message}</p>
+        <div class="empty-state-icon">📋</div>
+        <p class="empty-state-title">${message}</p>
+        <p class="empty-state-subtitle">Todo items will appear here</p>
       </div>
     `;
     return;
   }
 
-  const html = state.todos.map((todo, index) => {
+  // Calculate progress
+  const total = state.todos.length;
+  const completed = state.todos.filter((t) => t.status === 'completed').length;
+  const percentage = Math.round((completed / total) * 100);
+
+  // Build progress bar HTML
+  const progressHtml = `
+    <div class="todo-progress">
+      <div class="todo-progress-bar">
+        <div class="todo-progress-fill" style="width: ${percentage}%"></div>
+      </div>
+      <span class="todo-progress-text">${completed}/${total}</span>
+    </div>
+  `;
+
+  // Build todo items HTML
+  const itemsHtml = state.todos.map((todo, index) => {
     const statusClass = `todo-status-${todo.status}`;
     // Add completed class for strikethrough styling
     let itemClass = 'todo-item';
@@ -2380,7 +2398,7 @@ function renderTodoPanel(): void {
     `;
   }).join('');
 
-  elements.todoContent.innerHTML = html;
+  elements.todoContent.innerHTML = progressHtml + itemsHtml;
 }
 
 // ============================================
@@ -2578,6 +2596,11 @@ function appendAndTrim(container: HTMLElement, element: HTMLElement): void {
  * - Bold: **text**
  * - Italic: *text* or _text_
  * - Links: [text](url)
+ * - Unordered lists: - item or * item
+ * - Ordered lists: 1. item
+ * - Task lists: - [ ] unchecked or - [x] checked
+ * - Blockquotes: > quote
+ * - Horizontal rules: --- or ***
  */
 function renderSimpleMarkdown(content: string): string {
   // SECURITY: Escape ALL HTML first to prevent XSS
@@ -2592,10 +2615,36 @@ function renderSimpleMarkdown(content: string): string {
   // Match: `content` (non-greedy, no backticks inside)
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
 
+  // Horizontal rules: --- or *** or ___ (at least 3)
+  html = html.replace(/^(-{3,}|\*{3,}|_{3,})$/gm, '<hr>');
+
   // Headers - content is already escaped
   html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
   html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
   html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+  // Task lists: - [ ] unchecked or - [x] checked
+  // Must be processed before regular lists
+  html = html.replace(/^- \[ \] (.+)$/gm, '<li class="task-list-item"><span class="task-checkbox"></span>$1</li>');
+  html = html.replace(/^- \[x\] (.+)$/gim, '<li class="task-list-item"><span class="task-checkbox checked"></span>$1</li>');
+
+  // Unordered lists: - item or * item (at start of line)
+  html = html.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
+
+  // Ordered lists: 1. item (at start of line)
+  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+  // Wrap consecutive <li> elements in <ul>
+  // This is a simplified approach - wraps all li blocks in ul
+  html = html.replace(/(<li[^>]*>.*?<\/li>\n?)+/g, (match) => {
+    return '<ul>' + match + '</ul>';
+  });
+
+  // Blockquotes: > quote
+  // Handle multi-line blockquotes by converting consecutive lines
+  html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+  // Merge consecutive blockquotes
+  html = html.replace(/<\/blockquote>\n<blockquote>/g, '<br>');
 
   // Bold: **text** (must have content between asterisks)
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -2643,7 +2692,14 @@ function renderSimpleMarkdown(content: string): string {
   });
 
   // Line breaks - convert newlines to <br> for display
+  // But not inside <ul>, <pre>, or <blockquote> tags
   html = html.replace(/\n/g, '<br>');
+
+  // Clean up extra <br> tags inside block elements
+  html = html.replace(/<ul><br>/g, '<ul>');
+  html = html.replace(/<br><\/ul>/g, '</ul>');
+  html = html.replace(/<\/li><br>/g, '</li>');
+  html = html.replace(/<br><li/g, '<li');
 
   return html;
 }

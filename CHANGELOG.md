@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.6.1] - 2025-12-28
+
+### Added
+- Panel headers with glassmorphism design (blur backdrop filter, elevated shadows)
+- Thinking/Tool entries card-based redesign with improved spacing and subtle borders
+- TODO progress bar showing completion percentage with visual feedback
+- Enhanced markdown rendering in Plan panel: support for lists, checkboxes, blockquotes, and horizontal rules
+- Improved visual hierarchy throughout dashboard with refined typography and spacing
+
+---
+
 ## [0.6.0] - 2025-12-28
 
 ### Added
