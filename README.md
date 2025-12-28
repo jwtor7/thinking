@@ -96,21 +96,17 @@ Claude Code Session
 ## Recent Changes
 
 ### 2025-12-28
+- **v0.6.1** - Frontend redesign: glassmorphism panel headers, card-based entries, TODO progress bar, enhanced markdown rendering
+- **v0.6.0** - Design system foundation: CSS tokens, toast notifications, skeleton loaders, animations, micro-interactions
 - Session-specific todos with localStorage persistence
 - Agent context stack in tool activity panel
 - Distinct agent colors for different tools
 - Playwright MCP integration for browser automation
-- Fixed crash in THINKING pane
 
 ### 2025-12-23
 - Replaced Agents panel with Todo panel for task tracking
 - View-based navigation (a/t/o/d/p keyboard shortcuts)
 - Screenshot utility for Arc browser
-
-### 2025-12-22
-- Hook integration with Claude Code (6 hook types)
-- Setup script for automated hook installation
-- Secret redaction module for secure event broadcasting
 
 *For complete history, see [CHANGELOG.md](./CHANGELOG.md)*
 
