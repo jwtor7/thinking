@@ -1,5 +1,3 @@
-// TODO: Set up Playwright MCP for browser automation testing (replace manual screenshots)
-
 /**
  * Thinking Monitor Dashboard - Client Application
  *
