@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.5] - 2025-12-28
+
+### Fixed
+- Plan association now works via `plan_update` events, not just Write/Edit tool events
+- Plans are now correctly associated with the active session when the plan file is modified
+
+---
+
 ## [0.4.4] - 2025-12-28
 
 ### Added
