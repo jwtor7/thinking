@@ -43,3 +43,18 @@ See `~/.claude/plans/splendid-hopping-fairy.md` for full PRD.
 - pnpm for package management
 - esbuild for bundling
 - ws for WebSocket server
+
+## Versioning & Changelog (MANDATORY)
+
+**Before any commit**, update version and changelog:
+
+1. Bump version: `./scripts/bump-version.sh patch|minor|major`
+2. Add entry to CHANGELOG.md with today's date
+3. Include both in the commit
+
+**Version bump rules:**
+- `patch` - Bug fixes, small improvements
+- `minor` - New features (backward compatible)
+- `major` - Breaking changes
+
+**Never commit code changes without updating version/changelog.**
