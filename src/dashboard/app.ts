@@ -1047,7 +1047,7 @@ function displayMostRecentPlan(): void {
 function displayPlan(planPath: string): void {
   const plan = state.plans.get(planPath);
   if (!plan) {
-    // Plan content not loaded yet, show loading state
+    // Plan content not loaded yet, show loading state and request content
     state.currentPlanPath = planPath;
     const listItem = state.planList.find((p) => p.path === planPath);
     elements.planSelectorText.textContent = listItem?.filename || 'Loading...';
@@ -1059,6 +1059,9 @@ function displayPlan(planPath: string): void {
     `;
     updatePlanMeta(null);
     updatePlanActionButtons();
+
+    // Request the plan content from the server
+    requestPlanContent(planPath);
     return;
   }
 

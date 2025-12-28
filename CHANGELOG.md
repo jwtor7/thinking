@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.2] - 2025-12-28
+
+### Fixed
+- Plan content now loads when selecting a session with an associated plan (was stuck on "Loading...")
+- `displayPlan()` now requests content from server when not cached
+
+---
+
 ## [0.5.1] - 2025-12-28
 
 ### Added
