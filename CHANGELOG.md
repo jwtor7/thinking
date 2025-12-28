@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.1] - 2025-12-28
+
+### Added
+- Read tracking for plan file associations: sessions using `--plan` now associate when reading plan files
+- Hash-based session colors: each session ID gets a consistent unique color
+
+### Fixed
+- Plan panel no longer shows plans when "All" sessions is selected (plans are session-specific)
+- Plan content now loads correctly when selected from dropdown
+- Session colors are now distinct (previously could show same color for different sessions)
+
+---
+
 ## [0.5.0] - 2025-12-28
 
 ### Security
