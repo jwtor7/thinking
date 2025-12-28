@@ -8,9 +8,15 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- Skip Link for Accessibility -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- Live region for status announcements (screen readers) -->
+  <div id="status-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
   <div class="app">
     <!-- Header -->
-    <header class="header">
+    <header class="header" role="banner">
       <h1 class="header-title">THINKING MONITOR</h1>
       <div class="header-controls">
         <span id="connection-status" class="status status-disconnected">
@@ -28,13 +34,13 @@
     </header>
 
     <!-- Main Content - 4 Panel Layout -->
-    <main class="panels">
+    <main id="main-content" class="panels" role="main" aria-label="Dashboard panels">
       <!-- Left Column -->
       <div class="panel-column">
         <!-- Thinking Panel -->
-        <section class="panel panel-thinking">
+        <section class="panel panel-thinking" aria-labelledby="thinking-panel-title">
           <header class="panel-header">
-            <h2 class="panel-title">THINKING</h2>
+            <h2 class="panel-title" id="thinking-panel-title">THINKING</h2>
             <div class="panel-header-controls">
               <div class="panel-filter">
                 <input type="text" class="panel-filter-input" id="thinking-filter" placeholder="Filter..." aria-label="Filter thinking entries">
@@ -53,9 +59,9 @@
         </section>
 
         <!-- TODO Panel -->
-        <section class="panel panel-todo">
+        <section class="panel panel-todo" aria-labelledby="todo-panel-title">
           <header class="panel-header">
-            <h2 class="panel-title">TODO</h2>
+            <h2 class="panel-title" id="todo-panel-title">TODO</h2>
             <span class="panel-badge" id="todo-count">0</span>
           </header>
           <div class="panel-content" id="todo-content">
@@ -71,9 +77,9 @@
       <!-- Right Column -->
       <div class="panel-column">
         <!-- Tool Activity Panel -->
-        <section class="panel panel-tools">
+        <section class="panel panel-tools" aria-labelledby="tools-panel-title">
           <header class="panel-header">
-            <h2 class="panel-title">TOOL ACTIVITY</h2>
+            <h2 class="panel-title" id="tools-panel-title">TOOL ACTIVITY</h2>
             <div class="panel-header-controls">
               <div class="panel-filter">
                 <input type="text" class="panel-filter-input" id="tools-filter" placeholder="Filter..." aria-label="Filter tool entries">
@@ -92,9 +98,9 @@
         </section>
 
         <!-- Plan Panel -->
-        <section class="panel panel-plan">
+        <section class="panel panel-plan" aria-labelledby="plan-panel-title">
           <header class="panel-header">
-            <h2 class="panel-title">PLAN <span class="plan-scope-badge" title="Plans are workspace-level files shared across all sessions">workspace</span></h2>
+            <h2 class="panel-title" id="plan-panel-title">PLAN <span class="plan-scope-badge" title="Plans are workspace-level files shared across all sessions">workspace</span></h2>
             <div class="panel-header-controls">
               <div class="plan-actions">
                 <button class="plan-action-btn" id="plan-open-btn" title="Open in Default App (Cmd+O)" aria-label="Open in Default App" disabled>
@@ -140,7 +146,7 @@
     </div>
 
     <!-- Footer -->
-    <footer class="footer">
+    <footer class="footer" role="contentinfo">
       <span id="server-info">Server: --</span>
       <span class="keyboard-hints">
         <kbd>a</kbd><kbd>t</kbd><kbd>o</kbd><kbd>d</kbd><kbd>p</kbd> views

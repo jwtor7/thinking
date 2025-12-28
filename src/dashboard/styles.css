@@ -19,7 +19,8 @@
 
   --color-text-primary: #e6edf3;
   --color-text-secondary: #8b949e;
-  --color-text-muted: #6e7681;
+  /* Slightly lighter than original #6e7681 for better WCAG AA contrast (4.5:1) */
+  --color-text-muted: #848d97;
 
   /* Accent Colors */
   --color-accent-blue: #58a6ff;
@@ -1305,28 +1306,60 @@ body {
 }
 
 /* ========================================
-   Responsive
+   Responsive: Tablet (768px - 1024px)
    ======================================== */
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .panels {
     grid-template-columns: 1fr;
   }
 
   .panel-column {
-    max-height: 50vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+  }
+
+  /* Stack thinking + tools on top, todo + plan on bottom */
+  .panel {
+    min-height: 200px;
+    max-height: 45vh;
   }
 
   .panel-filter-input {
-    width: 80px;
-  }
-
-  .keyboard-hints {
-    display: none;
+    width: 100px;
   }
 }
 
-@media (max-width: 600px) {
+/* ========================================
+   Responsive: Mobile (<768px)
+   ======================================== */
+
+@media (max-width: 768px) {
+  .panels {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-column {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Single column layout */
+  .panel {
+    min-height: 300px;
+    max-height: 50vh;
+  }
+
+  /* Header adjustments */
+  .header {
+    padding: 0 var(--spacing-sm);
+    flex-wrap: wrap;
+    height: auto;
+    min-height: var(--header-height);
+    gap: var(--spacing-xs);
+  }
+
   .header-title {
     font-size: var(--font-size-md);
   }
@@ -1339,10 +1372,40 @@ body {
     display: none;
   }
 
-  .btn {
+  /* View tabs - horizontal scroll on mobile */
+  .view-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    justify-content: flex-start;
+    padding: 0 var(--spacing-sm);
+  }
+
+  .view-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Session filter - horizontal scroll */
+  .session-filter {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding: 0 var(--spacing-sm);
+  }
+
+  .session-filter-label {
+    display: none;
+  }
+
+  /* Footer - simplified */
+  .footer {
     padding: var(--spacing-xs) var(--spacing-sm);
   }
 
+  .keyboard-hints {
+    display: none; /* Hide on mobile - no keyboard */
+  }
+
+  /* Panels adjustments */
   .panels {
     padding: var(--spacing-sm);
     gap: var(--spacing-sm);
@@ -1352,8 +1415,109 @@ body {
     padding: var(--spacing-xs) var(--spacing-sm);
   }
 
-  .panel-filter {
+  .panel-filter-input {
+    width: 80px;
+  }
+
+  /* Touch-friendly targets (min 44x44px) */
+  .btn,
+  .view-tab,
+  .session-filter-badge,
+  .plan-action-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  .toggle {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Hide non-active panels on mobile when using view navigation */
+  .panels[data-view="thinking"] .panel:not(.panel-thinking),
+  .panels[data-view="tools"] .panel:not(.panel-tools),
+  .panels[data-view="todo"] .panel:not(.panel-todo),
+  .panels[data-view="plan"] .panel:not(.panel-plan) {
     display: none;
+  }
+
+  /* When in "all" view on mobile, stack vertically with limited height */
+  .panels[data-view="all"] .panel {
+    max-height: 40vh;
+  }
+}
+
+/* ========================================
+   Responsive: Small Mobile (<480px)
+   ======================================== */
+
+@media (max-width: 480px) {
+  .header {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  .header-title {
+    font-size: var(--font-size-sm);
+    letter-spacing: 0;
+  }
+
+  .header-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .panel-header {
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+  }
+
+  .panel-filter {
+    width: 100%;
+    order: 1;
+  }
+
+  .panel-header-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .view-tab {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-xs);
+  }
+
+  .view-tab-shortcut {
+    display: none;
+  }
+
+  /* Plan selector adjustments */
+  .plan-selector-btn {
+    max-width: 150px;
+  }
+
+  .plan-actions {
+    gap: 2px;
+  }
+
+  .plan-action-btn {
+    min-width: 36px;
+    min-height: 36px;
+    width: 36px;
+    height: 36px;
+  }
+
+  /* Toast positioning for small screens */
+  .toast {
+    left: var(--spacing-sm);
+    right: var(--spacing-sm);
+    transform: translateY(20px);
+    width: auto;
+  }
+
+  .toast.visible {
+    transform: translateY(0);
   }
 }
 
@@ -1522,16 +1686,7 @@ body {
   transform: scale(0.9);
 }
 
-/* Responsive: hide session filter on small screens */
-@media (max-width: 600px) {
-  .session-filter {
-    padding: 0 var(--spacing-sm);
-  }
-
-  .session-filter-label {
-    display: none;
-  }
-}
+/* Responsive session filter handled in main responsive section above */
 
 /* ========================================
    View Navigation Tabs
@@ -1612,22 +1767,7 @@ body.keyboard-mode .view-tab-shortcut {
   height: 100%;
 }
 
-/* Responsive: compact view tabs on small screens */
-@media (max-width: 600px) {
-  .view-tabs {
-    padding: 0 var(--spacing-sm);
-    gap: 2px;
-  }
-
-  .view-tab {
-    padding: var(--spacing-xs) var(--spacing-sm);
-    font-size: var(--font-size-xs);
-  }
-
-  .view-tab-shortcut {
-    display: none;
-  }
-}
+/* Responsive view tabs handled in main responsive section above */
 
 /* ========================================
    Plan Action Buttons
@@ -2351,6 +2491,72 @@ input:focus-visible {
 
 .panel-filter-clear {
   transition: opacity var(--duration-fast, 100ms);
+}
+
+/* ========================================
+   Accessibility: Screen Reader Only
+   ======================================== */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ========================================
+   Accessibility: Skip Link
+   ======================================== */
+
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-accent-blue);
+  color: white;
+  z-index: 100;
+  transition: top var(--duration-fast);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* ========================================
+   Accessibility: Enhanced Focus Indicators
+   ======================================== */
+
+:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+
+/* Button focus */
+.btn:focus-visible,
+.view-tab:focus-visible,
+.session-filter-badge:focus-visible,
+.plan-action-btn:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(88, 166, 255, 0.2);
+}
+
+/* Panel focus for keyboard navigation */
+.panel-content:focus {
+  outline: none;
+}
+
+.panel-content:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: -2px;
 }
 
 /* ========================================

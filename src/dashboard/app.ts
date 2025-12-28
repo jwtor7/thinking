@@ -511,15 +511,21 @@ function updateConnectionStatus(status: 'connected' | 'disconnected' | 'connecti
   const statusEl = elements.connectionStatus;
   statusEl.className = `status status-${status}`;
 
+  let statusText = 'Disconnected';
+  if (status === 'connected') {
+    statusText = 'Connected';
+  } else if (status === 'connecting') {
+    statusText = 'Connecting...';
+  }
+
   const textEl = statusEl.querySelector('.status-text');
   if (textEl) {
-    if (status === 'connected') {
-      textEl.textContent = 'Connected';
-    } else if (status === 'connecting') {
-      textEl.textContent = 'Connecting...';
-    } else {
-      textEl.textContent = 'Disconnected';
-    }
+    textEl.textContent = statusText;
+  }
+
+  // Announce connection status change for screen readers (only significant changes)
+  if (status === 'connected' || status === 'disconnected') {
+    announceStatus(status === 'connected' ? 'Connected to server' : 'Disconnected from server');
   }
 }
 
@@ -1457,6 +1463,51 @@ function updatePlanActionButtons(): void {
   elements.planRevealBtn.disabled = !hasActivePlan;
 }
 
+// ============================================
+// Accessibility Helpers
+// ============================================
+
+/**
+ * Announce a status message for screen readers.
+ * Uses the live region to announce changes without focus shift.
+ */
+function announceStatus(message: string): void {
+  const announcer = document.getElementById('status-announcer');
+  if (announcer) {
+    // Clear first to ensure re-announcement of same message
+    announcer.textContent = '';
+    // Use requestAnimationFrame to ensure the clear is processed
+    requestAnimationFrame(() => {
+      announcer.textContent = message;
+    });
+  }
+}
+
+/**
+ * Focus the active panel content for keyboard navigation.
+ * Sets tabindex to make the panel focusable, then focuses it.
+ */
+function focusActivePanel(view: ViewType): void {
+  // Only focus on single-panel views (not 'all')
+  if (view === 'all') return;
+
+  const panelMap: Record<string, string> = {
+    thinking: 'thinking-content',
+    tools: 'tools-content',
+    todo: 'todo-content',
+    plan: 'plan-content',
+  };
+
+  const panelId = panelMap[view];
+  if (panelId) {
+    const panel = document.getElementById(panelId);
+    if (panel) {
+      panel.setAttribute('tabindex', '-1');
+      panel.focus();
+    }
+  }
+}
+
 /**
  * Handle toolbar "Open" button click.
  */
@@ -1965,6 +2016,9 @@ function applyViewFilter(): void {
   // Add the current view class
   panels.classList.add(`view-${state.activeView}`);
 
+  // Set data-view attribute for CSS targeting (especially mobile)
+  panels.dataset.view = state.activeView;
+
   // Show/hide panels based on active view
   const showAll = state.activeView === 'all';
 
@@ -1991,6 +2045,12 @@ function applyViewFilter(): void {
   } else {
     panels.classList.remove('single-view');
   }
+
+  // Announce view change for screen readers
+  announceStatus(`Switched to ${state.activeView} view`);
+
+  // Focus the active panel content for keyboard navigation
+  focusActivePanel(state.activeView);
 }
 
 // ============================================
@@ -2781,6 +2841,9 @@ function clearAllPanels(): void {
 
   // Show feedback toast
   showToast('Panels cleared', 'info');
+
+  // Announce for screen readers
+  announceStatus('All panels cleared');
 
   // NOTE: Plan state is intentionally NOT cleared.
   // Plans are workspace-level resources and should persist across clear operations.

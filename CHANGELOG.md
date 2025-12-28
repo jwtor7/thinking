@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.6.2] - 2025-12-28
+
+### Added
+- Responsive design with 4 breakpoints: desktop (>1200px), tablet (768-1200px), mobile (480-768px), small mobile (<480px)
+- Accessibility enhancements: skip link to main content, live region announcer for status updates, ARIA landmarks (navigation, main, region roles)
+- Focus management: focusActivePanel() function for keyboard navigation, enhanced focus indicators with WCAG AAA contrast
+- Screen reader support: screen-reader-only class for semantic content, keyboard-accessible panel switching (a/t/o/d/p keys)
+- Touch-friendly targets: minimum 44px hit targets for buttons and interactive elements across all screen sizes
+- Color contrast improvements: WCAG AA minimum 4.5:1 contrast ratio for all text, enhanced indicators for selected/focused states
+- Responsive typography: fluid font scaling based on viewport width (rem units with clamp())
+- Mobile-optimized layout: stacked panels on small screens, adjusted spacing and padding for touch interactions
+
+### Changed
+- CSS restructured with mobile-first approach: base styles for mobile, media queries for larger screens
+- Panel headers adjusted for mobile: reduced padding, optimized for touch in vertical orientation
+- Entry cards: responsive padding and spacing that scales with viewport
+
+---
+
 ## [0.6.1] - 2025-12-28
 
 ### Added
