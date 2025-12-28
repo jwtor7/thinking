@@ -500,7 +500,7 @@ function handleConnectionStatus(event: MonitorEvent): void {
 
 function handleThinking(event: MonitorEvent): void {
   state.thinkingCount++;
-  elements.thinkingCount.textContent = String(state.thinkingCount);
+  updateThinkingCount();
 
   const content = String(event.content || '');
   const time = formatTime(event.timestamp);
@@ -574,7 +574,7 @@ function handleToolStart(event: MonitorEvent): void {
   }
 
   state.toolsCount++;
-  elements.toolsCount.textContent = String(state.toolsCount);
+  updateToolsCount();
 
   // Clear empty state if present
   const emptyState = elements.toolsContent.querySelector('.empty-state');
@@ -918,26 +918,6 @@ function displayPlan(planPath: string): void {
 
   // Update selector to show active state
   renderPlanSelector();
-}
-
-/**
- * Display the most recent plan for a given session.
- * Shows the most recently modified plan that matches the sessionId.
- * If no plans found for the session, shows empty state.
- */
-function displayPlanForSession(sessionId: string): void {
-  // Find plans associated with this session
-  const sessionPlans = Array.from(state.plans.values())
-    .filter((p) => p.sessionId === sessionId)
-    .sort((a, b) => b.lastModified - a.lastModified);
-
-  if (sessionPlans.length > 0) {
-    displayPlan(sessionPlans[0].path);
-    return;
-  }
-
-  // If no plans found for this session, show empty state
-  displayEmptyPlan();
 }
 
 /**
@@ -1599,21 +1579,17 @@ function updateSessionFilter(): void {
 
 /**
  * Select a session to filter by.
- * Also updates the plan display to show plans for the selected session.
+ * Updates event filtering and todo display but preserves plan selection
+ * (plan is workspace-level, not session-level).
  */
 function selectSession(sessionId: string): void {
   state.selectedSession = sessionId;
   updateSessionIndicator(); // Updates both header indicator and filter bar
   filterAllBySession();
 
-  // Update plan display based on session selection
-  if (sessionId === 'all') {
-    // With "All" selected, it's unclear which session a plan belongs to, so show empty
-    displayEmptyPlan();
-  } else {
-    // Show the most recent plan for the selected session
-    displayPlanForSession(sessionId);
-  }
+  // NOTE: Plan selection is intentionally NOT updated when switching sessions.
+  // Plans are workspace-level resources, not session-specific.
+  // Users can manually select a different plan via the plan selector dropdown.
 
   // Update todo display based on session selection
   if (sessionId === 'all') {
@@ -1646,6 +1622,10 @@ function filterAllBySession(): void {
     const el = entry as HTMLElement;
     applySessionFilter(el);
   });
+
+  // Update counts to reflect filtered entries
+  updateThinkingCount();
+  updateToolsCount();
 }
 
 /**
@@ -2079,6 +2059,9 @@ function filterAllThinking(): void {
   } else {
     elements.thinkingFilterClear.classList.add('panel-filter-hidden');
   }
+
+  // Update count to reflect filtered entries
+  updateThinkingCount();
 }
 
 function filterAllTools(): void {
@@ -2092,6 +2075,55 @@ function filterAllTools(): void {
     elements.toolsFilterClear.classList.remove('panel-filter-hidden');
   } else {
     elements.toolsFilterClear.classList.add('panel-filter-hidden');
+  }
+
+  // Update count to reflect filtered entries
+  updateToolsCount();
+}
+
+/**
+ * Update the thinking count display.
+ * Shows "filtered/total" format when a filter is active, otherwise just the total.
+ */
+function updateThinkingCount(): void {
+  const hasFilter = state.thinkingFilter || state.selectedSession !== 'all';
+
+  if (hasFilter) {
+    // Count visible entries
+    const entries = elements.thinkingContent.querySelectorAll('.thinking-entry');
+    let visibleCount = 0;
+    entries.forEach((entry: Element) => {
+      const el = entry as HTMLElement;
+      if (el.style.display !== 'none') {
+        visibleCount++;
+      }
+    });
+    elements.thinkingCount.textContent = `${visibleCount}/${state.thinkingCount}`;
+  } else {
+    elements.thinkingCount.textContent = String(state.thinkingCount);
+  }
+}
+
+/**
+ * Update the tools count display.
+ * Shows "filtered/total" format when a filter is active, otherwise just the total.
+ */
+function updateToolsCount(): void {
+  const hasFilter = state.toolsFilter || state.selectedSession !== 'all';
+
+  if (hasFilter) {
+    // Count visible entries
+    const entries = elements.toolsContent.querySelectorAll('.tool-entry');
+    let visibleCount = 0;
+    entries.forEach((entry: Element) => {
+      const el = entry as HTMLElement;
+      if (el.style.display !== 'none') {
+        visibleCount++;
+      }
+    });
+    elements.toolsCount.textContent = `${visibleCount}/${state.toolsCount}`;
+  } else {
+    elements.toolsCount.textContent = String(state.toolsCount);
   }
 }
 
@@ -2264,25 +2296,9 @@ function clearAllPanels(): void {
     </div>
   `;
 
-  elements.planContent.innerHTML = `
-    <div class="empty-state">
-      <span class="empty-icon">file</span>
-      <p>No plan file loaded</p>
-    </div>
-  `;
-
-  // Reset plan state
-  state.plans.clear();
-  state.planList = [];
-  state.currentPlanPath = null;
-  state.planSelectorOpen = false;
-  state.contextMenuFilePath = null;
-  elements.planSelectorText.textContent = 'No active plan';
-  updatePlanMeta(null);
-  closePlanSelector();
-  hidePlanContextMenu();
-  renderPlanSelector();
-
+  // NOTE: Plan state is intentionally NOT cleared.
+  // Plans are workspace-level resources and should persist across clear operations.
+  // Only events, sessions, and todos are cleared.
 }
 
 // ============================================

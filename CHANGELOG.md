@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.2] - 2025-12-28
+
+### Fixed
+- Filter count now shows `X/Y` format when filter is active (e.g., `3/10` instead of just `10`)
+- Plan selection persists when switching between sessions (plan is workspace-level, not session-level)
+- Clear button now preserves plan selection (only clears events, sessions, and todos)
+
+---
+
 ## [0.4.1] - 2025-12-28
 
 ### Fixed
