@@ -1,6 +1,6 @@
 {
   "name": "thinking-monitor",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Real-time monitoring dashboard for Claude Code thinking, agents, and tool activity",
   "type": "module",
   "main": "dist/server/index.js",
@@ -8,7 +8,7 @@
     "dev": "pnpm build:dashboard && node --watch --experimental-transform-types src/server/index.ts",
     "dev:watch": "pnpm build:dashboard --watch &  node --watch --experimental-strip-types src/server/index.ts",
     "build": "pnpm build:server && pnpm build:dashboard",
-    "build:server": "esbuild src/server/index.ts --bundle --platform=node --format=esm --outdir=dist/server --packages=external",
+    "build:server": "node scripts/build-server.js",
     "build:dashboard": "esbuild src/dashboard/app.ts --bundle --format=iife --outfile=src/dashboard/app.js",
     "start": "node dist/server/index.js",
     "typecheck": "tsc --noEmit",

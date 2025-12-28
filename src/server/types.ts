@@ -5,6 +5,9 @@
  * Claude Code hooks, the monitor server, and the web dashboard.
  */
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 /**
  * Event types that can be sent from Claude Code hooks or internal watchers.
  */
@@ -240,6 +243,35 @@ export function isClientRequest(obj: unknown): obj is ClientRequest {
 }
 
 /**
+ * Package version injected at build time by esbuild.
+ * For development with --experimental-strip-types, falls back to reading package.json.
+ */
+declare const __PACKAGE_VERSION__: string | undefined;
+
+/**
+ * Get the package version, with fallback for development mode.
+ */
+function getVersion(): string {
+  // Build-time injected version (production builds)
+  if (typeof __PACKAGE_VERSION__ !== 'undefined') {
+    return __PACKAGE_VERSION__;
+  }
+
+  // Development fallback: read from package.json synchronously
+  // This path works when running from project root with --experimental-strip-types
+  try {
+    const packagePath = join(process.cwd(), 'package.json');
+    const pkg = JSON.parse(readFileSync(packagePath, 'utf-8'));
+    if (pkg.name === 'thinking-monitor' && pkg.version) {
+      return pkg.version;
+    }
+    return '0.0.0-dev';
+  } catch {
+    return '0.0.0-dev';
+  }
+}
+
+/**
  * Configuration constants.
  */
 export const CONFIG = {
@@ -251,8 +283,8 @@ export const CONFIG = {
   HOST: '127.0.0.1',
   /** Maximum payload size in bytes */
   MAX_PAYLOAD_SIZE: 10 * 1024, // 10KB
-  /** Server version */
-  VERSION: '0.3.0',
+  /** Server version - read from package.json */
+  VERSION: getVersion(),
 } as const;
 
 /**

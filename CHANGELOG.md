@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1] - 2025-12-28
+
+### Fixed
+- Version now reads dynamically from package.json instead of being hardcoded
+- Added build-time version injection via esbuild
+
+---
+
 ## 2025-12-28
 
 ### Added
