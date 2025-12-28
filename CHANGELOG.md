@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.3] - 2025-12-28
+
+### Added
+- localStorage persistence for session-plan associations (survives page refresh)
+- Automatic cleanup: entries older than 7 days are pruned
+- Storage limit: maximum 100 associations kept (oldest removed first)
+
+---
+
 ## [0.5.2] - 2025-12-28
 
 ### Fixed

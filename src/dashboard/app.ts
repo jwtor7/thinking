@@ -56,6 +56,11 @@ const MAX_ENTRIES = 500; // Max entries per panel to prevent memory issues
 const SCROLL_THRESHOLD = 50; // Pixels from bottom to consider "at bottom"
 const STORAGE_KEY_TODOS = 'thinking-monitor-session-todos';
 
+// Plan association persistence constants
+const PLAN_ASSOCIATION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const PLAN_ASSOCIATION_MAX_ENTRIES = 100;
+const PLAN_ASSOCIATION_STORAGE_KEY = 'sessionPlanAssociations';
+
 // ============================================
 // State
 // ============================================
@@ -162,6 +167,12 @@ interface TodoItem {
 
 // Map of session ID to todo items for that session
 type SessionTodosMap = Map<string, TodoItem[]>;
+
+/** Stored plan association with timestamp for cleanup */
+interface StoredPlanAssociation {
+  planPath: string;
+  timestamp: number; // Date.now() when association was created
+}
 
 const state: AppState = {
   connected: false,
@@ -2015,6 +2026,8 @@ function detectPlanAccess(input: string, sessionId: string): void {
     if (planPathMatch) {
       // Store the association: this session uses this plan
       state.sessionPlanMap.set(sessionId, filePath);
+      // Persist to localStorage for survival across page refreshes
+      saveSessionPlanAssociation(sessionId, filePath);
       console.log(`[Dashboard] Session ${sessionId.slice(0, 8)} associated with plan: ${planPathMatch[1]}`);
     }
   } catch {
@@ -2023,6 +2036,8 @@ function detectPlanAccess(input: string, sessionId: string): void {
     const planPathMatch = input.match(/\.claude\/plans\/[^"'\s]+\.md/);
     if (planPathMatch) {
       state.sessionPlanMap.set(sessionId, planPathMatch[0]);
+      // Persist to localStorage for survival across page refreshes
+      saveSessionPlanAssociation(sessionId, planPathMatch[0]);
       console.log(`[Dashboard] Session ${sessionId.slice(0, 8)} associated with plan (regex): ${planPathMatch[0]}`);
     }
   }
@@ -2207,6 +2222,120 @@ function restoreTodosFromStorage(): void {
     }
   } catch (error) {
     console.warn('[Dashboard] Failed to restore todos from localStorage:', error);
+  }
+}
+
+// ============================================
+// Session-Plan Association Persistence
+// ============================================
+
+/**
+ * Prune stale and excess session-plan associations.
+ * Removes entries older than PLAN_ASSOCIATION_MAX_AGE_MS (7 days)
+ * and keeps at most PLAN_ASSOCIATION_MAX_ENTRIES (100 entries),
+ * removing oldest by timestamp if exceeded.
+ */
+function pruneSessionPlanAssociations(
+  associations: Record<string, StoredPlanAssociation>
+): Record<string, StoredPlanAssociation> {
+  const now = Date.now();
+  const maxAge = PLAN_ASSOCIATION_MAX_AGE_MS;
+  const maxEntries = PLAN_ASSOCIATION_MAX_ENTRIES;
+
+  // First pass: remove entries older than max age
+  const entries = Object.entries(associations).filter(
+    ([, assoc]) => now - assoc.timestamp < maxAge
+  );
+
+  // If still over max entries, sort by timestamp and keep only the newest
+  if (entries.length > maxEntries) {
+    entries.sort((a, b) => b[1].timestamp - a[1].timestamp); // Newest first
+    entries.length = maxEntries; // Truncate to max entries
+  }
+
+  // Convert back to object
+  return Object.fromEntries(entries);
+}
+
+/**
+ * Load session-plan associations from localStorage.
+ * Runs cleanup to remove stale entries, then populates state.sessionPlanMap.
+ * Should be called during initialization.
+ */
+function loadSessionPlanAssociations(): void {
+  try {
+    const stored = localStorage.getItem(PLAN_ASSOCIATION_STORAGE_KEY);
+    if (!stored) {
+      console.log('[Dashboard] No stored plan associations found in localStorage');
+      return;
+    }
+
+    const parsed: Record<string, StoredPlanAssociation> = JSON.parse(stored);
+    if (typeof parsed !== 'object' || parsed === null) {
+      console.warn('[Dashboard] Invalid stored plan associations format, clearing');
+      localStorage.removeItem(PLAN_ASSOCIATION_STORAGE_KEY);
+      return;
+    }
+
+    // Prune stale/excess entries
+    const pruned = pruneSessionPlanAssociations(parsed);
+
+    // Check if pruning removed any entries
+    const originalCount = Object.keys(parsed).length;
+    const prunedCount = Object.keys(pruned).length;
+    if (prunedCount < originalCount) {
+      console.log(`[Dashboard] Pruned ${originalCount - prunedCount} stale plan associations`);
+      // Save the pruned state back to localStorage
+      localStorage.setItem(PLAN_ASSOCIATION_STORAGE_KEY, JSON.stringify(pruned));
+    }
+
+    // Populate state.sessionPlanMap
+    state.sessionPlanMap.clear();
+    for (const [sessionId, assoc] of Object.entries(pruned)) {
+      state.sessionPlanMap.set(sessionId, assoc.planPath);
+    }
+
+    console.log(`[Dashboard] Restored ${state.sessionPlanMap.size} plan associations from localStorage`);
+  } catch (error) {
+    console.warn('[Dashboard] Failed to restore plan associations from localStorage:', error);
+  }
+}
+
+/**
+ * Save a single session-plan association to localStorage.
+ * Runs cleanup to prevent unbounded growth.
+ */
+function saveSessionPlanAssociation(sessionId: string, planPath: string): void {
+  try {
+    // Load existing associations
+    const stored = localStorage.getItem(PLAN_ASSOCIATION_STORAGE_KEY);
+    let associations: Record<string, StoredPlanAssociation> = {};
+
+    if (stored) {
+      try {
+        associations = JSON.parse(stored);
+        if (typeof associations !== 'object' || associations === null) {
+          associations = {};
+        }
+      } catch {
+        associations = {};
+      }
+    }
+
+    // Add the new association with current timestamp
+    associations[sessionId] = {
+      planPath,
+      timestamp: Date.now(),
+    };
+
+    // Prune stale/excess entries
+    associations = pruneSessionPlanAssociations(associations);
+
+    // Save back to localStorage
+    localStorage.setItem(PLAN_ASSOCIATION_STORAGE_KEY, JSON.stringify(associations));
+    console.log(`[Dashboard] Saved plan association: ${sessionId.slice(0, 8)} -> ${planPath.split('/').pop()}`);
+  } catch (error) {
+    console.warn('[Dashboard] Failed to save plan association to localStorage:', error);
   }
 }
 
@@ -2833,8 +2962,9 @@ document.addEventListener('keydown', (e) => {
 // Initialize view tabs navigation
 initViewTabs();
 
-// Restore persisted todos from localStorage before connecting
+// Restore persisted state from localStorage before connecting
 restoreTodosFromStorage();
+loadSessionPlanAssociations();
 
 // Update UI with restored state
 if (state.todos.length > 0) {
