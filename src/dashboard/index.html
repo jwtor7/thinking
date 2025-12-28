@@ -45,8 +45,9 @@
           </header>
           <div class="panel-content" id="thinking-content">
             <div class="empty-state">
-              <span class="empty-icon">brain</span>
-              <p>Waiting for thinking content...</p>
+              <div class="empty-state-icon">🧠</div>
+              <p class="empty-state-title">Waiting for thinking...</p>
+              <p class="empty-state-subtitle">Claude's thoughts will appear here</p>
             </div>
           </div>
         </section>
@@ -59,8 +60,9 @@
           </header>
           <div class="panel-content" id="todo-content">
             <div class="empty-state">
-              <span class="empty-icon">checklist</span>
-              <p>No todos</p>
+              <div class="empty-state-icon">📋</div>
+              <p class="empty-state-title">No active tasks</p>
+              <p class="empty-state-subtitle">Todo items will appear here</p>
             </div>
           </div>
         </section>
@@ -82,8 +84,9 @@
           </header>
           <div class="panel-content" id="tools-content">
             <div class="empty-state">
-              <span class="empty-icon">wrench</span>
-              <p>No tool activity yet</p>
+              <div class="empty-state-icon">🔧</div>
+              <p class="empty-state-title">No tool activity</p>
+              <p class="empty-state-subtitle">Tool calls will be logged here</p>
             </div>
           </div>
         </section>
@@ -117,8 +120,9 @@
           </div>
           <div class="panel-content" id="plan-content">
             <div class="empty-state">
-              <span class="empty-icon">file</span>
-              <p>No plan file loaded</p>
+              <div class="empty-state-icon">📄</div>
+              <p class="empty-state-title">No plan loaded</p>
+              <p class="empty-state-subtitle">Select a plan from the dropdown above</p>
             </div>
           </div>
         </section>
@@ -128,7 +132,7 @@
     <!-- Connection Overlay -->
     <div class="connection-overlay" id="connection-overlay">
       <div class="connection-overlay-content">
-        <div class="connection-overlay-icon">...</div>
+        <div class="connection-overlay-icon">🔌</div>
         <h2 class="connection-overlay-title">Connecting to Server</h2>
         <p class="connection-overlay-message" id="connection-overlay-message">Attempting to connect...</p>
         <button class="connection-overlay-retry" id="connection-overlay-retry">Retry Now</button>

@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.6.0] - 2025-12-28
+
+### Added
+- Design system foundation with CSS tokens for typography (scale, weights), spacing (8px grid), shadows (2-4 levels), and color surfaces
+- Motion design tokens for smooth animations (ease functions, timing durations) and reduced motion support
+- Toast notification system for user feedback (success, error, info types with auto-dismiss)
+- Skeleton loading states for better perceived performance
+- Empty state designs with emoji icons and structured title/subtitle layout
+- Micro-interactions including button hover/active states and smooth transitions
+- Entry animations with staggered sequences for panels and content
+- Improved accessibility with `prefers-reduced-motion` support throughout
+
+### Changed
+- Updated empty state messages in HTML to use structured layout with icons
+- Refactored app.ts to centralize empty state and notification rendering
+
+---
+
 ## [0.5.3] - 2025-12-28
 
 ### Added

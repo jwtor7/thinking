@@ -381,7 +381,6 @@ const elements = {
   connectionOverlayMessage: document.getElementById('connection-overlay-message')!,
   connectionOverlayRetry: document.getElementById('connection-overlay-retry')!,
   panels: document.querySelector('.panels') as HTMLElement,
-  toast: null as HTMLElement | null,
 };
 
 // ============================================
@@ -408,6 +407,7 @@ function connect(): void {
     state.reconnectAttempt = 0;
     updateConnectionStatus('connected');
     hideConnectionOverlay();
+    showToast('Connected to server', 'success');
 
     if (reconnectTimeout) {
       clearTimeout(reconnectTimeout);
@@ -423,6 +423,7 @@ function connect(): void {
     console.log('[Dashboard] Disconnected from monitor server');
     state.connected = false;
     updateConnectionStatus('disconnected');
+    showToast('Connection lost', 'error');
     scheduleReconnect();
   };
 
@@ -1394,28 +1395,28 @@ function hidePlanContextMenu(): void {
 
 /**
  * Show a toast notification.
+ * Supports multiple simultaneous toasts with stacking.
  */
-function showToast(message: string, type: 'success' | 'error' = 'success'): void {
-  // Create toast element if it doesn't exist
-  if (!elements.toast) {
-    elements.toast = document.createElement('div');
-    elements.toast.className = 'toast';
-    document.body.appendChild(elements.toast);
+function showToast(message: string, type: 'success' | 'error' | 'info' = 'info', duration = 3000): void {
+  // Create container if it doesn't exist
+  let container = document.querySelector('.toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'toast-container';
+    document.body.appendChild(container);
   }
 
-  // Set content and type
-  elements.toast.textContent = message;
-  elements.toast.className = `toast toast-${type}`;
+  // Create toast element
+  const toast = document.createElement('div');
+  toast.className = `toast-stacked toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
 
-  // Show toast
-  requestAnimationFrame(() => {
-    elements.toast!.classList.add('visible');
-  });
-
-  // Hide after delay
+  // Hide after delay with fade-out animation
   setTimeout(() => {
-    elements.toast!.classList.remove('visible');
-  }, 2500);
+    toast.classList.add('toast-out');
+    setTimeout(() => toast.remove(), 100);
+  }, duration);
 }
 
 /**
@@ -2697,27 +2698,33 @@ function clearAllPanels(): void {
   elements.thinkingFilterClear.classList.add('panel-filter-hidden');
   elements.toolsFilterClear.classList.add('panel-filter-hidden');
 
-  // Clear panel contents
+  // Clear panel contents with enhanced empty states
   elements.thinkingContent.innerHTML = `
     <div class="empty-state">
-      <span class="empty-icon">brain</span>
-      <p>Waiting for thinking content...</p>
+      <div class="empty-state-icon">🧠</div>
+      <p class="empty-state-title">Waiting for thinking...</p>
+      <p class="empty-state-subtitle">Claude's thoughts will appear here</p>
     </div>
   `;
 
   elements.toolsContent.innerHTML = `
     <div class="empty-state">
-      <span class="empty-icon">wrench</span>
-      <p>No tool activity yet</p>
+      <div class="empty-state-icon">🔧</div>
+      <p class="empty-state-title">No tool activity</p>
+      <p class="empty-state-subtitle">Tool calls will be logged here</p>
     </div>
   `;
 
   elements.todoContent.innerHTML = `
     <div class="empty-state">
-      <span class="empty-icon">checklist</span>
-      <p>No todos</p>
+      <div class="empty-state-icon">📋</div>
+      <p class="empty-state-title">No active tasks</p>
+      <p class="empty-state-subtitle">Todo items will appear here</p>
     </div>
   `;
+
+  // Show feedback toast
+  showToast('Panels cleared', 'info');
 
   // NOTE: Plan state is intentionally NOT cleared.
   // Plans are workspace-level resources and should persist across clear operations.
