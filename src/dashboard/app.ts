@@ -2306,10 +2306,19 @@ function clearAllPanels(): void {
 // ============================================
 
 function handleKeydown(event: KeyboardEvent): void {
-  // Ignore if typing in an input
-  if ((event.target as HTMLElement).tagName === 'INPUT' ||
-      (event.target as HTMLElement).tagName === 'TEXTAREA') {
-    return;
+  // Check if user is typing in an input field
+  const activeElement = document.activeElement;
+  const isInputFocused = activeElement instanceof HTMLInputElement ||
+                         activeElement instanceof HTMLTextAreaElement ||
+                         activeElement?.getAttribute('contenteditable') === 'true';
+
+  if (isInputFocused) {
+    // Only allow Escape to blur, ignore other shortcuts
+    if (event.key === 'Escape') {
+      (activeElement as HTMLElement).blur();
+      event.preventDefault();
+    }
+    return; // Don't process other shortcuts when typing
   }
 
   // Enable keyboard mode indicator

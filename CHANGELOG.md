@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.3] - 2025-12-28
+
+### Fixed
+- Keyboard shortcut `c` (clear) now properly ignores input when filter is focused
+- Improved keyboard handler to use `document.activeElement` for reliable focus detection
+
+---
+
 ## [0.4.2] - 2025-12-28
 
 ### Fixed
