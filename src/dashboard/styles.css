@@ -312,6 +312,12 @@ body {
   font-size: var(--font-size-sm);
 }
 
+.empty-state .empty-hint {
+  margin-top: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
 /* ========================================
    Content Items
    ======================================== */

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.4] - 2025-12-28
+
+### Added
+- Session-plan associations: when a session writes to a plan file, that plan is automatically associated with the session
+- When filtering by session, the Plan panel shows that session's associated plan instead of the most recent plan
+- New "No plan for session" message with hint to browse all plans via dropdown
+
+### Changed
+- Plan panel now tracks which sessions use which plans via `sessionPlanMap`
+- When "All" sessions is selected, shows most recently modified plan
+- When a specific session is selected, shows that session's associated plan (or helpful empty state)
+
+---
+
 ## [0.4.3] - 2025-12-28
 
 ### Fixed

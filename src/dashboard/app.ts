@@ -93,6 +93,8 @@ interface AppState {
   activeView: 'all' | 'thinking' | 'tools' | 'todo' | 'plan';
   // Todo tracking - maps session ID to todos for that session
   sessionTodos: SessionTodosMap;
+  // Session-plan associations - maps session ID to the plan path that session uses
+  sessionPlanMap: Map<string, string>;
   // Current session's todos (derived from sessionTodos based on currentSessionId)
   todos: TodoItem[];
 }
@@ -186,6 +188,7 @@ const state: AppState = {
   contextMenuFilePath: null,
   activeView: 'all',
   sessionTodos: new Map(),
+  sessionPlanMap: new Map(),
   todos: [],
 };
 
@@ -573,6 +576,12 @@ function handleToolStart(event: MonitorEvent): void {
     parseTodoWriteInput(input, sessionId);
   }
 
+  // Detect plan file writes (Write or Edit to ~/.claude/plans/)
+  // and associate the plan with the current session
+  if ((toolName === 'Write' || toolName === 'Edit') && input && sessionId) {
+    detectPlanWrite(input, sessionId);
+  }
+
   state.toolsCount++;
   updateToolsCount();
 
@@ -937,6 +946,28 @@ function displayEmptyPlan(): void {
     <div class="empty-state">
       <span class="empty-icon">file</span>
       <p>${message}</p>
+    </div>
+  `;
+  updatePlanMeta(null);
+  updatePlanActionButtons();
+  renderPlanSelector();
+}
+
+/**
+ * Display empty plan state for a specific session.
+ * Shows a message indicating no plan is associated with this session,
+ * and a hint that users can still browse plans via the dropdown.
+ */
+function displaySessionPlanEmpty(sessionId: string): void {
+  state.currentPlanPath = null;
+  const shortId = sessionId.slice(0, 8);
+  elements.planSelectorText.textContent = 'No plan for session';
+
+  elements.planContent.innerHTML = `
+    <div class="empty-state">
+      <span class="empty-icon">file</span>
+      <p>No plan associated with session ${shortId}</p>
+      <p class="empty-hint">Use the dropdown to browse all plans</p>
     </div>
   `;
   updatePlanMeta(null);
@@ -1579,17 +1610,28 @@ function updateSessionFilter(): void {
 
 /**
  * Select a session to filter by.
- * Updates event filtering and todo display but preserves plan selection
- * (plan is workspace-level, not session-level).
+ * Updates event filtering, todo display, and shows the session's associated plan.
  */
 function selectSession(sessionId: string): void {
   state.selectedSession = sessionId;
   updateSessionIndicator(); // Updates both header indicator and filter bar
   filterAllBySession();
 
-  // NOTE: Plan selection is intentionally NOT updated when switching sessions.
-  // Plans are workspace-level resources, not session-specific.
-  // Users can manually select a different plan via the plan selector dropdown.
+  // Show the plan associated with this session (if any)
+  if (sessionId === 'all') {
+    // When "All" is selected, show the most recently modified plan
+    displayMostRecentPlan();
+  } else {
+    // Check if this session has an associated plan
+    const associatedPlanPath = state.sessionPlanMap.get(sessionId);
+    if (associatedPlanPath) {
+      // Show this session's plan
+      displayPlan(associatedPlanPath);
+    } else {
+      // No plan associated with this session - show a helpful message
+      displaySessionPlanEmpty(sessionId);
+    }
+  }
 
   // Update todo display based on session selection
   if (sessionId === 'all') {
@@ -1799,6 +1841,35 @@ function renderAgentTree(): void {
 // ============================================
 // Todo Panel
 // ============================================
+
+/**
+ * Detect if a Write or Edit tool is targeting a plan file.
+ * If so, associate that plan with the given session ID.
+ * This allows us to show the correct plan when the user filters by session.
+ */
+function detectPlanWrite(input: string, sessionId: string): void {
+  try {
+    // The input is typically JSON with a file_path field
+    const parsed = JSON.parse(input);
+    const filePath = parsed.file_path || parsed.path || '';
+
+    // Check if the path is a plan file (in ~/.claude/plans/ or .claude/plans/)
+    const planPathMatch = filePath.match(/\.claude\/plans\/([^/]+\.md)$/);
+    if (planPathMatch) {
+      // Store the association: this session uses this plan
+      state.sessionPlanMap.set(sessionId, filePath);
+      console.log(`[Dashboard] Session ${sessionId.slice(0, 8)} associated with plan: ${planPathMatch[1]}`);
+    }
+  } catch {
+    // Input might not be JSON, or might not have a file_path
+    // Try a simple regex match on the raw input
+    const planPathMatch = input.match(/\.claude\/plans\/[^"'\s]+\.md/);
+    if (planPathMatch) {
+      state.sessionPlanMap.set(sessionId, planPathMatch[0]);
+      console.log(`[Dashboard] Session ${sessionId.slice(0, 8)} associated with plan (regex): ${planPathMatch[0]}`);
+    }
+  }
+}
 
 /**
  * Parse TodoWrite tool input to extract todo items.
