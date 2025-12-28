@@ -35,11 +35,31 @@
   --color-status-disconnected: var(--color-accent-red);
   --color-status-pending: var(--color-accent-yellow);
 
-  /* Agent Colors */
-  --color-agent-main: var(--color-accent-blue);
-  --color-agent-explore: var(--color-accent-purple);
-  --color-agent-plan: var(--color-accent-cyan);
-  --color-agent-debug: var(--color-accent-orange);
+  /* Agent Colors - Used for visual distinction in tool activity panel */
+  --color-agent-main: var(--color-text-muted);           /* gray - main conversation */
+  --color-agent-code-implementer: var(--color-accent-green);   /* green - implementation work */
+  --color-agent-code-test-evaluator: var(--color-accent-cyan); /* cyan/teal - testing/evaluation */
+  --color-agent-haiku: var(--color-accent-orange);       /* orange - haiku agent */
+  --color-agent-opus: var(--color-accent-yellow);        /* gold/yellow - opus general purpose */
+  --color-agent-general: var(--color-accent-blue);       /* blue - general purpose (sonnet) */
+
+  /* Agent Fallback Colors - for agents not in the predefined list */
+  --color-agent-fallback-1: var(--color-accent-red);     /* red */
+  --color-agent-fallback-2: var(--color-accent-purple);  /* purple */
+  --color-agent-fallback-3: #ff7b72;                     /* coral */
+  --color-agent-fallback-4: #7ee787;                     /* light green */
+  --color-agent-fallback-5: #79c0ff;                     /* light blue */
+  --color-agent-fallback-6: #ffa657;                     /* peach */
+
+  /* Session Colors - for visual distinction between sessions */
+  --color-session-1: var(--color-accent-blue);   /* blue */
+  --color-session-2: var(--color-accent-green);  /* green */
+  --color-session-3: var(--color-accent-purple); /* purple */
+  --color-session-4: var(--color-accent-cyan);   /* cyan */
+  --color-session-5: var(--color-accent-yellow); /* yellow */
+  --color-session-6: var(--color-accent-orange); /* orange */
+  --color-session-7: var(--color-accent-red);    /* red */
+  --color-session-8: var(--color-text-muted);    /* gray */
 
   /* Spacing */
   --spacing-xs: 4px;

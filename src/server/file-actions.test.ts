@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { Readable, Writable } from 'node:stream';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 // Mock child_process to avoid actually executing commands
 vi.mock('node:child_process', () => ({
@@ -21,7 +21,7 @@ vi.mock('node:child_process', () => ({
 }));
 
 // Import after mocking
-import { handleFileActionRequest } from './file-actions.ts';
+import { handleFileActionRequest, isAllowedPath } from './file-actions.ts';
 
 /**
  * Create a mock HTTP request for testing.
@@ -346,7 +346,7 @@ describe('File Actions Handler', () => {
       expect(body.error).toContain('Invalid path');
     });
 
-    it('should allow any absolute path (localhost-only tool)', async () => {
+    it('should reject paths outside ~/.claude/ directory', async () => {
       const req = createMockRequest('POST', '/file-action', {
         action: 'open',
         path: '/tmp/any-file.md',
@@ -355,9 +355,65 @@ describe('File Actions Handler', () => {
 
       await handleFileActionRequest(req, res);
 
-      expect(res._statusCode).toBe(200);
+      expect(res._statusCode).toBe(400);
       const body = JSON.parse(res._body);
-      expect(body.success).toBe(true);
+      expect(body.error).toContain('Access denied');
+    });
+
+    it('should reject paths in home directory outside .claude', async () => {
+      const req = createMockRequest('POST', '/file-action', {
+        action: 'open',
+        path: join(homedir(), '.ssh', 'id_rsa'),
+      });
+      const res = createMockResponse();
+
+      await handleFileActionRequest(req, res);
+
+      expect(res._statusCode).toBe(400);
+      const body = JSON.parse(res._body);
+      expect(body.error).toContain('Access denied');
+    });
+
+    it('should reject system paths', async () => {
+      const req = createMockRequest('POST', '/file-action', {
+        action: 'open',
+        path: '/etc/passwd',
+      });
+      const res = createMockResponse();
+
+      await handleFileActionRequest(req, res);
+
+      expect(res._statusCode).toBe(400);
+      const body = JSON.parse(res._body);
+      expect(body.error).toContain('Access denied');
+    });
+
+    it('should reject paths starting with similar names to .claude', async () => {
+      const req = createMockRequest('POST', '/file-action', {
+        action: 'open',
+        path: join(homedir(), '.claude-backup', 'file.txt'),
+      });
+      const res = createMockResponse();
+
+      await handleFileActionRequest(req, res);
+
+      expect(res._statusCode).toBe(400);
+      const body = JSON.parse(res._body);
+      expect(body.error).toContain('Access denied');
+    });
+
+    it('should reject traversal attempts that escape ~/.claude/', async () => {
+      const req = createMockRequest('POST', '/file-action', {
+        action: 'open',
+        path: join(homedir(), '.claude', '..', '.ssh', 'id_rsa'),
+      });
+      const res = createMockResponse();
+
+      await handleFileActionRequest(req, res);
+
+      expect(res._statusCode).toBe(400);
+      const body = JSON.parse(res._body);
+      expect(body.error).toContain('Access denied');
     });
   });
 
@@ -440,6 +496,124 @@ describe('File Actions Handler', () => {
       const body = JSON.parse(res._body);
       expect(body.success).toBe(false);
       expect(body.error).toBeDefined();
+    });
+  });
+});
+
+/**
+ * Dedicated tests for the isAllowedPath function.
+ * These test the path validation logic independently of the HTTP handler.
+ */
+describe('isAllowedPath', () => {
+  const HOME = homedir();
+  const CLAUDE_DIR = resolve(HOME, '.claude');
+
+  describe('valid paths within ~/.claude/', () => {
+    it('should allow the ~/.claude/ directory itself', () => {
+      expect(isAllowedPath(CLAUDE_DIR)).toBe(true);
+    });
+
+    it('should allow files directly in ~/.claude/', () => {
+      expect(isAllowedPath(`${CLAUDE_DIR}/CLAUDE.md`)).toBe(true);
+      expect(isAllowedPath(`${CLAUDE_DIR}/settings.json`)).toBe(true);
+    });
+
+    it('should allow files in subdirectories of ~/.claude/', () => {
+      expect(isAllowedPath(`${CLAUDE_DIR}/plans/some-plan.md`)).toBe(true);
+      expect(isAllowedPath(`${CLAUDE_DIR}/logs/session.log`)).toBe(true);
+      expect(isAllowedPath(`${CLAUDE_DIR}/deep/nested/path/file.txt`)).toBe(true);
+    });
+
+    it('should allow paths with trailing slashes', () => {
+      expect(isAllowedPath(`${CLAUDE_DIR}/`)).toBe(true);
+      expect(isAllowedPath(`${CLAUDE_DIR}/plans/`)).toBe(true);
+    });
+  });
+
+  describe('invalid paths outside ~/.claude/', () => {
+    it('should reject paths in home directory outside .claude', () => {
+      expect(isAllowedPath(`${HOME}/.ssh/id_rsa`)).toBe(false);
+      expect(isAllowedPath(`${HOME}/.zshrc`)).toBe(false);
+      expect(isAllowedPath(`${HOME}/Documents/secret.txt`)).toBe(false);
+    });
+
+    it('should reject system paths', () => {
+      expect(isAllowedPath('/etc/passwd')).toBe(false);
+      expect(isAllowedPath('/var/log/system.log')).toBe(false);
+      expect(isAllowedPath('/usr/bin/bash')).toBe(false);
+    });
+
+    it('should reject paths starting with similar names', () => {
+      // Ensure we don't accidentally allow ~/.claudeXXX directories
+      expect(isAllowedPath(`${HOME}/.claude-backup/file.txt`)).toBe(false);
+      expect(isAllowedPath(`${HOME}/.clauderc`)).toBe(false);
+      expect(isAllowedPath(`${HOME}/.claude_old/file.txt`)).toBe(false);
+    });
+
+    it('should reject the parent directory', () => {
+      expect(isAllowedPath(HOME)).toBe(false);
+      expect(isAllowedPath(`${HOME}/`)).toBe(false);
+    });
+  });
+
+  describe('traversal attempts', () => {
+    it('should reject path traversal to escape ~/.claude/', () => {
+      expect(isAllowedPath(`${CLAUDE_DIR}/../.ssh/id_rsa`)).toBe(false);
+      expect(isAllowedPath(`${CLAUDE_DIR}/../.zshrc`)).toBe(false);
+    });
+
+    it('should reject multiple traversal attempts', () => {
+      expect(isAllowedPath(`${CLAUDE_DIR}/../../etc/passwd`)).toBe(false);
+      expect(isAllowedPath(`${CLAUDE_DIR}/../../../var/log/system.log`)).toBe(false);
+    });
+
+    it('should reject traversal in the middle of path', () => {
+      expect(isAllowedPath(`${CLAUDE_DIR}/plans/../../../.ssh/id_rsa`)).toBe(false);
+    });
+
+    it('should allow traversal that stays within ~/.claude/', () => {
+      // This should be allowed because after normalization it's still inside ~/.claude/
+      expect(isAllowedPath(`${CLAUDE_DIR}/plans/../logs/session.log`)).toBe(true);
+      expect(isAllowedPath(`${CLAUDE_DIR}/a/b/../c/file.txt`)).toBe(true);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should reject empty path', () => {
+      expect(isAllowedPath('')).toBe(false);
+    });
+
+    it('should reject non-absolute paths', () => {
+      expect(isAllowedPath('.claude/file.txt')).toBe(false);
+      expect(isAllowedPath('~/.claude/file.txt')).toBe(false); // Tilde is not expanded
+      expect(isAllowedPath('relative/path.txt')).toBe(false);
+    });
+
+    it('should reject null and undefined', () => {
+      expect(isAllowedPath(null as unknown as string)).toBe(false);
+      expect(isAllowedPath(undefined as unknown as string)).toBe(false);
+    });
+
+    it('should reject non-string types', () => {
+      expect(isAllowedPath(123 as unknown as string)).toBe(false);
+      expect(isAllowedPath({} as unknown as string)).toBe(false);
+      expect(isAllowedPath([] as unknown as string)).toBe(false);
+    });
+
+    it('should handle paths with special characters', () => {
+      expect(isAllowedPath(`${CLAUDE_DIR}/file with spaces.txt`)).toBe(true);
+      expect(isAllowedPath(`${CLAUDE_DIR}/file-with-dashes.txt`)).toBe(true);
+      expect(isAllowedPath(`${CLAUDE_DIR}/file_with_underscores.txt`)).toBe(true);
+    });
+
+    it('should handle paths with dots in filenames', () => {
+      expect(isAllowedPath(`${CLAUDE_DIR}/.hidden-file`)).toBe(true);
+      expect(isAllowedPath(`${CLAUDE_DIR}/file.name.with.dots.txt`)).toBe(true);
+    });
+
+    it('should handle double slashes', () => {
+      expect(isAllowedPath(`${CLAUDE_DIR}//file.txt`)).toBe(true);
+      expect(isAllowedPath(`${CLAUDE_DIR}/plans//nested/file.txt`)).toBe(true);
     });
   });
 });

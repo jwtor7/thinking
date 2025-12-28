@@ -272,6 +272,45 @@ function getVersion(): string {
 }
 
 /**
+ * Parse and validate the transcript poll interval from environment variable.
+ * Returns the validated interval in milliseconds, clamped to [100, 10000].
+ */
+function getTranscriptPollInterval(): number {
+  const MIN_INTERVAL_MS = 100;
+  const MAX_INTERVAL_MS = 10000;
+  const DEFAULT_INTERVAL_MS = 1000;
+
+  const envValue = process.env.THINKING_POLL_INTERVAL;
+  if (!envValue) {
+    return DEFAULT_INTERVAL_MS;
+  }
+
+  const parsed = parseInt(envValue, 10);
+  if (isNaN(parsed)) {
+    console.warn(
+      `[CONFIG] Invalid THINKING_POLL_INTERVAL value "${envValue}", using default ${DEFAULT_INTERVAL_MS}ms`
+    );
+    return DEFAULT_INTERVAL_MS;
+  }
+
+  if (parsed < MIN_INTERVAL_MS) {
+    console.warn(
+      `[CONFIG] THINKING_POLL_INTERVAL ${parsed}ms is below minimum ${MIN_INTERVAL_MS}ms, using ${MIN_INTERVAL_MS}ms`
+    );
+    return MIN_INTERVAL_MS;
+  }
+
+  if (parsed > MAX_INTERVAL_MS) {
+    console.warn(
+      `[CONFIG] THINKING_POLL_INTERVAL ${parsed}ms exceeds maximum ${MAX_INTERVAL_MS}ms, using ${MAX_INTERVAL_MS}ms`
+    );
+    return MAX_INTERVAL_MS;
+  }
+
+  return parsed;
+}
+
+/**
  * Configuration constants.
  */
 export const CONFIG = {
@@ -285,6 +324,12 @@ export const CONFIG = {
   MAX_PAYLOAD_SIZE: 10 * 1024, // 10KB
   /** Server version - read from package.json */
   VERSION: getVersion(),
+  /**
+   * Transcript watcher polling interval in milliseconds.
+   * Override with THINKING_POLL_INTERVAL env var.
+   * Valid range: 100ms - 10000ms, default: 1000ms
+   */
+  TRANSCRIPT_POLL_INTERVAL_MS: getTranscriptPollInterval(),
 } as const;
 
 /**

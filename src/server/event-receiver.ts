@@ -14,15 +14,37 @@ import {
 } from './types.ts';
 import { redactSecrets } from './secrets.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
+import { RateLimiter, type RateLimiterConfig } from './rate-limiter.ts';
+
+/**
+ * Default rate limit: 100 events per second per IP.
+ */
+const DEFAULT_EVENT_RATE_LIMIT: RateLimiterConfig = {
+  maxRequests: 100,
+  windowMs: 1000,
+  cleanupIntervalMs: 60000,
+};
 
 /**
  * Event receiver that processes HTTP POST requests from hooks.
  */
 export class EventReceiver {
   private hub: WebSocketHub;
+  private rateLimiter: RateLimiter;
 
-  constructor(hub: WebSocketHub) {
+  constructor(hub: WebSocketHub, rateLimitConfig?: Partial<RateLimiterConfig>) {
     this.hub = hub;
+    this.rateLimiter = new RateLimiter({
+      ...DEFAULT_EVENT_RATE_LIMIT,
+      ...rateLimitConfig,
+    });
+  }
+
+  /**
+   * Clean up resources (rate limiter timer, etc.).
+   */
+  destroy(): void {
+    this.rateLimiter.destroy();
   }
 
   /**
@@ -37,6 +59,15 @@ export class EventReceiver {
 
     // Only handle POST /event
     if (req.method === 'POST' && url.pathname === '/event') {
+      // Apply rate limiting early in the request flow
+      const clientIp = this.getClientIp(req);
+      const rateLimitResult = this.rateLimiter.check(clientIp);
+
+      if (!rateLimitResult.allowed) {
+        this.sendRateLimited(res, rateLimitResult.retryAfterSeconds);
+        return true;
+      }
+
       await this.handleEventPost(req, res);
       return true;
     }
@@ -48,6 +79,34 @@ export class EventReceiver {
     }
 
     return false;
+  }
+
+  /**
+   * Extract client IP from request.
+   * Since we only bind to 127.0.0.1, this will always be localhost,
+   * but we still track by socket address for consistency.
+   */
+  private getClientIp(req: IncomingMessage): string {
+    // For localhost-only server, use socket remoteAddress
+    // X-Forwarded-For is not trusted since this is a local-only server
+    return req.socket.remoteAddress || '127.0.0.1';
+  }
+
+  /**
+   * Send HTTP 429 Too Many Requests response.
+   */
+  private sendRateLimited(res: ServerResponse, retryAfterSeconds: number): void {
+    res.writeHead(429, {
+      'Content-Type': 'application/json',
+      'Retry-After': String(retryAfterSeconds),
+    });
+    res.end(
+      JSON.stringify({
+        error: 'Too Many Requests',
+        retryAfter: retryAfterSeconds,
+      })
+    );
+    console.warn('[EventReceiver] Rate limit exceeded');
   }
 
   /**

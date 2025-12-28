@@ -15,7 +15,7 @@ import { readFile, stat, readdir } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import type { ThinkingEvent } from './types.ts';
-import { truncatePayload } from './types.ts';
+import { truncatePayload, CONFIG } from './types.ts';
 import { redactSecrets } from './secrets.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
 
@@ -87,9 +87,6 @@ export class TranscriptWatcher {
    */
   private isInitialScan = true;
 
-  /** Polling interval for checking file updates (ms) */
-  private static readonly POLL_INTERVAL_MS = 1000;
-
   constructor(hub: WebSocketHub) {
     this.hub = hub;
     this.projectsDir = join(homedir(), '.claude', 'projects');
@@ -139,7 +136,7 @@ export class TranscriptWatcher {
       } catch {
         // Directory still doesn't exist, continue polling
       }
-    }, TranscriptWatcher.POLL_INTERVAL_MS * 5);
+    }, CONFIG.TRANSCRIPT_POLL_INTERVAL_MS * 5);
   }
 
   /**
@@ -190,7 +187,7 @@ export class TranscriptWatcher {
       if (!this.isShuttingDown) {
         this.pollTrackedFiles();
       }
-    }, TranscriptWatcher.POLL_INTERVAL_MS);
+    }, CONFIG.TRANSCRIPT_POLL_INTERVAL_MS);
 
     console.log(`[TranscriptWatcher] Tracking ${this.trackedFiles.size} transcript files`);
   }

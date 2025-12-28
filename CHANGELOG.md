@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.0] - 2025-12-28
+
+### Security
+- XSS protection: markdown renderer now validates URL protocols (blocks javascript:, data:, vbscript:)
+- File actions endpoint restricted to `~/.claude/` directory only (was allowing any absolute path)
+- Rate limiting: /event endpoint now limited to 100 requests/second per IP (prevents DoS)
+- Hook script input limited to 1MB to prevent memory issues with malformed inputs
+
+### Added
+- Configurable polling interval via `THINKING_POLL_INTERVAL` env var (100-10000ms, default 1000ms)
+- Rate limiter module with sliding window algorithm (`src/server/rate-limiter.ts`)
+- File actions test suite (`src/server/file-actions.test.ts`)
+
+### Fixed
+- Agent context stack memory leak: now limited to 100 entries with 1-hour stale cleanup
+- CSS colors consolidated into CSS variables for easier theming
+
+---
+
 ## [0.4.7] - 2025-12-28
 
 ### Fixed

@@ -233,3 +233,62 @@ describe('Security: Server version exposure', () => {
     expect(CONFIG.VERSION).toMatch(/^\d+\.\d+\.\d+$/);
   });
 });
+
+describe('Security: Rate limiting', () => {
+  it('should have rate limiting to prevent DoS attacks', async () => {
+    // Import rate limiter to verify it exists and has correct defaults
+    const { RateLimiter, DEFAULT_RATE_LIMIT_CONFIG } = await import('./rate-limiter.ts');
+
+    // Verify default config limits exist
+    expect(DEFAULT_RATE_LIMIT_CONFIG.maxRequests).toBe(100);
+    expect(DEFAULT_RATE_LIMIT_CONFIG.windowMs).toBe(1000);
+
+    // Verify rate limiter blocks excessive requests
+    const limiter = new RateLimiter({ maxRequests: 5, windowMs: 1000 });
+    const ip = '127.0.0.1';
+
+    // First 5 requests should succeed
+    for (let i = 0; i < 5; i++) {
+      expect(limiter.check(ip).allowed).toBe(true);
+    }
+
+    // 6th request should be blocked
+    const blocked = limiter.check(ip);
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.retryAfterSeconds).toBeGreaterThanOrEqual(1);
+
+    limiter.destroy();
+  });
+
+  it('should return HTTP 429 response info when rate limited', async () => {
+    const { RateLimiter } = await import('./rate-limiter.ts');
+    const limiter = new RateLimiter({ maxRequests: 1, windowMs: 1000 });
+
+    // Use up the limit
+    limiter.check('127.0.0.1');
+
+    // Check the blocked response has all required fields for HTTP 429
+    const result = limiter.check('127.0.0.1');
+    expect(result.allowed).toBe(false);
+    expect(typeof result.retryAfterSeconds).toBe('number');
+    expect(result.retryAfterSeconds).toBeGreaterThanOrEqual(1);
+    expect(result.remaining).toBe(0);
+
+    limiter.destroy();
+  });
+
+  it('should track IPs separately to prevent cross-client interference', async () => {
+    const { RateLimiter } = await import('./rate-limiter.ts');
+    const limiter = new RateLimiter({ maxRequests: 2, windowMs: 1000 });
+
+    // Exhaust limit for first IP
+    limiter.check('127.0.0.1');
+    limiter.check('127.0.0.1');
+    expect(limiter.check('127.0.0.1').allowed).toBe(false);
+
+    // Second IP should still work
+    expect(limiter.check('::1').allowed).toBe(true);
+
+    limiter.destroy();
+  });
+});

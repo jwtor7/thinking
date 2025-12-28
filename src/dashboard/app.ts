@@ -196,41 +196,89 @@ const state: AppState = {
  * Stack of currently active agent IDs.
  * The last element is the most deeply nested active agent.
  * 'main' represents the main conversation (no subagent).
+ *
+ * Memory leak prevention:
+ * - Maximum stack size is enforced (MAX_AGENT_STACK_SIZE)
+ * - Stale entries (older than AGENT_STACK_STALE_MS) are periodically cleaned up
+ * - This handles cases where agent_stop events are missed due to connection drops
  */
 const agentContextStack: AgentContextStack = ['main'];
 
-// Session colors for visual distinction
-const SESSION_COLORS = [
-  '#58a6ff', // blue
-  '#3fb950', // green
-  '#a371f7', // purple
-  '#39c5cf', // cyan
-  '#d29922', // yellow
-  '#db6d28', // orange
-  '#f85149', // red
-  '#8b949e', // gray
-];
+/**
+ * Timestamps for when each agent was added to the context stack.
+ * Used to identify and clean up stale entries that may have missed agent_stop events.
+ * Key: agentId, Value: timestamp (ms since epoch)
+ */
+const agentContextTimestamps: Map<string, number> = new Map();
 
-// Agent colors for visual distinction in tool activity panel
-// Each agent type gets a consistent color for quick identification
-const AGENT_COLORS: Record<string, string> = {
-  'main': '#8b949e',                // gray - main conversation (default)
-  'code-implementer': '#3fb950',    // green - implementation work
-  'code-test-evaluator': '#39c5cf', // cyan/teal - testing/evaluation
-  'haiku-general-agent': '#db6d28', // orange - haiku agent
-  'opus-general-purpose': '#d29922', // gold/yellow - opus general purpose
-  'general-purpose': '#58a6ff',      // blue - general purpose (sonnet)
-};
+// Agent context stack limits to prevent memory leaks
+const MAX_AGENT_STACK_SIZE = 100; // Maximum number of agents in the stack
+const AGENT_STACK_STALE_MS = 60 * 60 * 1000; // 1 hour - entries older than this are considered stale
+const AGENT_STACK_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // Run cleanup every 5 minutes
 
-// Fallback colors for agents not in the predefined list
-const AGENT_FALLBACK_COLORS = [
-  '#f85149', // red
-  '#a371f7', // purple
-  '#ff7b72', // coral
-  '#7ee787', // light green
-  '#79c0ff', // light blue
-  '#ffa657', // peach
-];
+// ============================================
+// CSS Variable Helpers
+// ============================================
+
+/**
+ * Get a CSS variable value from the document root.
+ * Returns the computed value of the CSS custom property.
+ */
+function getCssVar(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+/**
+ * Lazily initialized CSS variable values.
+ * These are populated on first access after DOM is ready.
+ */
+let cssVarsInitialized = false;
+let SESSION_COLORS: string[] = [];
+let AGENT_COLORS: Record<string, string> = {};
+let AGENT_FALLBACK_COLORS: string[] = [];
+
+/**
+ * Initialize color values from CSS variables.
+ * Called once when colors are first needed.
+ */
+function initCssColors(): void {
+  if (cssVarsInitialized) return;
+
+  // Session colors for visual distinction
+  SESSION_COLORS = [
+    getCssVar('--color-session-1'),  // blue
+    getCssVar('--color-session-2'),  // green
+    getCssVar('--color-session-3'),  // purple
+    getCssVar('--color-session-4'),  // cyan
+    getCssVar('--color-session-5'),  // yellow
+    getCssVar('--color-session-6'),  // orange
+    getCssVar('--color-session-7'),  // red
+    getCssVar('--color-session-8'),  // gray
+  ];
+
+  // Agent colors for visual distinction in tool activity panel
+  // Each agent type gets a consistent color for quick identification
+  AGENT_COLORS = {
+    'main': getCssVar('--color-agent-main'),                        // gray - main conversation (default)
+    'code-implementer': getCssVar('--color-agent-code-implementer'), // green - implementation work
+    'code-test-evaluator': getCssVar('--color-agent-code-test-evaluator'), // cyan/teal - testing/evaluation
+    'haiku-general-agent': getCssVar('--color-agent-haiku'),        // orange - haiku agent
+    'opus-general-purpose': getCssVar('--color-agent-opus'),        // gold/yellow - opus general purpose
+    'general-purpose': getCssVar('--color-agent-general'),          // blue - general purpose (sonnet)
+  };
+
+  // Fallback colors for agents not in the predefined list
+  AGENT_FALLBACK_COLORS = [
+    getCssVar('--color-agent-fallback-1'),  // red
+    getCssVar('--color-agent-fallback-2'),  // purple
+    getCssVar('--color-agent-fallback-3'),  // coral
+    getCssVar('--color-agent-fallback-4'),  // light green
+    getCssVar('--color-agent-fallback-5'),  // light blue
+    getCssVar('--color-agent-fallback-6'),  // peach
+  ];
+
+  cssVarsInitialized = true;
+}
 
 /**
  * Get the display color for an agent.
@@ -238,6 +286,9 @@ const AGENT_FALLBACK_COLORS = [
  * Known agents get predefined colors; unknown agents cycle through fallback colors.
  */
 function getAgentColor(agentName: string): string {
+  // Ensure CSS colors are initialized
+  initCssColors();
+
   // Check for predefined color
   if (AGENT_COLORS[agentName]) {
     return AGENT_COLORS[agentName];
@@ -784,10 +835,25 @@ function getCurrentAgentContext(): string {
 
 /**
  * Push an agent onto the context stack when it starts.
+ *
+ * Memory leak safeguards:
+ * 1. Enforces MAX_AGENT_STACK_SIZE - removes oldest entries if limit reached
+ * 2. Records timestamp for stale entry cleanup
  */
 function pushAgentContext(agentId: string): void {
   if (agentId && agentId !== 'main') {
+    // Safeguard: If stack exceeds max size, remove oldest entries (after 'main')
+    // This handles the case where agent_stop events were missed
+    while (agentContextStack.length >= MAX_AGENT_STACK_SIZE) {
+      const removedId = agentContextStack.splice(1, 1)[0]; // Remove oldest after 'main'
+      if (removedId) {
+        agentContextTimestamps.delete(removedId);
+        console.warn(`[Dashboard] Agent stack overflow - removed stale agent: ${removedId}`);
+      }
+    }
+
     agentContextStack.push(agentId);
+    agentContextTimestamps.set(agentId, Date.now());
     console.log(`[Dashboard] Agent context pushed: ${agentId}, stack depth: ${agentContextStack.length}`);
   }
 }
@@ -795,16 +861,57 @@ function pushAgentContext(agentId: string): void {
 /**
  * Pop an agent from the context stack when it stops.
  * Removes the agent from wherever it is in the stack (handles out-of-order stops).
+ * Also cleans up the associated timestamp.
  */
 function popAgentContext(agentId: string): void {
   if (agentId && agentId !== 'main') {
     const index = agentContextStack.indexOf(agentId);
     if (index > 0) { // Don't remove 'main' at index 0
       agentContextStack.splice(index, 1);
+      agentContextTimestamps.delete(agentId);
       console.log(`[Dashboard] Agent context popped: ${agentId}, stack depth: ${agentContextStack.length}`);
     }
   }
 }
+
+/**
+ * Clean up stale entries from the agent context stack.
+ * Removes entries that have been in the stack longer than AGENT_STACK_STALE_MS.
+ * This handles cases where agent_stop events were missed (e.g., during connection drops).
+ *
+ * Called periodically by the cleanup interval timer.
+ */
+function cleanupStaleAgentContexts(): void {
+  const now = Date.now();
+  const staleThreshold = now - AGENT_STACK_STALE_MS;
+  let removedCount = 0;
+
+  // Iterate backwards to safely remove elements
+  for (let i = agentContextStack.length - 1; i > 0; i--) { // Skip index 0 ('main')
+    const agentId = agentContextStack[i];
+    const timestamp = agentContextTimestamps.get(agentId);
+
+    // Remove if timestamp is missing (shouldn't happen) or entry is stale
+    if (!timestamp || timestamp < staleThreshold) {
+      agentContextStack.splice(i, 1);
+      agentContextTimestamps.delete(agentId);
+      removedCount++;
+    }
+  }
+
+  if (removedCount > 0) {
+    console.log(`[Dashboard] Cleaned up ${removedCount} stale agent context(s), stack depth: ${agentContextStack.length}`);
+  }
+}
+
+// Start the periodic cleanup interval for stale agent contexts
+// This runs even when the WebSocket is disconnected to clean up orphaned entries
+const agentContextCleanupInterval = setInterval(cleanupStaleAgentContexts, AGENT_STACK_CLEANUP_INTERVAL_MS);
+
+// Ensure cleanup interval is cleared on page unload to prevent memory leaks
+window.addEventListener('beforeunload', () => {
+  clearInterval(agentContextCleanupInterval);
+});
 
 /**
  * Get the display name for an agent ID.
@@ -1392,6 +1499,8 @@ function trackSession(sessionId: string, timestamp: string): void {
   const isSessionSwitch = state.currentSessionId !== null && state.currentSessionId !== sessionId;
 
   if (isNewSession) {
+    // Ensure CSS colors are initialized
+    initCssColors();
     const colorIndex = state.sessions.size % SESSION_COLORS.length;
     state.sessions.set(sessionId, {
       id: sessionId,
@@ -1422,6 +1531,8 @@ function handleSessionStart(event: MonitorEvent): void {
 
   console.log(`[Dashboard] Session started: ${sessionId}`, { workingDirectory });
 
+  // Ensure CSS colors are initialized
+  initCssColors();
   const colorIndex = state.sessions.size % SESSION_COLORS.length;
   state.sessions.set(sessionId, {
     id: sessionId,
@@ -2021,6 +2132,9 @@ function restoreTodosFromStorage(): void {
     state.sessionTodos = new Map(entries);
     console.log(`[Dashboard] Restored ${state.sessionTodos.size} session(s) of todos from localStorage`);
 
+    // Ensure CSS colors are initialized before using SESSION_COLORS
+    initCssColors();
+
     // If there's exactly one session, auto-select it to display its todos
     if (state.sessionTodos.size === 1) {
       const [sessionId, todos] = entries[0];
@@ -2281,22 +2395,86 @@ function appendAndTrim(container: HTMLElement, element: HTMLElement): void {
   }
 }
 
+/**
+ * Render simple markdown to HTML with XSS protection.
+ *
+ * Security approach:
+ * 1. First escape ALL HTML in the content to prevent XSS
+ * 2. Then apply markdown patterns to the escaped content
+ * 3. For links, validate URLs to prevent javascript: protocol XSS
+ *
+ * Supported markdown:
+ * - Headers: # ## ###
+ * - Code blocks: ```code```
+ * - Inline code: `code`
+ * - Bold: **text**
+ * - Italic: *text* or _text_
+ * - Links: [text](url)
+ */
 function renderSimpleMarkdown(content: string): string {
-  // Very simple markdown rendering (headers and code blocks only)
+  // SECURITY: Escape ALL HTML first to prevent XSS
+  // This converts <, >, &, ", ' to their HTML entities
   let html = escapeHtml(content);
 
-  // Headers
+  // Code blocks - preserve content as-is (already escaped)
+  // Match: ```optional-language\ncontent```
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+
+  // Inline code - preserve content as-is (already escaped)
+  // Match: `content` (non-greedy, no backticks inside)
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Headers - content is already escaped
   html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
   html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
   html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
 
-  // Code blocks
-  html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+  // Bold: **text** (must have content between asterisks)
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 
-  // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Italic: *text* or _text_ (single asterisk/underscore)
+  // Must not be inside a word for underscores, and must have content
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  html = html.replace(/\b_([^_]+)_\b/g, '<em>$1</em>');
 
-  // Line breaks
+  // Links: [text](url)
+  // SECURITY: Validate URL to prevent javascript: protocol XSS
+  // The text is already escaped, but we need to validate the URL
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, text, url) => {
+    // URL has been through escapeHtml, so &quot; might be present
+    // Decode common HTML entities for URL validation
+    const decodedUrl = url
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+
+    // SECURITY: Only allow safe URL protocols
+    // Block javascript:, data:, vbscript:, and other dangerous protocols
+    const trimmedUrl = decodedUrl.trim().toLowerCase();
+    const isSafeUrl = (
+      trimmedUrl.startsWith('http://') ||
+      trimmedUrl.startsWith('https://') ||
+      trimmedUrl.startsWith('/') ||
+      trimmedUrl.startsWith('#') ||
+      trimmedUrl.startsWith('mailto:') ||
+      // Relative URLs (no protocol)
+      (!trimmedUrl.includes(':') && !trimmedUrl.startsWith('//'))
+    );
+
+    if (!isSafeUrl) {
+      // Unsafe URL - render as plain text (already escaped)
+      return `[${text}](${url})`;
+    }
+
+    // Safe URL - render as link with security attributes
+    // Re-escape the URL for the href attribute
+    const safeUrl = escapeHtml(decodedUrl);
+    return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+  });
+
+  // Line breaks - convert newlines to <br> for display
   html = html.replace(/\n/g, '<br>');
 
   return html;
@@ -2315,9 +2493,10 @@ function clearAllPanels(): void {
   state.selectedSession = 'all';
   state.userScrolledUp = false;
 
-  // Reset agent context stack to just 'main'
+  // Reset agent context stack to just 'main' and clear timestamps
   agentContextStack.length = 0;
   agentContextStack.push('main');
+  agentContextTimestamps.clear();
 
   // Clear session-plan associations to prevent memory leak
   state.sessionPlanMap.clear();

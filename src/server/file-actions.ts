@@ -14,10 +14,50 @@
 
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { normalize } from 'node:path';
+import { normalize, resolve } from 'node:path';
+import { homedir } from 'node:os';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 const execAsync = promisify(exec);
+
+/**
+ * The allowed base directory for file operations.
+ * Only paths within ~/.claude/ are permitted.
+ */
+const ALLOWED_BASE_DIR = resolve(homedir(), '.claude');
+
+/**
+ * Check if a file path is within the allowed directory (~/.claude/).
+ *
+ * Security: This prevents access to arbitrary filesystem locations.
+ * - Resolves the path to absolute normalized form
+ * - Checks if it starts with the allowed base directory
+ * - Handles traversal attempts like ~/.claude/../.ssh/
+ *
+ * @param filePath - The path to validate
+ * @returns true if path is within ~/.claude/, false otherwise
+ */
+export function isAllowedPath(filePath: string): boolean {
+  // Empty or non-string paths are not allowed
+  if (!filePath || typeof filePath !== 'string') {
+    return false;
+  }
+
+  // Non-absolute paths are not allowed
+  if (!filePath.startsWith('/')) {
+    return false;
+  }
+
+  // Resolve to absolute normalized path (handles .., ., etc.)
+  const normalizedPath = resolve(normalize(filePath));
+
+  // Check if the normalized path starts with the allowed base directory
+  // We add a trailing slash to prevent matching ~/.claudeXXX directories
+  return (
+    normalizedPath === ALLOWED_BASE_DIR ||
+    normalizedPath.startsWith(ALLOWED_BASE_DIR + '/')
+  );
+}
 
 /**
  * Supported file actions.
@@ -66,17 +106,10 @@ function validateRequest(body: unknown): string | null {
     return 'Invalid path. Must be an absolute path starting with /';
   }
 
-  // Prevent directory traversal attacks
-  if (req.path.includes('..')) {
-    return 'Access denied. Path must not contain ".."';
+  // Validate path is within allowed directory (~/.claude/)
+  if (!isAllowedPath(req.path)) {
+    return 'Access denied. Path must be within ~/.claude/ directory';
   }
-
-  // Normalize the path to resolve any relative components
-  normalize(req.path);
-
-  // Since this is a localhost-only tool that only opens/reveals files
-  // (no read/write/delete), we allow any absolute path. The macOS `open`
-  // command will respect filesystem permissions.
 
   return null;
 }

@@ -34,8 +34,26 @@ MONITOR_URL="http://127.0.0.1:3355/event"
 # Timeout for curl requests (seconds)
 CURL_TIMEOUT=1
 
-# Read JSON input from stdin
-INPUT=$(cat)
+# Maximum input size in bytes (1MB)
+# Normal Claude events are typically under 100KB; this provides ample headroom
+MAX_INPUT_SIZE=1048576
+
+# Read JSON input from stdin with size limit
+# Use head -c to limit input size, preventing memory issues with abnormally large inputs
+INPUT=$(head -c "$MAX_INPUT_SIZE")
+INPUT_SIZE=${#INPUT}
+
+# Check if input was truncated (hit the size limit)
+# We detect this by checking if we received exactly MAX_INPUT_SIZE bytes
+if [ "$INPUT_SIZE" -ge "$MAX_INPUT_SIZE" ]; then
+    echo "WARNING: Hook input exceeded ${MAX_INPUT_SIZE} bytes, rejecting to prevent issues" >&2
+    exit 0
+fi
+
+# Also reject empty input
+if [ -z "$INPUT" ]; then
+    exit 0
+fi
 
 # Determine hook type from environment or exit if not set
 # Claude Code sets this based on which hook is configured

@@ -200,4 +200,26 @@ describe('CONFIG', () => {
     expect(CONFIG.VERSION).toBeDefined();
     expect(typeof CONFIG.VERSION).toBe('string');
   });
+
+  it('should have TRANSCRIPT_POLL_INTERVAL_MS defined', () => {
+    expect(CONFIG.TRANSCRIPT_POLL_INTERVAL_MS).toBeDefined();
+    expect(typeof CONFIG.TRANSCRIPT_POLL_INTERVAL_MS).toBe('number');
+  });
+
+  it('should have TRANSCRIPT_POLL_INTERVAL_MS default to 1000ms', () => {
+    // When THINKING_POLL_INTERVAL env is not set, default is 1000
+    // This test assumes the env var is not set during testing
+    if (!process.env.THINKING_POLL_INTERVAL) {
+      expect(CONFIG.TRANSCRIPT_POLL_INTERVAL_MS).toBe(1000);
+    } else {
+      // If env var is set, just verify it's within valid range
+      expect(CONFIG.TRANSCRIPT_POLL_INTERVAL_MS).toBeGreaterThanOrEqual(100);
+      expect(CONFIG.TRANSCRIPT_POLL_INTERVAL_MS).toBeLessThanOrEqual(10000);
+    }
+  });
+
+  it('should have TRANSCRIPT_POLL_INTERVAL_MS within valid range', () => {
+    expect(CONFIG.TRANSCRIPT_POLL_INTERVAL_MS).toBeGreaterThanOrEqual(100);
+    expect(CONFIG.TRANSCRIPT_POLL_INTERVAL_MS).toBeLessThanOrEqual(10000);
+  });
 });
