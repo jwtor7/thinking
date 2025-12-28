@@ -96,12 +96,9 @@ Claude Code Session
 ## Recent Changes
 
 ### 2025-12-28
+- **v0.6.2** - Responsive design (4 breakpoints), accessibility enhancements (skip link, ARIA landmarks, screen reader support), focus management, touch-friendly targets (44px min), WCAG AA color contrast
 - **v0.6.1** - Frontend redesign: glassmorphism panel headers, card-based entries, TODO progress bar, enhanced markdown rendering
 - **v0.6.0** - Design system foundation: CSS tokens, toast notifications, skeleton loaders, animations, micro-interactions
-- Session-specific todos with localStorage persistence
-- Agent context stack in tool activity panel
-- Distinct agent colors for different tools
-- Playwright MCP integration for browser automation
 
 ### 2025-12-23
 - Replaced Agents panel with Todo panel for task tracking
