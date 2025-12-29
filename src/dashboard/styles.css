@@ -2573,3 +2573,93 @@ input:focus-visible {
     scroll-behavior: auto !important;
   }
 }
+
+/* ========================================
+   Collapsible Panels
+   ======================================== */
+
+/* Collapse button in panel header */
+.panel-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin-right: var(--spacing-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-default);
+  flex-shrink: 0;
+}
+
+.panel-collapse-btn:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.panel-collapse-btn:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+
+.panel-collapse-icon {
+  font-size: 10px;
+  line-height: 1;
+  transition: transform var(--duration-fast) var(--ease-default);
+}
+
+/* Collapsed state - icon rotates */
+.panel.collapsed .panel-collapse-icon {
+  transform: rotate(-90deg);
+}
+
+/* Collapsed state - hide content */
+.panel.collapsed .panel-content {
+  display: none;
+}
+
+/* Collapsed state - remove header border */
+.panel.collapsed .panel-header {
+  border-bottom: none;
+}
+
+/* Collapsed panel takes minimum height */
+.panel.collapsed {
+  flex: 0 0 auto;
+}
+
+/* Non-collapsed panel expands to fill remaining space */
+.panel-column > .panel:not(.collapsed) {
+  flex: 1;
+}
+
+/* Plan panel special case - also hide plan-meta when collapsed */
+.panel-plan.collapsed .plan-meta {
+  display: none;
+}
+
+/* Mobile: Adjust collapse button size for touch */
+@media (max-width: 768px) {
+  .panel-collapse-btn {
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .panel-collapse-icon {
+    font-size: 14px;
+  }
+}
+
+/* Reduced motion for collapse icon */
+@media (prefers-reduced-motion: reduce) {
+  .panel-collapse-icon {
+    transition: none;
+  }
+}

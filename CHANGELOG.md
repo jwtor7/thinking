@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.7.0] - 2025-12-29
+
+### Added
+- Collapsible panels: each of the 4 dashboard panels (Thinking, Todo, Tools, Plan) can now be collapsed
+- Collapse buttons with chevron icons in panel headers
+- Keyboard shortcuts: Shift+T (Thinking), Shift+O (Tools), Shift+D (Todo), Shift+P (Plan) to toggle collapse
+- localStorage persistence for collapse state (survives page refresh)
+- Accessibility: ARIA attributes (aria-expanded, aria-label), screen reader announcements on collapse/expand
+- Mobile-optimized: 44px touch-friendly collapse button targets
+
+### Changed
+- Sibling panel expands to fill space when adjacent panel is collapsed (flexbox-based layout)
+- Updated footer keyboard hints to show collapse shortcuts
+
+---
+
 ## [0.6.2] - 2025-12-28
 
 ### Added

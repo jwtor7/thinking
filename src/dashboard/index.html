@@ -40,6 +40,9 @@
         <!-- Thinking Panel -->
         <section class="panel panel-thinking" aria-labelledby="thinking-panel-title">
           <header class="panel-header">
+            <button class="panel-collapse-btn" data-panel="thinking" aria-expanded="true" aria-label="Collapse Thinking panel" title="Collapse panel (Shift+T)">
+              <span class="panel-collapse-icon">&#9660;</span>
+            </button>
             <h2 class="panel-title" id="thinking-panel-title">THINKING</h2>
             <div class="panel-header-controls">
               <div class="panel-filter">
@@ -61,6 +64,9 @@
         <!-- TODO Panel -->
         <section class="panel panel-todo" aria-labelledby="todo-panel-title">
           <header class="panel-header">
+            <button class="panel-collapse-btn" data-panel="todo" aria-expanded="true" aria-label="Collapse Todo panel" title="Collapse panel (Shift+D)">
+              <span class="panel-collapse-icon">&#9660;</span>
+            </button>
             <h2 class="panel-title" id="todo-panel-title">TODO</h2>
             <span class="panel-badge" id="todo-count">0</span>
           </header>
@@ -79,6 +85,9 @@
         <!-- Tool Activity Panel -->
         <section class="panel panel-tools" aria-labelledby="tools-panel-title">
           <header class="panel-header">
+            <button class="panel-collapse-btn" data-panel="tools" aria-expanded="true" aria-label="Collapse Tools panel" title="Collapse panel (Shift+O)">
+              <span class="panel-collapse-icon">&#9660;</span>
+            </button>
             <h2 class="panel-title" id="tools-panel-title">TOOL ACTIVITY</h2>
             <div class="panel-header-controls">
               <div class="panel-filter">
@@ -100,6 +109,9 @@
         <!-- Plan Panel -->
         <section class="panel panel-plan" aria-labelledby="plan-panel-title">
           <header class="panel-header">
+            <button class="panel-collapse-btn" data-panel="plan" aria-expanded="true" aria-label="Collapse Plan panel" title="Collapse panel (Shift+P)">
+              <span class="panel-collapse-icon">&#9660;</span>
+            </button>
             <h2 class="panel-title" id="plan-panel-title">PLAN <span class="plan-scope-badge" title="Plans are workspace-level files shared across all sessions">workspace</span></h2>
             <div class="panel-header-controls">
               <div class="plan-actions">
@@ -150,6 +162,7 @@
       <span id="server-info">Server: --</span>
       <span class="keyboard-hints">
         <kbd>a</kbd><kbd>t</kbd><kbd>o</kbd><kbd>d</kbd><kbd>p</kbd> views
+        <kbd>Shift</kbd>+<kbd>t</kbd><kbd>o</kbd><kbd>d</kbd><kbd>p</kbd> collapse
         <kbd>c</kbd> clear
         <kbd>s</kbd> scroll
         <kbd>/</kbd> search

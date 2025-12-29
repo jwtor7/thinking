@@ -513,3 +513,85 @@ describe('Phase 4: Code Quality', () => {
     expect(appTsContent).toContain("addEventListener('keydown'");
   });
 });
+
+describe('Panel Collapse Feature', () => {
+  describe('HTML Structure', () => {
+    it('should have collapse buttons in panel headers', () => {
+      expect(indexHtmlContent).toContain('panel-collapse-btn');
+      expect(indexHtmlContent).toContain('data-panel="thinking"');
+      expect(indexHtmlContent).toContain('data-panel="todo"');
+      expect(indexHtmlContent).toContain('data-panel="tools"');
+      expect(indexHtmlContent).toContain('data-panel="plan"');
+    });
+
+    it('should have aria attributes for collapse buttons', () => {
+      expect(indexHtmlContent).toContain('aria-expanded="true"');
+      expect(indexHtmlContent).toContain('aria-label="Collapse');
+    });
+
+    it('should have keyboard hints for collapse shortcuts', () => {
+      expect(indexHtmlContent).toContain('Shift');
+    });
+  });
+
+  describe('CSS Styling', () => {
+    it('should have panel collapse button styles', () => {
+      expect(stylesCssContent).toContain('.panel-collapse-btn');
+      expect(stylesCssContent).toContain('.panel-collapse-icon');
+    });
+
+    it('should hide content when panel is collapsed', () => {
+      expect(stylesCssContent).toContain('.panel.collapsed .panel-content');
+      expect(stylesCssContent).toContain('display: none');
+    });
+
+    it('should rotate collapse icon when collapsed', () => {
+      expect(stylesCssContent).toContain('.panel.collapsed .panel-collapse-icon');
+      expect(stylesCssContent).toContain('rotate(-90deg)');
+    });
+
+    it('should have collapsed panel flex behavior', () => {
+      expect(stylesCssContent).toContain('.panel.collapsed');
+      expect(stylesCssContent).toContain('flex: 0 0 auto');
+    });
+
+    it('should have mobile touch target size', () => {
+      expect(stylesCssContent).toContain('min-width: 44px');
+      expect(stylesCssContent).toContain('min-height: 44px');
+    });
+  });
+
+  describe('JavaScript Logic', () => {
+    it('should have panel collapse state in AppState', () => {
+      expect(appTsContent).toContain('panelCollapseState');
+    });
+
+    it('should have togglePanelCollapse function', () => {
+      expect(appTsContent).toContain('function togglePanelCollapse');
+    });
+
+    it('should have localStorage persistence for collapse state', () => {
+      expect(appTsContent).toContain('STORAGE_KEY_PANEL_COLLAPSE');
+      expect(appTsContent).toContain('savePanelCollapseState');
+      expect(appTsContent).toContain('restorePanelCollapseState');
+    });
+
+    it('should have keyboard shortcuts with Shift modifier', () => {
+      expect(appTsContent).toContain('event.shiftKey');
+      expect(appTsContent).toContain("togglePanelCollapse('thinking')");
+      expect(appTsContent).toContain("togglePanelCollapse('tools')");
+      expect(appTsContent).toContain("togglePanelCollapse('todo')");
+      expect(appTsContent).toContain("togglePanelCollapse('plan')");
+    });
+
+    it('should announce collapse state for screen readers', () => {
+      expect(appTsContent).toContain('announceStatus');
+      expect(appTsContent).toContain('collapsed');
+      expect(appTsContent).toContain('expanded');
+    });
+
+    it('should initialize collapse buttons on load', () => {
+      expect(appTsContent).toContain('initPanelCollapseButtons');
+    });
+  });
+});

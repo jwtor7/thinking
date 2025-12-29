@@ -55,6 +55,7 @@ const RECONNECT_MAX_DELAY_MS = 30000;
 const MAX_ENTRIES = 500; // Max entries per panel to prevent memory issues
 const SCROLL_THRESHOLD = 50; // Pixels from bottom to consider "at bottom"
 const STORAGE_KEY_TODOS = 'thinking-monitor-session-todos';
+const STORAGE_KEY_PANEL_COLLAPSE = 'thinking-monitor-panel-collapse-state';
 
 // Plan association persistence constants
 const PLAN_ASSOCIATION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -102,6 +103,8 @@ interface AppState {
   sessionPlanMap: Map<string, string>;
   // Current session's todos (derived from sessionTodos based on currentSessionId)
   todos: TodoItem[];
+  // Panel collapse states - maps panel name to collapsed boolean
+  panelCollapseState: Record<string, boolean>;
 }
 
 interface PlanInfo {
@@ -201,6 +204,12 @@ const state: AppState = {
   sessionTodos: new Map(),
   sessionPlanMap: new Map(),
   todos: [],
+  panelCollapseState: {
+    thinking: false,
+    todo: false,
+    tools: false,
+    plan: false,
+  },
 };
 
 /**
@@ -381,6 +390,11 @@ const elements = {
   connectionOverlayMessage: document.getElementById('connection-overlay-message')!,
   connectionOverlayRetry: document.getElementById('connection-overlay-retry')!,
   panels: document.querySelector('.panels') as HTMLElement,
+  // Panel collapse buttons
+  thinkingCollapseBtn: document.querySelector('.panel-thinking .panel-collapse-btn') as HTMLButtonElement,
+  todoCollapseBtn: document.querySelector('.panel-todo .panel-collapse-btn') as HTMLButtonElement,
+  toolsCollapseBtn: document.querySelector('.panel-tools .panel-collapse-btn') as HTMLButtonElement,
+  planCollapseBtn: document.querySelector('.panel-plan .panel-collapse-btn') as HTMLButtonElement,
 };
 
 // ============================================
@@ -2287,6 +2301,107 @@ function restoreTodosFromStorage(): void {
 }
 
 // ============================================
+// Panel Collapse State
+// ============================================
+
+type PanelName = 'thinking' | 'todo' | 'tools' | 'plan';
+
+const PANEL_ELEMENTS: Record<PanelName, { panel: HTMLElement | null; btn: HTMLButtonElement | null }> = {
+  thinking: { panel: elements.thinkingPanel, btn: elements.thinkingCollapseBtn },
+  todo: { panel: elements.todoPanel, btn: elements.todoCollapseBtn },
+  tools: { panel: elements.toolsPanel, btn: elements.toolsCollapseBtn },
+  plan: { panel: elements.planPanel, btn: elements.planCollapseBtn },
+};
+
+/**
+ * Toggle collapse state for a panel.
+ * Updates DOM, state, and persists to localStorage.
+ */
+function togglePanelCollapse(panelName: PanelName): void {
+  const { panel, btn } = PANEL_ELEMENTS[panelName];
+  if (!panel || !btn) return;
+
+  const isCollapsed = !state.panelCollapseState[panelName];
+  state.panelCollapseState[panelName] = isCollapsed;
+
+  // Update DOM
+  panel.classList.toggle('collapsed', isCollapsed);
+  btn.setAttribute('aria-expanded', String(!isCollapsed));
+  btn.setAttribute('aria-label', `${isCollapsed ? 'Expand' : 'Collapse'} ${panelName} panel`);
+  const shortcutKey = panelName === 'thinking' ? 'T' : panelName === 'tools' ? 'O' : panelName === 'todo' ? 'D' : 'P';
+  btn.title = `${isCollapsed ? 'Expand' : 'Collapse'} panel (Shift+${shortcutKey})`;
+
+  // Persist to localStorage
+  savePanelCollapseState();
+
+  // Announce for screen readers
+  announceStatus(`${panelName} panel ${isCollapsed ? 'collapsed' : 'expanded'}`);
+
+  console.log(`[Dashboard] Panel ${panelName} ${isCollapsed ? 'collapsed' : 'expanded'}`);
+}
+
+/**
+ * Save panel collapse state to localStorage.
+ */
+function savePanelCollapseState(): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_PANEL_COLLAPSE, JSON.stringify(state.panelCollapseState));
+  } catch (error) {
+    console.warn('[Dashboard] Failed to save panel collapse state:', error);
+  }
+}
+
+/**
+ * Restore panel collapse state from localStorage.
+ */
+function restorePanelCollapseState(): void {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_PANEL_COLLAPSE);
+    if (!stored) return;
+
+    const parsed = JSON.parse(stored);
+    if (typeof parsed !== 'object' || parsed === null) {
+      console.warn('[Dashboard] Invalid stored panel collapse state, clearing');
+      localStorage.removeItem(STORAGE_KEY_PANEL_COLLAPSE);
+      return;
+    }
+
+    // Apply stored state
+    for (const [panelName, isCollapsed] of Object.entries(parsed)) {
+      if (panelName in state.panelCollapseState && typeof isCollapsed === 'boolean') {
+        state.panelCollapseState[panelName as PanelName] = isCollapsed;
+        const { panel, btn } = PANEL_ELEMENTS[panelName as PanelName];
+        if (panel && btn && isCollapsed) {
+          panel.classList.add('collapsed');
+          btn.setAttribute('aria-expanded', 'false');
+          btn.setAttribute('aria-label', `Expand ${panelName} panel`);
+          const shortcutKey = panelName === 'thinking' ? 'T' : panelName === 'tools' ? 'O' : panelName === 'todo' ? 'D' : 'P';
+          btn.title = `Expand panel (Shift+${shortcutKey})`;
+        }
+      }
+    }
+
+    console.log('[Dashboard] Restored panel collapse state from localStorage');
+  } catch (error) {
+    console.warn('[Dashboard] Failed to restore panel collapse state:', error);
+  }
+}
+
+/**
+ * Initialize panel collapse button event listeners.
+ */
+function initPanelCollapseButtons(): void {
+  for (const [panelName, { btn }] of Object.entries(PANEL_ELEMENTS)) {
+    if (btn) {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        togglePanelCollapse(panelName as PanelName);
+      });
+    }
+  }
+}
+
+// ============================================
 // Session-Plan Association Persistence
 // ============================================
 
@@ -2909,8 +3024,30 @@ function handleKeydown(event: KeyboardEvent): void {
     return;
   }
 
-  // View navigation shortcuts
-  if (!event.ctrlKey && !event.metaKey) {
+  // Panel collapse shortcuts (Shift + t/o/d/p)
+  if (event.shiftKey && !event.ctrlKey && !event.metaKey) {
+    switch (event.key.toLowerCase()) {
+      case 't':
+        event.preventDefault();
+        togglePanelCollapse('thinking');
+        return;
+      case 'o':
+        event.preventDefault();
+        togglePanelCollapse('tools');
+        return;
+      case 'd':
+        event.preventDefault();
+        togglePanelCollapse('todo');
+        return;
+      case 'p':
+        event.preventDefault();
+        togglePanelCollapse('plan');
+        return;
+    }
+  }
+
+  // View navigation shortcuts (without Shift)
+  if (!event.ctrlKey && !event.metaKey && !event.shiftKey) {
     switch (event.key.toLowerCase()) {
       case 'a':
         selectView('all');
@@ -3088,7 +3225,11 @@ document.addEventListener('keydown', (e) => {
 // Initialize view tabs navigation
 initViewTabs();
 
+// Initialize panel collapse buttons
+initPanelCollapseButtons();
+
 // Restore persisted state from localStorage before connecting
+restorePanelCollapseState();
 restoreTodosFromStorage();
 loadSessionPlanAssociations();
 
@@ -3102,5 +3243,5 @@ if (state.sessions.size > 0) {
 
 connect();
 console.log('[Dashboard] Thinking Monitor initialized');
-console.log('[Dashboard] Keyboard shortcuts: a/t/o/g/p=views, c=clear, s=scroll, /=search, Esc=clear filters');
+console.log('[Dashboard] Keyboard shortcuts: a/t/o/d/p=views, Shift+t/o/d/p=collapse, c=clear, s=scroll, /=search, Esc=clear filters');
 console.log('[Dashboard] Plan shortcuts: Cmd+O=open, Cmd+Shift+R=reveal, right-click=context menu');
