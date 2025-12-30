@@ -8,6 +8,8 @@
 
 A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
 
+![Thinking Monitor Dashboard](docs/screenshot.png)
+
 ---
 
 ## Why

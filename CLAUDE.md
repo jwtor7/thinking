@@ -46,15 +46,61 @@ See `~/.claude/plans/splendid-hopping-fairy.md` for full PRD.
 
 ## Versioning & Changelog (MANDATORY)
 
-**Before any commit**, update version and changelog:
+**Every code change requires version bump and documentation updates.**
 
-1. Bump version: `./scripts/bump-version.sh patch|minor|major`
-2. Add entry to CHANGELOG.md with today's date
-3. Include both in the commit
+### Release Workflow
 
-**Version bump rules:**
-- `patch` - Bug fixes, small improvements
-- `minor` - New features (backward compatible)
-- `major` - Breaking changes
+```bash
+# 1. Bump version (updates package.json, types.ts, types.test.ts, CHANGELOG.md)
+./scripts/bump-version.sh patch|minor|major
 
-**Never commit code changes without updating version/changelog.**
+# 2. Edit CHANGELOG.md - replace placeholder with actual changes
+#    Use format: Added/Changed/Fixed/Security sections
+
+# 3. Update README.md Recent Changes section with new version
+
+# 4. Update README.md version badge if needed
+#    [![Version](https://img.shields.io/badge/version-X.X.X-purple)]
+
+# 5. Commit all changes together
+git add -A && git commit -m "vX.X.X: Brief description"
+
+# 6. Tag and push
+git tag -a vX.X.X -m "vX.X.X: Brief description"
+git push origin main --tags
+```
+
+### Version Bump Rules
+
+| Type | When | Example |
+|------|------|---------|
+| `patch` | Bug fixes, small improvements | 0.9.0 → 0.9.1 |
+| `minor` | New features (backward compatible) | 0.9.0 → 0.10.0 |
+| `major` | Breaking changes | 0.9.0 → 1.0.0 |
+
+### CHANGELOG Format
+
+```markdown
+## [X.X.X] - YYYY-MM-DD
+
+### Added
+- New features
+
+### Changed
+- Modifications to existing features
+
+### Fixed
+- Bug fixes
+
+### Security
+- Security improvements
+```
+
+### README Updates
+
+Always update these sections:
+1. **Version badge** in header (if major/minor)
+2. **Recent Changes** section with new version entry
+3. **Screenshot** if UI changed significantly (`docs/screenshot.png`)
+
+**Never commit code changes without completing this workflow.**
