@@ -13,7 +13,7 @@ import { escapeHtml } from '../utils/html';
 import { getSessionColor, getShortSessionId } from '../ui/filters';
 import { getAgentColor } from '../ui/colors';
 import { applyToolsFilter, updateToolsCount } from '../ui/filters';
-import { MonitorEvent } from '../types';
+import type { ToolStartEvent, ToolEndEvent } from '../types';
 
 // ============================================
 // Callback Interface
@@ -58,15 +58,15 @@ export function initTools(cbs: ToolsCallbacks): void {
  * - TodoWrite: Parses todo items from input
  * - Read/Write/Edit: Detects plan file access for session association
  */
-export function handleToolStart(event: MonitorEvent): void {
+export function handleToolStart(event: ToolStartEvent): void {
   if (!callbacks) {
     console.error('[Tools] Handler not initialized - call initTools first');
     return;
   }
 
-  const toolName = String(event.toolName || 'Unknown');
-  const toolCallId = String(event.toolCallId || `tool-${Date.now()}`);
-  const input = event.input ? String(event.input) : undefined;
+  const toolName = event.toolName;
+  const toolCallId = event.toolCallId || `tool-${Date.now()}`;
+  const input = event.input;
   const time = formatTime(event.timestamp);
   const sessionId = event.sessionId;
 
@@ -181,9 +181,9 @@ export function handleToolStart(event: MonitorEvent): void {
  * Note: TodoWrite is handled in handleToolStart since tool_end
  * doesn't include the input.
  */
-export function handleToolEnd(event: MonitorEvent): void {
-  const toolCallId = String(event.toolCallId || '');
-  const durationMs = event.durationMs as number | undefined;
+export function handleToolEnd(event: ToolEndEvent): void {
+  const toolCallId = event.toolCallId || '';
+  const durationMs = event.durationMs;
 
   // Update existing entry if found
   const entry = document.getElementById(`tool-${toolCallId}`);

@@ -7,7 +7,7 @@
  * Uses a callback pattern for functions that would cause circular imports.
  */
 
-import { MonitorEvent } from '../types';
+import type { ThinkingEvent } from '../types';
 import { state } from '../state';
 import { elements } from '../ui/elements';
 import { formatTime } from '../utils/formatting';
@@ -72,7 +72,7 @@ export function initThinking(cbs: ThinkingCallbacks): void {
  *
  * @param event The thinking event to process
  */
-export function handleThinking(event: MonitorEvent): void {
+export function handleThinking(event: ThinkingEvent): void {
   // Validate callbacks have been initialized
   if (!callbacks) {
     console.error('[Thinking Handler] Callbacks not initialized - call initThinking() first');
@@ -82,7 +82,7 @@ export function handleThinking(event: MonitorEvent): void {
   state.thinkingCount++;
   updateThinkingCount();
 
-  const content = String(event.content || '');
+  const content = event.content;
   const time = formatTime(event.timestamp);
   const sessionId = event.sessionId;
   const preview = content.slice(0, 80).replace(/\n/g, ' ');

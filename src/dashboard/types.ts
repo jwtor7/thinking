@@ -7,7 +7,24 @@
  */
 
 // Re-export shared types for use in dashboard modules
-export type { MonitorEventType, MonitorEvent, WebSocketMessage } from '../shared/types.js';
+export type {
+  MonitorEventType,
+  MonitorEvent,
+  MonitorEventBase,
+  WebSocketMessage,
+  StrictMonitorEvent,
+  ToolStartEvent,
+  ToolEndEvent,
+  ThinkingEvent,
+  AgentStartEvent,
+  AgentStopEvent,
+  SessionStartEvent,
+  SessionStopEvent,
+  PlanUpdateEvent,
+  PlanDeleteEvent,
+  PlanListEvent,
+  ConnectionStatusEvent,
+} from '../shared/types.js';
 
 // ============================================
 // Application State

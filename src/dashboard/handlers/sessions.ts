@@ -10,7 +10,7 @@ import { elements } from '../ui/elements';
 import { escapeHtml } from '../utils/html';
 import { getSessionColorByHash } from '../ui/colors';
 import { filterAllBySession } from '../ui/filters';
-import type { MonitorEvent } from '../types';
+import type { SessionStartEvent, SessionStopEvent } from '../types';
 
 // ============================================
 // Callback Pattern for Circular Import Prevention
@@ -87,9 +87,9 @@ export function trackSession(sessionId: string, timestamp: string): void {
  * Handle session_start event.
  * Creates or updates the session record with full metadata.
  */
-export function handleSessionStart(event: MonitorEvent): void {
-  const sessionId = String(event.sessionId || '');
-  const workingDirectory = event.workingDirectory as string | undefined;
+export function handleSessionStart(event: SessionStartEvent): void {
+  const sessionId = event.sessionId;
+  const workingDirectory = event.workingDirectory;
 
   console.log(`[Dashboard] Session started: ${sessionId}`, { workingDirectory });
 
@@ -109,8 +109,8 @@ export function handleSessionStart(event: MonitorEvent): void {
  * Handle session_stop event.
  * Marks the session as inactive and clears current session if it matches.
  */
-export function handleSessionStop(event: MonitorEvent): void {
-  const sessionId = String(event.sessionId || '');
+export function handleSessionStop(event: SessionStopEvent): void {
+  const sessionId = event.sessionId;
   const session = state.sessions.get(sessionId);
 
   console.log(`[Dashboard] Session stopped: ${sessionId}`);

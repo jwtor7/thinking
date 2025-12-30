@@ -8,174 +8,34 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-// Re-export shared types for backward compatibility
-export type { MonitorEventType, MonitorEvent, WebSocketMessage } from '../shared/types.js';
+// Re-export all shared types
+export type {
+  MonitorEventType,
+  MonitorEvent,
+  MonitorEventBase,
+  WebSocketMessage,
+  StrictMonitorEvent,
+  ToolStartEvent,
+  ToolEndEvent,
+  ThinkingEvent,
+  AgentStartEvent,
+  AgentStopEvent,
+  SessionStartEvent,
+  SessionStopEvent,
+  PlanUpdateEvent,
+  PlanDeleteEvent,
+  PlanListEvent,
+  ConnectionStatusEvent,
+} from '../shared/types.js';
 
 // Import for local use
-import type { MonitorEventType, MonitorEvent } from '../shared/types.js';
+import type { MonitorEventType, MonitorEvent, StrictMonitorEvent } from '../shared/types.js';
 
 /**
- * Base interface for all server-side monitor events.
- * Extends the shared MonitorEvent to ensure compatibility while
- * providing the base for discriminated union types.
+ * Server-side union type alias (for backward compatibility).
+ * Use StrictMonitorEvent from shared/types.ts for new code.
  */
-export interface MonitorEventBase extends MonitorEvent {
-  /** Event type identifier (narrowed in specific event types) */
-  type: MonitorEventType;
-}
-
-/**
- * Tool start event - sent when a tool invocation begins.
- */
-export interface ToolStartEvent extends MonitorEventBase {
-  type: 'tool_start';
-  /** Name of the tool being invoked */
-  toolName: string;
-  /** Tool input (truncated to MAX_PAYLOAD_SIZE) */
-  input?: string;
-  /** Unique ID for correlating with tool_end */
-  toolCallId?: string;
-}
-
-/**
- * Tool end event - sent when a tool invocation completes.
- */
-export interface ToolEndEvent extends MonitorEventBase {
-  type: 'tool_end';
-  /** Name of the tool that was invoked */
-  toolName: string;
-  /** Tool output (truncated to MAX_PAYLOAD_SIZE) */
-  output?: string;
-  /** Unique ID for correlating with tool_start */
-  toolCallId?: string;
-  /** Duration in milliseconds (if available) */
-  durationMs?: number;
-}
-
-/**
- * Agent start event - sent when a subagent is spawned.
- */
-export interface AgentStartEvent extends MonitorEventBase {
-  type: 'agent_start';
-  /** Unique identifier for this agent instance */
-  agentId: string;
-  /** Human-readable agent name (e.g., "explore", "plan") */
-  agentName?: string;
-  /** Parent agent ID (undefined for main session) */
-  parentAgentId?: string;
-}
-
-/**
- * Agent stop event - sent when a subagent completes.
- */
-export interface AgentStopEvent extends MonitorEventBase {
-  type: 'agent_stop';
-  /** Unique identifier for this agent instance */
-  agentId: string;
-  /** Exit status (success, failure, cancelled) */
-  status?: 'success' | 'failure' | 'cancelled';
-}
-
-/**
- * Thinking event - extracted from transcript JSONL.
- */
-export interface ThinkingEvent extends MonitorEventBase {
-  type: 'thinking';
-  /** The thinking/reasoning content */
-  content: string;
-  /** Agent ID that produced this thinking */
-  agentId?: string;
-}
-
-/**
- * Plan update event - sent when a plan file is created or modified.
- */
-export interface PlanUpdateEvent extends MonitorEventBase {
-  type: 'plan_update';
-  /** Path to the plan file */
-  path: string;
-  /** Plan filename */
-  filename: string;
-  /** Plan content (markdown) */
-  content?: string;
-  /** File modification time in milliseconds since epoch */
-  lastModified?: number;
-}
-
-/**
- * Plan delete event - sent when a plan file is removed.
- */
-export interface PlanDeleteEvent extends MonitorEventBase {
-  type: 'plan_delete';
-  /** Path to the deleted plan file */
-  path: string;
-  /** Plan filename */
-  filename: string;
-}
-
-/**
- * Plan list event - sent to provide the full list of available plans.
- */
-export interface PlanListEvent extends MonitorEventBase {
-  type: 'plan_list';
-  /** List of all available plans */
-  plans: Array<{
-    path: string;
-    filename: string;
-    lastModified: number;
-  }>;
-}
-
-/**
- * Session start event.
- */
-export interface SessionStartEvent extends MonitorEventBase {
-  type: 'session_start';
-  /** Session ID */
-  sessionId: string;
-  /** Working directory for the session */
-  workingDirectory?: string;
-}
-
-/**
- * Session stop event.
- */
-export interface SessionStopEvent extends MonitorEventBase {
-  type: 'session_stop';
-  /** Session ID */
-  sessionId: string;
-}
-
-/**
- * Connection status event - sent to clients on connect.
- */
-export interface ConnectionStatusEvent extends MonitorEventBase {
-  type: 'connection_status';
-  /** Connection status */
-  status: 'connected' | 'disconnected';
-  /** Server version */
-  serverVersion: string;
-  /** Number of connected clients */
-  clientCount: number;
-}
-
-/**
- * Server-side union type for all monitor events.
- * Provides discriminated union for type narrowing in event handlers.
- * Note: The shared MonitorEvent type is used for WebSocket communication.
- */
-export type ServerMonitorEvent =
-  | ToolStartEvent
-  | ToolEndEvent
-  | AgentStartEvent
-  | AgentStopEvent
-  | ThinkingEvent
-  | PlanUpdateEvent
-  | PlanDeleteEvent
-  | PlanListEvent
-  | SessionStartEvent
-  | SessionStopEvent
-  | ConnectionStatusEvent;
+export type ServerMonitorEvent = StrictMonitorEvent;
 
 /**
  * Client request types for bidirectional communication.

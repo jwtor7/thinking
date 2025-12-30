@@ -14,7 +14,7 @@ import { elements } from '../ui/elements';
 import { escapeHtml } from '../utils/html';
 import { renderSimpleMarkdown } from '../utils/markdown';
 import { sendMessage, getWebSocket } from '../connection/websocket';
-import type { MonitorEvent, PlanInfo } from '../types';
+import type { PlanListEvent, PlanUpdateEvent, PlanDeleteEvent, PlanInfo } from '../types';
 
 // ============================================
 // Types
@@ -62,10 +62,10 @@ export function initPlans(cbs: PlanCallbacks): void {
  * Handle plan_list event from the server.
  * Updates the plan list in state and refreshes the selector.
  *
- * @param event - Monitor event containing plan list data
+ * @param event - Plan list event containing plan metadata
  */
-export function handlePlanList(event: MonitorEvent): void {
-  const plans = event.plans as Array<{ path: string; filename: string; lastModified: number }> || [];
+export function handlePlanList(event: PlanListEvent): void {
+  const plans = event.plans;
 
   // Update the plan list in state
   state.planList = plans.map((p) => ({
@@ -84,16 +84,14 @@ export function handlePlanList(event: MonitorEvent): void {
  * Handle plan_update event from the server.
  * Stores the plan content and updates display if appropriate.
  *
- * @param event - Monitor event containing plan data
+ * @param event - Plan update event containing plan data
  */
-export function handlePlanUpdate(event: MonitorEvent): void {
-  const filename = event.filename ? String(event.filename) : 'Unknown plan';
-  const path = event.path ? String(event.path) : filename;
-  const content = event.content ? String(event.content) : '';
+export function handlePlanUpdate(event: PlanUpdateEvent): void {
+  const filename = event.filename;
+  const path = event.path;
+  const content = event.content || '';
   // Use the actual file modification time if provided, otherwise fall back to current time
-  const lastModified = typeof event.lastModified === 'number'
-    ? event.lastModified
-    : Date.now();
+  const lastModified = event.lastModified ?? Date.now();
 
   // Find the currently active (running) agent to associate with this plan
   const activeAgent = callbacks?.findActiveAgent();
@@ -150,10 +148,10 @@ export function handlePlanUpdate(event: MonitorEvent): void {
  * Handle plan_delete event from the server.
  * Removes the plan from state and updates display.
  *
- * @param event - Monitor event containing deleted plan path
+ * @param event - Plan delete event containing deleted plan path
  */
-export function handlePlanDelete(event: MonitorEvent): void {
-  const path = event.path ? String(event.path) : '';
+export function handlePlanDelete(event: PlanDeleteEvent): void {
+  const path = event.path;
 
   // Remove this plan from our map
   if (path) {

@@ -1,15 +1,15 @@
 import { state, agentContextStack, agentContextTimestamps } from '../state';
 import { elements } from '../ui/elements';
 import { MAX_AGENT_STACK_SIZE, AGENT_STACK_STALE_MS, AGENT_STACK_CLEANUP_INTERVAL_MS } from '../config';
-import { MonitorEvent, AgentInfo } from '../types';
+import type { AgentStartEvent, AgentStopEvent, AgentInfo } from '../types';
 
 /**
  * Handles agent start events
  */
-function handleAgentStart(event: MonitorEvent): void {
-  const agentId = String(event.agentId || `agent-${Date.now()}`);
-  const agentName = event.agentName ? String(event.agentName) : agentId.slice(0, 8);
-  const parentId = event.parentAgentId ? String(event.parentAgentId) : undefined;
+function handleAgentStart(event: AgentStartEvent): void {
+  const agentId = event.agentId;
+  const agentName = event.agentName || agentId.slice(0, 8);
+  const parentId = event.parentAgentId;
 
   state.agents.set(agentId, {
     id: agentId,
@@ -34,13 +34,13 @@ function handleAgentStart(event: MonitorEvent): void {
 /**
  * Handles agent stop events
  */
-function handleAgentStop(event: MonitorEvent): void {
-  const agentId = String(event.agentId || '');
+function handleAgentStop(event: AgentStopEvent): void {
+  const agentId = event.agentId;
   const agent = state.agents.get(agentId);
 
   if (agent) {
     agent.active = false;
-    agent.status = (event.status as AgentInfo['status']) || 'success';
+    agent.status = event.status || 'success';
     agent.endTime = event.timestamp;
 
     popAgentContext(agentId);

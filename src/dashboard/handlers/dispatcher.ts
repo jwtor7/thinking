@@ -1,6 +1,6 @@
 import { state } from '../state';
 import { elements } from '../ui/elements';
-import { MonitorEvent } from '../types';
+import type { StrictMonitorEvent, ConnectionStatusEvent } from '../types';
 import { trackSession, handleSessionStart, handleSessionStop } from './sessions';
 import { handleThinking } from './thinking';
 import { handleToolStart, handleToolEnd } from './tools';
@@ -8,9 +8,10 @@ import { handleAgentStart, handleAgentStop } from './agents';
 import { handlePlanList, handlePlanUpdate, handlePlanDelete } from './plans';
 
 /**
- * Main event dispatcher that routes incoming WebSocket events to appropriate handlers
+ * Main event dispatcher that routes incoming WebSocket events to appropriate handlers.
+ * Uses StrictMonitorEvent for type-safe dispatch - TypeScript narrows the type in each case.
  */
-export function handleEvent(event: MonitorEvent): void {
+export function handleEvent(event: StrictMonitorEvent): void {
   state.eventCount++;
   elements.eventCount.textContent = `Events: ${state.eventCount}`;
 
@@ -67,7 +68,7 @@ export function handleEvent(event: MonitorEvent): void {
 /**
  * Handle connection_status events from the server
  */
-export function handleConnectionStatus(event: MonitorEvent): void {
-  const version = (event.serverVersion as string) || 'unknown';
+export function handleConnectionStatus(event: ConnectionStatusEvent): void {
+  const version = event.serverVersion || 'unknown';
   elements.serverInfo.textContent = `Server: v${version}`;
 }

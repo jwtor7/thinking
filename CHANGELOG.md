@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.10.0] - 2025-12-29
+
+### Changed
+- **Type-safe event handling**: Dashboard handlers now use discriminated union types (`StrictMonitorEvent`)
+- Dashboard switch statements auto-narrow event types (no more `String()` coercions or `as Type` casts)
+- Consolidated event type definitions: 11 specific event interfaces in `src/shared/types.ts`
+- Server types now import from shared module (eliminates ~100 lines of duplicate definitions)
+
+### Technical
+- Added `MonitorEventBase` interface (without index signature) for strict typing
+- Added specific event interfaces: `ToolStartEvent`, `ToolEndEvent`, `ThinkingEvent`, `AgentStartEvent`, `AgentStopEvent`, `SessionStartEvent`, `SessionStopEvent`, `PlanUpdateEvent`, `PlanDeleteEvent`, `PlanListEvent`, `ConnectionStatusEvent`
+- `StrictMonitorEvent` discriminated union enables exhaustive type checking in switch statements
+- Kept `MonitorEvent` (with index signature) for backward compatibility with external hooks
+
+---
+
 ## [0.9.1] - 2025-12-29
 
 ### Fixed

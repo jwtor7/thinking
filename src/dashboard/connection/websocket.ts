@@ -15,7 +15,7 @@ import {
 } from '../config';
 import { state } from '../state';
 import { elements } from '../ui/elements';
-import type { MonitorEvent, WebSocketMessage } from '../types';
+import type { StrictMonitorEvent, WebSocketMessage } from '../types';
 
 // ============================================
 // Types
@@ -29,7 +29,7 @@ import type { MonitorEvent, WebSocketMessage } from '../types';
  */
 export interface WebSocketCallbacks {
   /** Called when a monitor event is received */
-  onEvent: (event: MonitorEvent) => void;
+  onEvent: (event: StrictMonitorEvent) => void;
   /** Called to show toast notifications */
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
   /** Called to announce status changes for screen readers */
@@ -121,7 +121,9 @@ export function connect(): void {
   ws.onmessage = (event) => {
     try {
       const message: WebSocketMessage = JSON.parse(event.data);
-      callbacks?.onEvent(message.event);
+      // Server validates events with isMonitorEvent before broadcast,
+      // so we can safely cast to StrictMonitorEvent for type-safe handling
+      callbacks?.onEvent(message.event as StrictMonitorEvent);
     } catch (error) {
       console.error('[Dashboard] Failed to parse message:', error);
     }
