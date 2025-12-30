@@ -139,8 +139,8 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
-**v0.9.0** — Log levels, security hardening, performance optimization, cross-platform support
-**v0.8.0** — Modular architecture (16 focused modules from monolithic 3,247-line file)
-**v0.7.0** — Collapsible panels with keyboard shortcuts and persistence
+- **v0.9.0** — Log levels, security hardening, performance optimization, cross-platform support
+- **v0.8.0** — Modular architecture (16 focused modules from monolithic 3,247-line file)
+- **v0.7.0** — Collapsible panels with keyboard shortcuts and persistence
 
 *[Full changelog →](./CHANGELOG.md)*
