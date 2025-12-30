@@ -22,6 +22,7 @@ import { normalize, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { logger } from './logger.ts';
+import { CONFIG } from './types.ts';
 
 /**
  * The allowed base directory for file operations.
@@ -188,7 +189,7 @@ export async function handleFileActionRequest(
   }
 
   // Set CORS headers for local development
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3356');
+  res.setHeader('Access-Control-Allow-Origin', `http://localhost:${CONFIG.STATIC_PORT}`);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 

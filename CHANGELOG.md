@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.9.1] - 2025-12-29
+
+### Fixed
+- Remove redundant hardcoded origins in WebSocket hub (use CONFIG.STATIC_PORT consistently)
+- Use CONFIG-based CORS origin in file-actions endpoint instead of hardcoded port
+- Add error boundaries to async callbacks in setTimeout/setInterval (plan-watcher, transcript-watcher)
+- Remove unused TypeScript imports (ViewType, PanelName) in dashboard keyboard handler
+
+---
+
 ## [0.9.0] - 2025-12-29
 
 ### Added

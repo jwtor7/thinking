@@ -4,7 +4,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-0.9.0-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.9.1-purple)](./CHANGELOG.md)
 
 A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
 
@@ -118,8 +118,8 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
+- **v0.9.1** — Bug fixes: CONFIG-based origins, async error boundaries, unused imports
 - **v0.9.0** — Log levels, security hardening, performance optimization, cross-platform support
 - **v0.8.0** — Modular architecture (16 focused modules from monolithic 3,247-line file)
-- **v0.7.0** — Collapsible panels with keyboard shortcuts and persistence
 
 *[Full changelog →](./CHANGELOG.md)*

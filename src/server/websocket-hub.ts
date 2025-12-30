@@ -77,8 +77,6 @@ export class WebSocketHub {
 
     // Validate origin is from localhost
     const allowedOrigins = [
-      'http://localhost:3356',
-      'http://127.0.0.1:3356',
       `http://localhost:${CONFIG.STATIC_PORT}`,
       `http://127.0.0.1:${CONFIG.STATIC_PORT}`,
     ];

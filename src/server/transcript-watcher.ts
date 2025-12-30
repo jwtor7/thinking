@@ -127,19 +127,23 @@ export class TranscriptWatcher {
       return;
     }
 
-    this.pollInterval = setInterval(async () => {
-      if (this.isShuttingDown) {
-        return;
-      }
+    this.pollInterval = setInterval(() => {
+      (async () => {
+        if (this.isShuttingDown) {
+          return;
+        }
 
-      try {
-        await stat(this.projectsDir);
-        // Directory exists now, start watching
-        this.stopPolling();
-        await this.initializeWatching();
-      } catch {
-        // Directory still doesn't exist, continue polling
-      }
+        try {
+          await stat(this.projectsDir);
+          // Directory exists now, start watching
+          this.stopPolling();
+          await this.initializeWatching();
+        } catch {
+          // Directory still doesn't exist, continue polling
+        }
+      })().catch((error) => {
+        logger.error(`[TranscriptWatcher] Error in directory polling:`, error instanceof Error ? error.message : 'Unknown error');
+      });
     }, CONFIG.TRANSCRIPT_POLL_INTERVAL_MS * 5);
   }
 

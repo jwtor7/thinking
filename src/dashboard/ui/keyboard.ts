@@ -7,8 +7,8 @@
 
 import { state } from '../state';
 import { elements } from './elements';
-import { selectView, ViewType } from './views';
-import { togglePanelCollapse, PanelName } from './panels';
+import { selectView } from './views';
+import { togglePanelCollapse } from './panels';
 import { filterAllThinking, filterAllTools } from './filters';
 
 /**

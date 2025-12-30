@@ -207,17 +207,21 @@ export class PlanWatcher {
     }
 
     // Use debounced check to handle rapid events
-    setTimeout(async () => {
-      if (this.isShuttingDown) return;
+    setTimeout(() => {
+      (async () => {
+        if (this.isShuttingDown) return;
 
-      try {
-        await stat(filePath);
-        // File exists, process update
-        await this.processPlanUpdate(filePath);
-      } catch {
-        // File was deleted
-        this.handlePlanDelete(filePath, filename);
-      }
+        try {
+          await stat(filePath);
+          // File exists, process update
+          await this.processPlanUpdate(filePath);
+        } catch {
+          // File was deleted
+          this.handlePlanDelete(filePath, filename);
+        }
+      })().catch((error) => {
+        logger.error(`[PlanWatcher] Error in file event handler:`, error instanceof Error ? error.message : 'Unknown error');
+      });
     }, 100);
   }
 
