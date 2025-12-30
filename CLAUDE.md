@@ -68,6 +68,11 @@ git add -A && git commit -m "vX.X.X: Brief description"
 # 6. Tag and push
 git tag -a vX.X.X -m "vX.X.X: Brief description"
 git push origin main --tags
+
+# 7. Rebuild and restart local server (so changes take effect)
+pnpm build:server && pnpm build:dashboard
+pkill -f "node dist/server/index.js" 2>/dev/null
+pnpm start &
 ```
 
 ### Version Bump Rules
