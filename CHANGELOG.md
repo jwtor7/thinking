@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.11.0] - 2025-12-29
+
+### Added
+- **Theme system**: Five themes with system preference tracking and persistence
+  - Dark (default), Light, Solarized, Solarized Dark themes
+  - "System" option follows OS dark/light preference automatically
+  - Theme persists across sessions via localStorage
+- Theme dropdown selector in dashboard header
+- Color cache reset for dynamic theme switching
+
+### Technical
+- `src/dashboard/themes.ts` - Theme definitions and application logic
+- `src/dashboard/ui/theme-toggle.ts` - Theme selector UI component
+- `src/dashboard/themes.test.ts` - 33 unit tests for theme system
+
+---
+
 ## [0.10.0] - 2025-12-29
 
 ### Changed

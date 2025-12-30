@@ -9,10 +9,12 @@
  * be called after DOM is ready.
  */
 
-import { TodoItem, StoredPlanAssociation } from '../types';
+import { TodoItem, StoredPlanAssociation, ThemeId } from '../types';
 import {
   STORAGE_KEY_TODOS,
   STORAGE_KEY_PANEL_COLLAPSE,
+  STORAGE_KEY_THEME,
+  DEFAULT_THEME,
   PLAN_ASSOCIATION_MAX_AGE_MS,
   PLAN_ASSOCIATION_MAX_ENTRIES,
   PLAN_ASSOCIATION_STORAGE_KEY,
@@ -287,5 +289,56 @@ export function saveSessionPlanAssociation(sessionId: string, planPath: string):
     console.log(`[Dashboard] Saved plan association: ${sessionId.slice(0, 8)} -> ${planPath.split('/').pop()}`);
   } catch (error) {
     console.warn('[Dashboard] Failed to save plan association to localStorage:', error);
+  }
+}
+
+// ============================================
+// Theme Persistence
+// ============================================
+
+/**
+ * Valid theme IDs for validation.
+ */
+const VALID_THEME_IDS: ThemeId[] = ['dark', 'light', 'solarized', 'solarized-dark', 'system'];
+
+/**
+ * Check if a value is a valid ThemeId.
+ */
+function isValidThemeId(value: unknown): value is ThemeId {
+  return typeof value === 'string' && VALID_THEME_IDS.includes(value as ThemeId);
+}
+
+/**
+ * Save the user's theme preference to localStorage.
+ *
+ * @param theme - The theme ID to save
+ */
+export function saveThemePreference(theme: ThemeId): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_THEME, theme);
+    console.log(`[Dashboard] Saved theme preference: ${theme}`);
+  } catch (error) {
+    console.warn('[Dashboard] Failed to save theme preference to localStorage:', error);
+  }
+}
+
+/**
+ * Load the user's theme preference from localStorage.
+ * Returns the stored theme or the default ('system') if not set or invalid.
+ *
+ * @returns The stored theme ID or default
+ */
+export function loadThemePreference(): ThemeId {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_THEME);
+    if (stored && isValidThemeId(stored)) {
+      console.log(`[Dashboard] Loaded theme preference: ${stored}`);
+      return stored;
+    }
+    console.log(`[Dashboard] No valid theme preference found, using default: ${DEFAULT_THEME}`);
+    return DEFAULT_THEME as ThemeId;
+  } catch (error) {
+    console.warn('[Dashboard] Failed to load theme preference from localStorage:', error);
+    return DEFAULT_THEME as ThemeId;
   }
 }

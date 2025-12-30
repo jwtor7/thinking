@@ -25,6 +25,7 @@ export const state: AppState = {
   reconnectAttempt: 0,
   reconnectCountdown: 0,
   keyboardMode: false,
+  theme: 'system',
   sessions: new Map(),
   currentSessionId: null,
   selectedSession: 'all',

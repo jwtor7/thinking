@@ -29,7 +29,10 @@ import {
   restoreTodosFromStorage,
   restorePanelCollapseState,
   loadSessionPlanAssociations,
+  loadThemePreference,
 } from './storage/persistence';
+
+import { initThemeToggle } from './ui/theme-toggle';
 
 import {
   initWebSocket,
@@ -416,6 +419,10 @@ document.addEventListener('keydown', (e) => {
 restorePanelCollapseState();
 restoreTodosFromStorage();
 loadSessionPlanAssociations();
+
+// Initialize theme system - load preference and apply theme
+const savedTheme = loadThemePreference();
+initThemeToggle(savedTheme);
 
 // Update UI with restored state
 if (state.todos.length > 0) {

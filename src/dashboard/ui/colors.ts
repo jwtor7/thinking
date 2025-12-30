@@ -110,5 +110,18 @@ export function getAgentColor(agentName: string): string {
   return AGENT_FALLBACK_COLORS[index];
 }
 
+/**
+ * Reset the color cache so colors are re-read from CSS variables.
+ * Call this when the theme changes to ensure session/agent colors
+ * pick up the new theme's accent colors.
+ */
+export function resetColorCache(): void {
+  cssVarsInitialized = false;
+  SESSION_COLORS = [];
+  AGENT_COLORS = {};
+  AGENT_FALLBACK_COLORS = [];
+  console.log('[Colors] Color cache reset - will re-read CSS variables on next access');
+}
+
 // Export public functions
 export { getCssVar, initCssColors };

@@ -27,6 +27,16 @@ export type {
 } from '../shared/types.js';
 
 // ============================================
+// Theme Types
+// ============================================
+
+/**
+ * Theme identifier for the dashboard.
+ * 'system' follows OS dark/light preference.
+ */
+export type ThemeId = 'dark' | 'light' | 'solarized' | 'solarized-dark' | 'system';
+
+// ============================================
 // Application State
 // ============================================
 
@@ -48,6 +58,8 @@ export interface AppState {
   reconnectAttempt: number;
   reconnectCountdown: number;
   keyboardMode: boolean;
+  // Theme preference
+  theme: ThemeId;
   // Session tracking for multi-session support
   sessions: Map<string, SessionInfo>;
   currentSessionId: string | null;
