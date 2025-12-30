@@ -57,28 +57,7 @@ Open **http://localhost:3356** and start a Claude Code session. Watch the magic.
 
 ## How It Works
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Claude Code Session                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│   Hooks ──────────────► HTTP POST ──────┐                   │
-│   (tool calls, agents)   :3355          │                   │
-│                                          ▼                   │
-│   Transcripts ────────► File Watcher ──► WebSocket Hub ──►  │
-│   (.jsonl thinking)                      :3355       │       │
-│                                                      │       │
-│   Plans ──────────────► File Watcher ────────────────┘       │
-│   (~/.claude/plans/)                                         │
-│                                                              │
-└──────────────────────────────────────────┬──────────────────┘
-                                           │
-                                           ▼
-                                    ┌─────────────┐
-                                    │  Dashboard  │
-                                    │   :3356     │
-                                    └─────────────┘
-```
+![Architecture Diagram](docs/architecture.png)
 
 ---
 
