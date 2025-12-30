@@ -1,125 +1,144 @@
 # Thinking Monitor
 
+**See inside Claude's mind.**
+
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![pnpm](https://img.shields.io/badge/pnpm-10.x-orange?logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![Version](https://img.shields.io/badge/version-0.9.0-purple)](./CHANGELOG.md)
 
-Real-time monitoring dashboard for Claude Code thinking, agents, and tool activity.
+A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
+
+---
+
+## Why
+
+Claude Code is powerful, but opaque. You see the output, not the process. Thinking Monitor changes that—watch Claude reason through problems, track every tool call, and understand how agents coordinate in real-time.
+
+---
 
 ## Features
 
-- **Thinking Panel** - Live stream of Claude's reasoning process with collapsible entries
-- **Tool Activity** - Track tool calls in real-time with two-line collapsed view showing agent and input
-- **Todo Panel** - Monitor task progress from TodoWrite events (pending/in-progress/completed)
-- **Plan Viewer** - Display plan files for the selected session
-- **Session Filtering** - Filter all panels by Claude Code session
-- **Click-to-Open** - Right-click file paths to open or reveal in Finder
+| Panel | What You See |
+|-------|--------------|
+| **Thinking** | Live stream of Claude's reasoning with collapsible entries |
+| **Tools** | Every tool call with timing, inputs, and outputs |
+| **Todo** | Task progress (pending → in-progress → completed) |
+| **Plan** | Active plan files with quick-open and reveal |
 
-## Requirements
+**Plus:**
+- Session filtering across all panels
+- Keyboard shortcuts for everything
+- Collapsible panels with state persistence
+- Right-click to open files in editor or Finder
+- Secret redaction (API keys, tokens, passwords)
 
-- Node.js >= 22.0.0
-- pnpm
-- Claude Code CLI
+---
 
-## Installation
+## Quick Start
 
 ```bash
-# Install dependencies
+# Clone and install
+git clone https://github.com/jwtor7/thinking.git
+cd thinking
 pnpm install
 
-# Install Claude Code hooks
+# Register hooks with Claude Code
 ./scripts/setup.sh --install
+
+# Start the monitor
+pnpm dev
 ```
 
-The setup script registers hooks with Claude Code by updating `~/.claude/settings.json`.
+Open **http://localhost:3356** and start a Claude Code session. Watch the magic.
+
+---
+
+## How It Works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Claude Code Session                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│   Hooks ──────────────► HTTP POST ──────┐                   │
+│   (tool calls, agents)   :3355          │                   │
+│                                          ▼                   │
+│   Transcripts ────────► File Watcher ──► WebSocket Hub ──►  │
+│   (.jsonl thinking)                      :3355       │       │
+│                                                      │       │
+│   Plans ──────────────► File Watcher ────────────────┘       │
+│   (~/.claude/plans/)                                         │
+│                                                              │
+└──────────────────────────────────────────┬──────────────────┘
+                                           │
+                                           ▼
+                                    ┌─────────────┐
+                                    │  Dashboard  │
+                                    │   :3356     │
+                                    └─────────────┘
+```
+
+---
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Default | Options |
+|----------|---------|---------|
+| `LOG_LEVEL` | `info` | `debug` · `info` · `warn` · `error` |
+
+```bash
+LOG_LEVEL=warn pnpm start   # Quiet
+LOG_LEVEL=debug pnpm start  # Verbose
+```
 
 ### Setup Commands
 
 ```bash
-./scripts/setup.sh --install    # Install hooks
+./scripts/setup.sh --install    # Register hooks
 ./scripts/setup.sh --uninstall  # Remove hooks
-./scripts/setup.sh --status     # Check installation status
+./scripts/setup.sh --status     # Check status
 ```
 
-## Usage
+---
 
-```bash
-# Development (with auto-reload)
-pnpm dev
+## Keyboard Shortcuts
 
-# Production
-pnpm build
-pnpm start
-```
+| Key | Action |
+|-----|--------|
+| `a` `t` `o` `d` `p` | Switch view (All, Thinking, Tools, Todo, Plan) |
+| `Shift` + `t` `o` `d` `p` | Collapse/expand panel |
+| `c` | Clear all entries |
+| `s` | Toggle auto-scroll |
+| `/` | Focus search |
+| `Cmd+O` | Open selected plan |
+| `Cmd+Shift+R` | Reveal plan in Finder |
 
-Then open `http://localhost:3356` in your browser.
-
-### Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LOG_LEVEL` | `info` | Server logging verbosity: `debug`, `info`, `warn`, `error` |
-
-```bash
-# Quiet mode (warnings and errors only)
-LOG_LEVEL=warn pnpm start
-
-# Verbose mode (all messages including per-event logging)
-LOG_LEVEL=debug pnpm start
-```
-
-### How It Works
-
-1. Start the monitor server (`pnpm dev`)
-2. Open a new Claude Code session (hooks are active per-session)
-3. The dashboard receives real-time events as Claude uses tools and spawns agents
-
-## Architecture
-
-```
-Claude Code Session
-        │
-        ├── Hooks (Pre/PostToolUse, SubagentStart/Stop)
-        │         │
-        │         ▼
-        │   HTTP POST to localhost:3355
-        │
-        ├── Transcript Watcher (.jsonl files)
-        │         │
-        │         ▼
-        │   Parse thinking blocks
-        │
-        └── Plan Watcher (~/.claude/plans/*.md)
-                  │
-                  ▼
-         WebSocket Hub (broadcast)
-                  │
-                  ▼
-         Web Dashboard (localhost:3356)
-```
+---
 
 ## Security
 
-- Binds to `127.0.0.1` only (localhost)
-- No persistent storage of events
-- Secrets are redacted before display
-- Path validation for file access
-- XSS prevention via HTML escaping
+- **Localhost only** — binds to `127.0.0.1`, not exposed to network
+- **No persistence** — events exist only in memory
+- **Secret redaction** — API keys, tokens, passwords automatically masked
+- **Path validation** — file access restricted to `~/.claude/`
+- **XSS prevention** — all content HTML-escaped before render
+
+---
+
+## Requirements
+
+- Node.js ≥ 22
+- pnpm
+- Claude Code CLI
+
+---
 
 ## Recent Changes
 
-### 2025-12-29
-- **v0.9.0** - Log levels, security fixes (spawn over exec), byte-offset transcript reads, shared types, cross-platform support
-- **v0.8.0** - Major refactoring: extracted monolithic app.ts (3,247 lines) into 16 focused modules with 7 event handlers
-- **v0.7.0** - Collapsible panels with keyboard shortcuts (Shift+T/O/D/P) and localStorage persistence
+**v0.9.0** — Log levels, security hardening, performance optimization, cross-platform support
+**v0.8.0** — Modular architecture (16 focused modules from monolithic 3,247-line file)
+**v0.7.0** — Collapsible panels with keyboard shortcuts and persistence
 
-### 2025-12-28
-- **v0.6.2** - Responsive design (4 breakpoints), accessibility enhancements, WCAG AA contrast
-- **v0.6.1** - Frontend redesign: glassmorphism headers, card-based entries, TODO progress bar
-- **v0.6.0** - Design system foundation: CSS tokens, toast notifications, animations
-
-*For complete history, see [CHANGELOG.md](./CHANGELOG.md)*
-
-## License
-
-MIT
+*[Full changelog →](./CHANGELOG.md)*
