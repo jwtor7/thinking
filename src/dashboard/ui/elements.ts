@@ -1,0 +1,50 @@
+/**
+ * DOM Element References
+ *
+ * Centralized references to DOM elements used throughout the dashboard.
+ * Elements are queried once at module load time.
+ */
+
+export const elements = {
+  connectionStatus: document.getElementById('connection-status')!,
+  sessionIndicator: document.getElementById('session-indicator'),
+  sessionFilter: document.getElementById('session-filter'),
+  clearBtn: document.getElementById('clear-btn')!,
+  autoScrollCheckbox: document.getElementById('auto-scroll') as HTMLInputElement,
+  viewTabs: document.getElementById('view-tabs'),
+  thinkingPanel: document.querySelector('.panel-thinking') as HTMLElement,
+  toolsPanel: document.querySelector('.panel-tools') as HTMLElement,
+  todoPanel: document.querySelector('.panel-todo') as HTMLElement,
+  planPanel: document.querySelector('.panel-plan') as HTMLElement,
+  thinkingContent: document.getElementById('thinking-content')!,
+  thinkingCount: document.getElementById('thinking-count')!,
+  thinkingFilter: document.getElementById('thinking-filter') as HTMLInputElement,
+  thinkingFilterClear: document.getElementById('thinking-filter-clear')!,
+  toolsContent: document.getElementById('tools-content')!,
+  toolsCount: document.getElementById('tools-count')!,
+  toolsFilter: document.getElementById('tools-filter') as HTMLInputElement,
+  toolsFilterClear: document.getElementById('tools-filter-clear')!,
+  todoContent: document.getElementById('todo-content')!,
+  todoCount: document.getElementById('todo-count')!,
+  planContent: document.getElementById('plan-content')!,
+  planMeta: document.getElementById('plan-meta')!,
+  planOpenBtn: document.getElementById('plan-open-btn') as HTMLButtonElement,
+  planRevealBtn: document.getElementById('plan-reveal-btn') as HTMLButtonElement,
+  planSelectorBtn: document.getElementById('plan-selector-btn')!,
+  planSelectorText: document.getElementById('plan-selector-text')!,
+  planSelectorDropdown: document.getElementById('plan-selector-dropdown')!,
+  planContextMenu: document.getElementById('plan-context-menu')!,
+  contextMenuOpen: document.getElementById('context-menu-open')!,
+  contextMenuReveal: document.getElementById('context-menu-reveal')!,
+  serverInfo: document.getElementById('server-info')!,
+  eventCount: document.getElementById('event-count')!,
+  agentsCount: document.getElementById('agents-count'),
+  connectionOverlay: document.getElementById('connection-overlay')!,
+  connectionOverlayMessage: document.getElementById('connection-overlay-message')!,
+  connectionOverlayRetry: document.getElementById('connection-overlay-retry')!,
+  panels: document.querySelector('.panels') as HTMLElement,
+  thinkingCollapseBtn: document.querySelector('.panel-thinking .panel-collapse-btn') as HTMLButtonElement,
+  todoCollapseBtn: document.querySelector('.panel-todo .panel-collapse-btn') as HTMLButtonElement,
+  toolsCollapseBtn: document.querySelector('.panel-tools .panel-collapse-btn') as HTMLButtonElement,
+  planCollapseBtn: document.querySelector('.panel-plan .panel-collapse-btn') as HTMLButtonElement,
+};

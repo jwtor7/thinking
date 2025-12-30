@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.8.0] - 2025-12-29
+
+### Changed
+- **Major refactoring**: Extracted monolithic app.ts (3,247 lines) into 16 focused modules (497 lines remaining)
+- Created `handlers/` directory with 7 event handler modules:
+  - `dispatcher.ts` - Event routing and connection status
+  - `thinking.ts` - Thinking block display
+  - `tools.ts` - Tool start/end handling
+  - `agents.ts` - Agent context stack management
+  - `sessions.ts` - Session tracking and filtering
+  - `plans.ts` - Plan display, selection, context menus
+  - `todos.ts` - Todo panel rendering and state
+- Adopted callback pattern across handlers to avoid circular imports
+- All handlers now use explicit initialization functions for dependency injection
+- Bundle size increased slightly (74kb → 76kb) due to module overhead
+
+### Technical
+- 85% reduction in app.ts code (2,750 lines moved to handlers)
+- Improved separation of concerns with single-responsibility modules
+- Better testability through dependency injection pattern
+- Preserved all existing functionality with zero behavioral changes
+
+---
+
 ## [0.7.0] - 2025-12-29
 
 ### Added

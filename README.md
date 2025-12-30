@@ -94,15 +94,14 @@ Claude Code Session
 
 ## Recent Changes
 
-### 2025-12-28
-- **v0.6.2** - Responsive design (4 breakpoints), accessibility enhancements (skip link, ARIA landmarks, screen reader support), focus management, touch-friendly targets (44px min), WCAG AA color contrast
-- **v0.6.1** - Frontend redesign: glassmorphism panel headers, card-based entries, TODO progress bar, enhanced markdown rendering
-- **v0.6.0** - Design system foundation: CSS tokens, toast notifications, skeleton loaders, animations, micro-interactions
+### 2025-12-29
+- **v0.8.0** - Major refactoring: extracted monolithic app.ts (3,247 lines) into 16 focused modules with 7 event handlers
+- **v0.7.0** - Collapsible panels with keyboard shortcuts (Shift+T/O/D/P) and localStorage persistence
 
-### 2025-12-23
-- Replaced Agents panel with Todo panel for task tracking
-- View-based navigation (a/t/o/d/p keyboard shortcuts)
-- Screenshot utility for Arc browser
+### 2025-12-28
+- **v0.6.2** - Responsive design (4 breakpoints), accessibility enhancements, WCAG AA contrast
+- **v0.6.1** - Frontend redesign: glassmorphism headers, card-based entries, TODO progress bar
+- **v0.6.0** - Design system foundation: CSS tokens, toast notifications, animations
 
 *For complete history, see [CHANGELOG.md](./CHANGELOG.md)*
 

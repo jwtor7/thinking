@@ -419,17 +419,35 @@ describe('Security: Input Validation', () => {
 // ============================================
 
 describe('Security: XSS Prevention in Dashboard', () => {
-  it('should have escapeHtml function in app.ts', async () => {
-    const appPath = join(__dirname, '..', 'dashboard', 'app.ts');
-    const content = await readFile(appPath, 'utf-8');
+  // Helper to read all dashboard TypeScript files (after refactoring)
+  async function getAllDashboardTsContent(): Promise<string> {
+    const { readdirSync, statSync } = await import('node:fs');
+    const dashboardDir = join(__dirname, '..', 'dashboard');
+    let content = '';
 
+    function readDir(dir: string): void {
+      const entries = readdirSync(dir);
+      for (const entry of entries) {
+        const fullPath = join(dir, entry);
+        const statResult = statSync(fullPath);
+        if (statResult.isDirectory()) {
+          readDir(fullPath);
+        } else if (entry.endsWith('.ts') && !entry.endsWith('.test.ts')) {
+          content += require('fs').readFileSync(fullPath, 'utf-8') + '\n';
+        }
+      }
+    }
+    readDir(dashboardDir);
+    return content;
+  }
+
+  it('should have escapeHtml function in dashboard code', async () => {
+    const content = await getAllDashboardTsContent();
     expect(content).toContain('function escapeHtml');
   });
 
   it('should escape HTML before rendering', async () => {
-    const appPath = join(__dirname, '..', 'dashboard', 'app.ts');
-    const content = await readFile(appPath, 'utf-8');
-
+    const content = await getAllDashboardTsContent();
     // Check that content is escaped before being set as innerHTML
     expect(content).toContain('escapeHtml(');
   });

@@ -1,0 +1,114 @@
+// ============================================
+// CSS Variable Helpers
+// ============================================
+
+/**
+ * Get a CSS variable value from the document root.
+ * Returns the computed value of the CSS custom property.
+ */
+function getCssVar(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+/**
+ * Lazily initialized CSS variable values.
+ * These are populated on first access after DOM is ready.
+ */
+let cssVarsInitialized = false;
+let SESSION_COLORS: string[] = [];
+let AGENT_COLORS: Record<string, string> = {};
+let AGENT_FALLBACK_COLORS: string[] = [];
+
+/**
+ * Initialize color values from CSS variables.
+ * Called once when colors are first needed.
+ */
+function initCssColors(): void {
+  if (cssVarsInitialized) return;
+
+  // Session colors for visual distinction
+  SESSION_COLORS = [
+    getCssVar('--color-session-1'),  // blue
+    getCssVar('--color-session-2'),  // green
+    getCssVar('--color-session-3'),  // purple
+    getCssVar('--color-session-4'),  // cyan
+    getCssVar('--color-session-5'),  // yellow
+    getCssVar('--color-session-6'),  // orange
+    getCssVar('--color-session-7'),  // red
+    getCssVar('--color-session-8'),  // gray
+  ];
+
+  // Agent colors for visual distinction in tool activity panel
+  // Each agent type gets a consistent color for quick identification
+  AGENT_COLORS = {
+    'main': getCssVar('--color-agent-main'),                        // gray - main conversation (default)
+    'code-implementer': getCssVar('--color-agent-code-implementer'), // green - implementation work
+    'code-test-evaluator': getCssVar('--color-agent-code-test-evaluator'), // cyan/teal - testing/evaluation
+    'haiku-general-agent': getCssVar('--color-agent-haiku'),        // orange - haiku agent
+    'opus-general-purpose': getCssVar('--color-agent-opus'),        // gold/yellow - opus general purpose
+    'general-purpose': getCssVar('--color-agent-general'),          // blue - general purpose (sonnet)
+  };
+
+  // Fallback colors for agents not in the predefined list
+  AGENT_FALLBACK_COLORS = [
+    getCssVar('--color-agent-fallback-1'),  // red
+    getCssVar('--color-agent-fallback-2'),  // purple
+    getCssVar('--color-agent-fallback-3'),  // coral
+    getCssVar('--color-agent-fallback-4'),  // light green
+    getCssVar('--color-agent-fallback-5'),  // light blue
+    getCssVar('--color-agent-fallback-6'),  // peach
+  ];
+
+  cssVarsInitialized = true;
+}
+
+/**
+ * Get a consistent color for a session ID using a hash.
+ * This ensures the same session ID always gets the same color,
+ * and different session IDs are likely to get different colors.
+ */
+export function getSessionColorByHash(sessionId: string): string {
+  initCssColors();
+  if (!sessionId || SESSION_COLORS.length === 0) {
+    return 'var(--color-text-muted)';
+  }
+
+  // Simple hash function for session ID
+  let hash = 0;
+  for (let i = 0; i < sessionId.length; i++) {
+    const char = sessionId.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+
+  // Use absolute value and modulo to get color index
+  const colorIndex = Math.abs(hash) % SESSION_COLORS.length;
+  return SESSION_COLORS[colorIndex];
+}
+
+/**
+ * Get the display color for an agent.
+ * Returns a consistent color based on the agent name.
+ * Known agents get predefined colors; unknown agents cycle through fallback colors.
+ */
+export function getAgentColor(agentName: string): string {
+  // Ensure CSS colors are initialized
+  initCssColors();
+
+  // Check for predefined color
+  if (AGENT_COLORS[agentName]) {
+    return AGENT_COLORS[agentName];
+  }
+
+  // For unknown agents, generate a consistent color based on name hash
+  let hash = 0;
+  for (let i = 0; i < agentName.length; i++) {
+    hash = ((hash << 5) - hash) + agentName.charCodeAt(i);
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  const index = Math.abs(hash) % AGENT_FALLBACK_COLORS.length;
+  return AGENT_FALLBACK_COLORS[index];
+}
+
+// Export public functions
+export { getCssVar, initCssColors };
