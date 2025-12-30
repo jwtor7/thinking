@@ -4,7 +4,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-0.11.0-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.11.1-purple)](./CHANGELOG.md)
 
 A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
 
@@ -105,6 +105,8 @@ LOG_LEVEL=debug pnpm start  # Verbose
 - **Secret redaction** — API keys, tokens, passwords automatically masked
 - **Path validation** — file access restricted to `~/.claude/`
 - **XSS prevention** — all content HTML-escaped before render
+- **CSP headers** — Content-Security-Policy for defense-in-depth XSS protection
+- **CSRF protection** — Origin header validation on file action requests
 
 ---
 
@@ -118,8 +120,8 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
+- **v0.11.1** — Security hardening: CSP headers, WebSocket size limits, CSRF protection, ReDoS fixes
 - **v0.11.0** — Theme system with 5 themes (dark, light, solarized variants) and system preference tracking
 - **v0.10.0** — Type-safe event handling with discriminated union types (`StrictMonitorEvent`)
-- **v0.9.1** — Bug fixes: CONFIG-based origins, async error boundaries, unused imports
 
 *[Full changelog →](./CHANGELOG.md)*

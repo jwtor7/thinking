@@ -30,3 +30,4 @@ temp/
 
 # Playwright MCP
 .playwright-mcp/
+SecurityReport.md

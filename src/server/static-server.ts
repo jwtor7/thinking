@@ -141,12 +141,22 @@ export class StaticServer {
       const ext = extname(filePath).toLowerCase();
       const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-      // Set headers
+      // Set headers with security controls
       res.writeHead(200, {
         'Content-Type': contentType,
         'Content-Length': content.length,
         'Cache-Control': 'no-cache', // No caching during development
         'X-Content-Type-Options': 'nosniff',
+        // CSP: Defense-in-depth XSS protection
+        // - 'self' for scripts (no inline scripts)
+        // - 'unsafe-inline' for styles (required for dynamic theming)
+        // - WebSocket connection allowed to localhost WS port
+        'Content-Security-Policy':
+          "default-src 'self'; " +
+          "script-src 'self'; " +
+          "style-src 'self' 'unsafe-inline'; " +
+          "img-src 'self' data:; " +
+          `connect-src 'self' ws://localhost:${CONFIG.WS_PORT} ws://127.0.0.1:${CONFIG.WS_PORT}`,
       });
 
       res.end(content);

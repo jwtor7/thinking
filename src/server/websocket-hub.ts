@@ -147,6 +147,14 @@ export class WebSocketHub {
 
     // Handle incoming messages from clients
     ws.on('message', (data) => {
+      // Security: Reject oversized messages to prevent DoS
+      const MAX_MESSAGE_SIZE = 100 * 1024; // 100KB
+      if (data.length > MAX_MESSAGE_SIZE) {
+        logger.warn(
+          `[WebSocketHub] Rejected oversized message from ${client.id}: ${data.length} bytes`
+        );
+        return;
+      }
       this.handleClientMessage(client, data.toString());
     });
   }

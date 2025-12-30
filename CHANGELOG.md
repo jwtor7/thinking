@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.1] - 2025-12-29
+
+### Security
+- **Content-Security-Policy header**: Defense-in-depth XSS protection for dashboard
+  - Scripts only from 'self' (no inline scripts)
+  - Styles allow 'unsafe-inline' for dynamic theming
+  - WebSocket connections restricted to localhost ports
+- **WebSocket message size limit**: 100KB max to prevent DoS via oversized messages
+- **CSRF protection on file actions**: Origin header validation blocks cross-origin requests
+- **ReDoS prevention**: Added max quantifiers to regex patterns in secret detection
+
+---
+
 ## [0.11.0] - 2025-12-29
 
 ### Added

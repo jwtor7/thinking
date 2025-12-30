@@ -106,23 +106,25 @@ const SECRET_PATTERNS: SecretPattern[] = [
   },
 
   // Key-value patterns (api_key=value, apiKey: value, etc.)
+  // Note: Max quantifiers ({16,256}) prevent ReDoS via catastrophic backtracking
   {
     name: 'API key assignment',
-    pattern: /\b(api[_-]?key\s*[=:]\s*)["']?([a-zA-Z0-9_.-]{16,})["']?/gi,
+    pattern: /\b(api[_-]?key\s*[=:]\s*)["']?([a-zA-Z0-9_.-]{16,256})["']?/gi,
   },
   {
     name: 'Secret assignment',
-    pattern: /\b([a-zA-Z_]*secret\s*[=:]\s*)["']?([a-zA-Z0-9_.-]{16,})["']?/gi,
+    pattern: /\b([a-zA-Z_]*secret\s*[=:]\s*)["']?([a-zA-Z0-9_.-]{16,256})["']?/gi,
   },
   {
     name: 'Token assignment',
-    pattern: /\b((?:access[_-]?)?token\s*[=:]\s*)["']?([a-zA-Z0-9_.-]{16,})["']?/gi,
+    pattern: /\b((?:access[_-]?)?token\s*[=:]\s*)["']?([a-zA-Z0-9_.-]{16,256})["']?/gi,
   },
 
   // Password patterns
+  // Max quantifier prevents ReDoS on long password-like strings
   {
     name: 'Password field',
-    pattern: /\b((?:pass(?:word)?|pwd|passwd)\s*[=:]\s*)["']?([^\s"',;]{8,})["']?/gi,
+    pattern: /\b((?:pass(?:word)?|pwd|passwd)\s*[=:]\s*)["']?([^\s"',;]{8,256})["']?/gi,
   },
 
   // Private keys (PEM format)

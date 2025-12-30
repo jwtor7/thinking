@@ -206,6 +206,21 @@ export async function handleFileActionRequest(
     return true;
   }
 
+  // Security: CSRF protection via Origin header validation
+  // Localhost-only binding already limits attack surface, but Origin
+  // validation prevents cross-origin requests from malicious sites
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    `http://localhost:${CONFIG.STATIC_PORT}`,
+    `http://127.0.0.1:${CONFIG.STATIC_PORT}`,
+  ];
+
+  if (origin && !allowedOrigins.includes(origin)) {
+    logger.warn(`[FileActions] Rejected request from invalid origin: ${origin}`);
+    sendResponse(res, 403, { success: false, error: 'Forbidden: Invalid origin' });
+    return true;
+  }
+
   // Parse request body
   let body: unknown;
   try {
