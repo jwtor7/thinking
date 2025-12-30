@@ -18,6 +18,7 @@ import type { PlanUpdateEvent, PlanDeleteEvent, PlanListEvent } from './types.ts
 import { truncatePayload } from './types.ts';
 import { redactSecrets } from './secrets.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
+import { logger } from './logger.ts';
 
 /** Tracked plan file state */
 interface TrackedPlan {
@@ -87,7 +88,7 @@ export class PlanWatcher {
    */
   async start(): Promise<void> {
     if (!isValidPlanPath(this.plansDir)) {
-      console.error('[PlanWatcher] Invalid plans directory path');
+      logger.error('[PlanWatcher] Invalid plans directory path');
       return;
     }
 
@@ -95,8 +96,8 @@ export class PlanWatcher {
       // Verify the plans directory exists
       await stat(this.plansDir);
     } catch {
-      console.warn(`[PlanWatcher] Plans directory not found: ${this.plansDir}`);
-      console.log('[PlanWatcher] Will retry when directory becomes available');
+      logger.warn(`[PlanWatcher] Plans directory not found: ${this.plansDir}`);
+      logger.info('[PlanWatcher] Will retry when directory becomes available');
       // Start polling to wait for directory creation
       this.startDirectoryPolling();
       return;
@@ -143,7 +144,7 @@ export class PlanWatcher {
    * Initialize file system watching.
    */
   private async initializeWatching(): Promise<void> {
-    console.log(`[PlanWatcher] Watching: ${this.plansDir}`);
+    logger.info(`[PlanWatcher] Watching: ${this.plansDir}`);
 
     try {
       // Watch the plans directory for changes
@@ -155,10 +156,10 @@ export class PlanWatcher {
       });
 
       this.directoryWatcher.on('error', (error) => {
-        console.error('[PlanWatcher] Directory watcher error:', error.message);
+        logger.error('[PlanWatcher] Directory watcher error:', error.message);
       });
     } catch (error) {
-      console.error('[PlanWatcher] Failed to watch plans directory:', error);
+      logger.error('[PlanWatcher] Failed to watch plans directory:', error);
       return;
     }
 
@@ -172,7 +173,7 @@ export class PlanWatcher {
       }
     }, PlanWatcher.POLL_INTERVAL_MS);
 
-    console.log(`[PlanWatcher] Tracking ${this.trackedPlans.size} plan files`);
+    logger.info(`[PlanWatcher] Tracking ${this.trackedPlans.size} plan files`);
   }
 
   /**
@@ -191,7 +192,7 @@ export class PlanWatcher {
         }
       }
     } catch (error) {
-      console.error('[PlanWatcher] Error scanning plans directory:', error);
+      logger.error('[PlanWatcher] Error scanning plans directory:', error);
     }
   }
 
@@ -249,7 +250,7 @@ export class PlanWatcher {
       this.broadcastPlanUpdate(filePath, filename, content, stats.mtimeMs);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        console.error(`[PlanWatcher] Error tracking plan file ${filePath}:`, error);
+        logger.error(`[PlanWatcher] Error tracking plan file ${filePath}:`, error);
       }
     }
   }
@@ -283,7 +284,7 @@ export class PlanWatcher {
       }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        console.error(`[PlanWatcher] Error processing plan update ${filePath}:`, error);
+        logger.error(`[PlanWatcher] Error processing plan update ${filePath}:`, error);
       }
     }
   }
@@ -332,7 +333,7 @@ export class PlanWatcher {
       }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        console.error('[PlanWatcher] Error polling plans directory:', error);
+        logger.error('[PlanWatcher] Error polling plans directory:', error);
       }
     }
   }
@@ -378,7 +379,7 @@ export class PlanWatcher {
     };
 
     this.hub.broadcast(event);
-    console.log(`[PlanWatcher] Broadcast plan update: ${filename}`);
+    logger.debug(`[PlanWatcher] Broadcast plan update: ${filename}`);
   }
 
   /**
@@ -393,7 +394,7 @@ export class PlanWatcher {
     };
 
     this.hub.broadcast(event);
-    console.log(`[PlanWatcher] Broadcast plan delete: ${filename}`);
+    logger.debug(`[PlanWatcher] Broadcast plan delete: ${filename}`);
   }
 
   /**
@@ -414,7 +415,7 @@ export class PlanWatcher {
     }
 
     this.trackedPlans.clear();
-    console.log('[PlanWatcher] Stopped');
+    logger.info('[PlanWatcher] Stopped');
   }
 
   /**

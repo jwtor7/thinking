@@ -8,40 +8,20 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-/**
- * Event types that can be sent from Claude Code hooks or internal watchers.
- */
-export type MonitorEventType =
-  // Tool lifecycle events (from PreToolUse/PostToolUse hooks)
-  | 'tool_start'
-  | 'tool_end'
-  // Agent lifecycle events (from SubagentStart/SubagentStop hooks)
-  | 'agent_start'
-  | 'agent_stop'
-  // Session lifecycle events
-  | 'session_start'
-  | 'session_stop'
-  // Thinking content (from transcript watcher)
-  | 'thinking'
-  // Plan file events (from plan watcher)
-  | 'plan_update'
-  | 'plan_delete'
-  | 'plan_list'
-  // Connection status (internal)
-  | 'connection_status';
+// Re-export shared types for backward compatibility
+export type { MonitorEventType, MonitorEvent, WebSocketMessage } from '../shared/types.js';
+
+// Import for local use
+import type { MonitorEventType, MonitorEvent } from '../shared/types.js';
 
 /**
- * Base interface for all monitor events.
+ * Base interface for all server-side monitor events.
+ * Extends the shared MonitorEvent to ensure compatibility while
+ * providing the base for discriminated union types.
  */
-export interface MonitorEventBase {
-  /** Event type identifier */
+export interface MonitorEventBase extends MonitorEvent {
+  /** Event type identifier (narrowed in specific event types) */
   type: MonitorEventType;
-  /** ISO 8601 timestamp of when the event occurred */
-  timestamp: string;
-  /** Optional session ID for multi-session support */
-  sessionId?: string;
-  /** Agent ID (main session or subagent ID) */
-  agentId?: string;
 }
 
 /**
@@ -180,9 +160,11 @@ export interface ConnectionStatusEvent extends MonitorEventBase {
 }
 
 /**
- * Union type for all monitor events.
+ * Server-side union type for all monitor events.
+ * Provides discriminated union for type narrowing in event handlers.
+ * Note: The shared MonitorEvent type is used for WebSocket communication.
  */
-export type MonitorEvent =
+export type ServerMonitorEvent =
   | ToolStartEvent
   | ToolEndEvent
   | AgentStartEvent
@@ -194,17 +176,6 @@ export type MonitorEvent =
   | SessionStartEvent
   | SessionStopEvent
   | ConnectionStatusEvent;
-
-/**
- * Message envelope for WebSocket communication.
- * Wraps events with optional metadata.
- */
-export interface WebSocketMessage {
-  /** The event payload */
-  event: MonitorEvent;
-  /** Message sequence number (for ordering) */
-  seq?: number;
-}
 
 /**
  * Client request types for bidirectional communication.

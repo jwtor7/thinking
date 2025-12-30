@@ -9,6 +9,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, resolve } from 'node:path';
 import { CONFIG } from './types.ts';
+import { logger } from './logger.ts';
 
 /** MIME type mapping for static files */
 const MIME_TYPES: Record<string, string> = {
@@ -46,13 +47,13 @@ export class StaticServer {
       this.server = createServer(this.handleRequest.bind(this));
 
       this.server.on('error', (error) => {
-        console.error('[StaticServer] Server error:', error);
+        logger.error('[StaticServer] Server error:', error);
         reject(error);
       });
 
       // Bind to localhost only (security requirement)
       this.server.listen(CONFIG.STATIC_PORT, CONFIG.HOST, () => {
-        console.log(
+        logger.info(
           `[StaticServer] Serving dashboard at http://${CONFIG.HOST}:${CONFIG.STATIC_PORT}`
         );
         resolve();
@@ -92,7 +93,7 @@ export class StaticServer {
 
       await this.serveFile(res, filePath);
     } catch (error) {
-      console.error('[StaticServer] Request error:', error);
+      logger.error('[StaticServer] Request error:', error);
       this.sendError(res, 500, 'Internal Server Error');
     }
   }
@@ -113,7 +114,7 @@ export class StaticServer {
 
     // Security: ensure the resolved path is within the dashboard directory
     if (!resolved.startsWith(this.dashboardDir)) {
-      console.warn('[StaticServer] Path traversal attempt:', pathname);
+      logger.warn('[StaticServer] Path traversal attempt:', pathname);
       return null;
     }
 
@@ -173,7 +174,7 @@ export class StaticServer {
     return new Promise((resolve) => {
       if (this.server) {
         this.server.close(() => {
-          console.log('[StaticServer] Stopped');
+          logger.info('[StaticServer] Stopped');
           resolve();
         });
       } else {

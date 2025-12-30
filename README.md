@@ -54,6 +54,20 @@ pnpm start
 
 Then open `http://localhost:3356` in your browser.
 
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `info` | Server logging verbosity: `debug`, `info`, `warn`, `error` |
+
+```bash
+# Quiet mode (warnings and errors only)
+LOG_LEVEL=warn pnpm start
+
+# Verbose mode (all messages including per-event logging)
+LOG_LEVEL=debug pnpm start
+```
+
 ### How It Works
 
 1. Start the monitor server (`pnpm dev`)
@@ -95,6 +109,7 @@ Claude Code Session
 ## Recent Changes
 
 ### 2025-12-29
+- **v0.9.0** - Log levels, security fixes (spawn over exec), byte-offset transcript reads, shared types, cross-platform support
 - **v0.8.0** - Major refactoring: extracted monolithic app.ts (3,247 lines) into 16 focused modules with 7 event handlers
 - **v0.7.0** - Collapsible panels with keyboard shortcuts (Shift+T/O/D/P) and localStorage persistence
 

@@ -12,11 +12,17 @@ import { join, resolve } from 'node:path';
 
 // Mock child_process to avoid actually executing commands
 vi.mock('node:child_process', () => ({
-  exec: vi.fn((_cmd, callback) => {
-    // Simulate successful execution for valid commands
-    if (callback) {
-      callback(null, '', '');
-    }
+  spawn: vi.fn(() => {
+    const handlers: Record<string, (code?: number) => void> = {};
+    return {
+      on: vi.fn((event: string, callback: (code?: number) => void) => {
+        handlers[event] = callback;
+        // Simulate successful exit
+        if (event === 'close') {
+          process.nextTick(() => callback(0));
+        }
+      }),
+    };
   }),
 }));
 

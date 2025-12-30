@@ -6,44 +6,8 @@
  * with the WebSocket server and internal state management.
  */
 
-// ============================================
-// Monitor Events
-// ============================================
-
-/**
- * Union type of all possible monitor event types
- */
-export type MonitorEventType =
-  | 'tool_start'
-  | 'tool_end'
-  | 'agent_start'
-  | 'agent_stop'
-  | 'session_start'
-  | 'session_stop'
-  | 'thinking'
-  | 'plan_update'
-  | 'plan_delete'
-  | 'plan_list'
-  | 'connection_status';
-
-/**
- * Monitor event structure mirrored from server
- */
-export interface MonitorEvent {
-  type: MonitorEventType;
-  timestamp: string;
-  sessionId?: string;
-  agentId?: string;
-  [key: string]: unknown;
-}
-
-/**
- * WebSocket message wrapper for monitor events
- */
-export interface WebSocketMessage {
-  event: MonitorEvent;
-  seq?: number;
-}
+// Re-export shared types for use in dashboard modules
+export type { MonitorEventType, MonitorEvent, WebSocketMessage } from '../shared/types.js';
 
 // ============================================
 // Application State

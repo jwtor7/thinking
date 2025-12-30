@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.9.0] - 2025-12-29
+
+### Added
+- **Log levels**: `LOG_LEVEL` env var (debug/info/warn/error) for controlling server output verbosity
+- **Shared types module**: `src/shared/types.ts` eliminates type drift between server and dashboard
+- **Cross-platform file actions**: Support for Windows (`explorer`) and Linux (`xdg-open`) in addition to macOS
+
+### Changed
+- **Transcript watcher optimization**: Uses byte-offset streaming reads instead of re-reading entire files on each poll (memory efficient for large transcripts)
+
+### Security
+- **Shell injection fix**: Replaced `exec` with `spawn` in file-actions.ts (eliminates shell injection vulnerability)
+- **Safe logging**: Invalid events no longer log raw parsed objects that could contain secrets (logs only type and key names)
+
+---
+
 ## [0.8.0] - 2025-12-29
 
 ### Changed

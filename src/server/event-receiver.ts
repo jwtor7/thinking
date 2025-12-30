@@ -15,6 +15,7 @@ import {
 import { redactSecrets } from './secrets.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
 import { RateLimiter, type RateLimiterConfig } from './rate-limiter.ts';
+import { logger } from './logger.ts';
 
 /**
  * Default rate limit: 100 events per second per IP.
@@ -106,7 +107,7 @@ export class EventReceiver {
         retryAfter: retryAfterSeconds,
       })
     );
-    console.warn('[EventReceiver] Rate limit exceeded');
+    logger.warn('[EventReceiver] Rate limit exceeded');
   }
 
   /**
@@ -132,9 +133,9 @@ export class EventReceiver {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true, type: event.type }));
 
-      console.log(`[EventReceiver] Received and broadcast: ${event.type}`);
+      logger.debug(`[EventReceiver] Received and broadcast: ${event.type}`);
     } catch (error) {
-      console.error('[EventReceiver] Error handling event:', error);
+      logger.error('[EventReceiver] Error handling event:', error);
       this.sendError(
         res,
         500,
@@ -201,13 +202,19 @@ export class EventReceiver {
     try {
       parsed = JSON.parse(body);
     } catch {
-      console.warn('[EventReceiver] Invalid JSON in request body');
+      logger.warn('[EventReceiver] Invalid JSON in request body');
       return null;
     }
 
     // Validate event structure
     if (!isMonitorEvent(parsed)) {
-      console.warn('[EventReceiver] Invalid event structure:', parsed);
+      // Log only structure shape, not values (could contain secrets)
+      const parsedObj = parsed as Record<string, unknown> | null | undefined;
+      const typeValue = parsedObj?.type;
+      const keys = Object.keys(parsedObj || {}).join(',');
+      logger.warn(
+        `[EventReceiver] Invalid event structure: type=${typeof typeValue === 'string' ? typeValue : 'undefined'}, keys=${keys}`
+      );
       return null;
     }
 

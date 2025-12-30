@@ -10,14 +10,16 @@
  * - Uses native fs.watch for efficiency
  */
 
-import { watch, type FSWatcher } from 'node:fs';
-import { readFile, stat, readdir } from 'node:fs/promises';
+import { watch, type FSWatcher, createReadStream } from 'node:fs';
+import { stat, readdir } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
+import * as readline from 'node:readline';
 import { homedir } from 'node:os';
 import type { ThinkingEvent } from './types.ts';
 import { truncatePayload, CONFIG } from './types.ts';
 import { redactSecrets } from './secrets.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
+import { logger } from './logger.ts';
 
 /** Transcript JSONL line structure (simplified for thinking extraction) */
 interface TranscriptLine {
@@ -39,6 +41,8 @@ interface TranscriptLine {
 interface TrackedFile {
   path: string;
   lastSize: number;
+  /** Byte offset of last read position - used for efficient incremental reads */
+  lastOffset: number;
   lastProcessedLine: number;
   watcher?: FSWatcher;
   /**
@@ -97,7 +101,7 @@ export class TranscriptWatcher {
    */
   async start(): Promise<void> {
     if (!isValidClaudePath(this.projectsDir)) {
-      console.error('[TranscriptWatcher] Invalid projects directory path');
+      logger.error('[TranscriptWatcher] Invalid projects directory path');
       return;
     }
 
@@ -105,8 +109,8 @@ export class TranscriptWatcher {
       // Verify the projects directory exists
       await stat(this.projectsDir);
     } catch {
-      console.warn(`[TranscriptWatcher] Projects directory not found: ${this.projectsDir}`);
-      console.log('[TranscriptWatcher] Will retry when directory becomes available');
+      logger.warn(`[TranscriptWatcher] Projects directory not found: ${this.projectsDir}`);
+      logger.info('[TranscriptWatcher] Will retry when directory becomes available');
       // Start polling to wait for directory creation
       this.startDirectoryPolling();
       return;
@@ -153,7 +157,7 @@ export class TranscriptWatcher {
    * Initialize file system watching.
    */
   private async initializeWatching(): Promise<void> {
-    console.log(`[TranscriptWatcher] Watching: ${this.projectsDir}`);
+    logger.info(`[TranscriptWatcher] Watching: ${this.projectsDir}`);
 
     // Mark that we're in initial scan mode - files discovered now should skip to end
     this.isInitialScan = true;
@@ -168,10 +172,10 @@ export class TranscriptWatcher {
       });
 
       this.projectsWatcher.on('error', (error) => {
-        console.error('[TranscriptWatcher] Projects watcher error:', error.message);
+        logger.error('[TranscriptWatcher] Projects watcher error:', error.message);
       });
     } catch (error) {
-      console.error('[TranscriptWatcher] Failed to watch projects directory:', error);
+      logger.error('[TranscriptWatcher] Failed to watch projects directory:', error);
       return;
     }
 
@@ -180,7 +184,7 @@ export class TranscriptWatcher {
 
     // Initial scan complete - files discovered from now on should be processed from the start
     this.isInitialScan = false;
-    console.log(`[TranscriptWatcher] Initial scan complete, skipped to end of ${this.trackedFiles.size} existing files`);
+    logger.debug(`[TranscriptWatcher] Initial scan complete, skipped to end of ${this.trackedFiles.size} existing files`);
 
     // Start polling for file updates (fs.watch doesn't reliably report file modifications)
     this.pollInterval = setInterval(() => {
@@ -189,7 +193,7 @@ export class TranscriptWatcher {
       }
     }, CONFIG.TRANSCRIPT_POLL_INTERVAL_MS);
 
-    console.log(`[TranscriptWatcher] Tracking ${this.trackedFiles.size} transcript files`);
+    logger.info(`[TranscriptWatcher] Tracking ${this.trackedFiles.size} transcript files`);
   }
 
   /**
@@ -229,7 +233,7 @@ export class TranscriptWatcher {
         }
       }
     } catch (error) {
-      console.error('[TranscriptWatcher] Error scanning project directories:', error);
+      logger.error('[TranscriptWatcher] Error scanning project directories:', error);
     }
   }
 
@@ -251,7 +255,7 @@ export class TranscriptWatcher {
       });
 
       watcher.on('error', (error) => {
-        console.error(`[TranscriptWatcher] Directory watcher error for ${projectPath}:`, error.message);
+        logger.error(`[TranscriptWatcher] Directory watcher error for ${projectPath}:`, error.message);
       });
 
       this.subDirWatchers.set(projectPath, watcher);
@@ -266,7 +270,7 @@ export class TranscriptWatcher {
         }
       }
     } catch (error) {
-      console.error(`[TranscriptWatcher] Error watching project directory ${projectPath}:`, error);
+      logger.error(`[TranscriptWatcher] Error watching project directory ${projectPath}:`, error);
     }
   }
 
@@ -331,11 +335,12 @@ export class TranscriptWatcher {
       // ALWAYS skip existing content on startup - only process NEW bytes
       // This is the "tail -f" behavior: start at end, only show new content
       if (this.isInitialScan) {
-        // Skip ALL existing content - record current size as "already processed"
+        // Skip ALL existing content - set offset to current file size
         this.trackedFiles.set(filePath, {
           path: filePath,
           lastSize: stats.size,
-          lastProcessedLine: Number.MAX_SAFE_INTEGER, // Will be recalculated on first update
+          lastOffset: stats.size, // Start reading from end of file
+          lastProcessedLine: 0,
           isInitialFile: true,
         });
         // DO NOT log for every file - too noisy
@@ -344,13 +349,14 @@ export class TranscriptWatcher {
         this.trackedFiles.set(filePath, {
           path: filePath,
           lastSize: 0, // Start from 0 so first check processes all content
+          lastOffset: 0, // Start reading from beginning
           lastProcessedLine: 0,
           isInitialFile: false,
         });
       }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        console.error(`[TranscriptWatcher] Error tracking file ${filePath}:`, error);
+        logger.error(`[TranscriptWatcher] Error tracking file ${filePath}:`, error);
       }
     }
   }
@@ -375,9 +381,10 @@ export class TranscriptWatcher {
     try {
       const stats = await stat(filePath);
 
-      if (stats.size > tracked.lastSize) {
-        // File has grown, process new content
+      if (stats.size > tracked.lastOffset) {
+        // File has grown since last read, process new content
         await this.processFileUpdates(filePath);
+        // Note: lastOffset is updated in processFileUpdates via readNewLines
         tracked.lastSize = stats.size;
       }
     } catch (error) {
@@ -389,7 +396,58 @@ export class TranscriptWatcher {
   }
 
   /**
+   * Read new lines from a file starting at a byte offset.
+   * Uses streaming to avoid loading the entire file into memory.
+   *
+   * @param filePath - Path to the file to read
+   * @param fromOffset - Byte offset to start reading from
+   * @returns Object containing the new lines and the new byte offset
+   */
+  private async readNewLines(
+    filePath: string,
+    fromOffset: number
+  ): Promise<{ lines: string[]; newOffset: number }> {
+    const lines: string[] = [];
+
+    return new Promise((resolve, reject) => {
+      const stream = createReadStream(filePath, {
+        start: fromOffset,
+        encoding: 'utf-8',
+      });
+
+      const rl = readline.createInterface({
+        input: stream,
+        crlfDelay: Infinity,
+      });
+
+      rl.on('line', (line) => {
+        if (line.trim()) {
+          lines.push(line);
+        }
+      });
+
+      rl.on('close', async () => {
+        try {
+          const stats = await stat(filePath);
+          resolve({ lines, newOffset: stats.size });
+        } catch (error) {
+          reject(error);
+        }
+      });
+
+      rl.on('error', (error) => {
+        reject(error);
+      });
+
+      stream.on('error', (error) => {
+        reject(error);
+      });
+    });
+  }
+
+  /**
    * Process new content from a transcript file.
+   * Uses byte-offset streaming to only read newly appended content.
    */
   private async processFileUpdates(filePath: string): Promise<void> {
     const tracked = this.trackedFiles.get(filePath);
@@ -398,28 +456,19 @@ export class TranscriptWatcher {
     }
 
     try {
-      const content = await readFile(filePath, 'utf-8');
-      const lines = content.split('\n').filter((line) => line.trim());
+      // Use streaming read from last offset - only reads new bytes
+      const { lines, newOffset } = await this.readNewLines(filePath, tracked.lastOffset);
 
-      // For initial files, we set lastProcessedLine to MAX_SAFE_INTEGER as a marker
-      // On first update, reset it to the CURRENT line count (skip all existing)
-      // then only process lines added AFTER this point
-      if (tracked.isInitialFile && tracked.lastProcessedLine === Number.MAX_SAFE_INTEGER) {
-        // First update for an initial file - set baseline to current line count
-        tracked.lastProcessedLine = lines.length;
-        return; // Don't process existing content
-      }
-
-      // Process only new lines (lines added since last check)
-      const newLines = lines.slice(tracked.lastProcessedLine);
-
-      for (const line of newLines) {
+      // Process each new line
+      for (const line of lines) {
         await this.processLine(line, filePath);
       }
 
-      tracked.lastProcessedLine = lines.length;
+      // Update offset for next read
+      tracked.lastOffset = newOffset;
+      tracked.lastProcessedLine += lines.length;
     } catch (error) {
-      console.error(`[TranscriptWatcher] Error processing file ${filePath}:`, error);
+      logger.error(`[TranscriptWatcher] Error processing file ${filePath}:`, error);
     }
   }
 
@@ -487,7 +536,7 @@ export class TranscriptWatcher {
     };
 
     this.hub.broadcast(event);
-    console.log(`[TranscriptWatcher] Broadcast thinking (${safeContent.slice(0, 50)}...)`);
+    logger.debug(`[TranscriptWatcher] Broadcast thinking (${safeContent.slice(0, 50)}...)`);
   }
 
   /**
@@ -529,7 +578,7 @@ export class TranscriptWatcher {
       this.projectsWatcher = null;
     }
 
-    console.log('[TranscriptWatcher] Stopped');
+    logger.info('[TranscriptWatcher] Stopped');
   }
 
   /**

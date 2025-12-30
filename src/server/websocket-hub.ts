@@ -17,6 +17,7 @@ import {
   isClientRequest,
   CONFIG,
 } from './types.ts';
+import { logger } from './logger.ts';
 
 /** Connected client metadata */
 interface ConnectedClient {
@@ -53,10 +54,10 @@ export class WebSocketHub {
 
     this.wss.on('connection', this.handleConnection.bind(this));
     this.wss.on('error', (error) => {
-      console.error('[WebSocketHub] Server error:', error.message);
+      logger.error('[WebSocketHub] Server error:', error.message);
     });
 
-    console.log(`[WebSocketHub] Attached to HTTP server`);
+    logger.info(`[WebSocketHub] Attached to HTTP server`);
   }
 
   /**
@@ -85,7 +86,7 @@ export class WebSocketHub {
     if (allowedOrigins.includes(origin)) {
       callback(true);
     } else {
-      console.warn(`[WebSocketHub] Rejected connection from origin: ${origin}`);
+      logger.warn(`[WebSocketHub] Rejected connection from origin: ${origin}`);
       callback(false, 403, 'Forbidden: Invalid origin');
     }
   }
@@ -120,7 +121,7 @@ export class WebSocketHub {
     };
 
     this.clients.set(clientId, client);
-    console.log(
+    logger.info(
       `[WebSocketHub] Client connected: ${clientId} (total: ${this.clients.size})`
     );
 
@@ -135,14 +136,14 @@ export class WebSocketHub {
     // Handle client disconnect
     ws.on('close', () => {
       this.clients.delete(clientId);
-      console.log(
+      logger.info(
         `[WebSocketHub] Client disconnected: ${clientId} (total: ${this.clients.size})`
       );
     });
 
     // Handle client errors
     ws.on('error', (error) => {
-      console.error(`[WebSocketHub] Client ${clientId} error:`, error.message);
+      logger.error(`[WebSocketHub] Client ${clientId} error:`, error.message);
       this.clients.delete(clientId);
     });
 
@@ -174,7 +175,7 @@ export class WebSocketHub {
           client.ws.send(payload);
           sentCount++;
         } catch (error) {
-          console.error(
+          logger.error(
             `[WebSocketHub] Failed to send to ${clientId}:`,
             error instanceof Error ? error.message : 'Unknown error'
           );
@@ -182,7 +183,7 @@ export class WebSocketHub {
       }
     }
 
-    console.log(
+    logger.debug(
       `[WebSocketHub] Broadcast ${event.type} to ${sentCount}/${this.clients.size} clients`
     );
   }
@@ -203,7 +204,7 @@ export class WebSocketHub {
     try {
       client.ws.send(JSON.stringify(message));
     } catch (error) {
-      console.error(
+      logger.error(
         `[WebSocketHub] Failed to send to ${client.id}:`,
         error instanceof Error ? error.message : 'Unknown error'
       );
@@ -218,24 +219,25 @@ export class WebSocketHub {
       const parsed = JSON.parse(data);
 
       if (isClientRequest(parsed)) {
-        console.log(`[WebSocketHub] Received ${parsed.type} from ${client.id}`);
+        logger.debug(`[WebSocketHub] Received ${parsed.type} from ${client.id}`);
 
         if (this.clientRequestHandler) {
           this.clientRequestHandler(parsed, (event) => this.sendToClient(client, event))
             .catch((error) => {
-              console.error(
+              logger.error(
                 `[WebSocketHub] Error handling client request:`,
                 error instanceof Error ? error.message : 'Unknown error'
               );
             });
         } else {
-          console.warn(`[WebSocketHub] No handler registered for client requests`);
+          logger.warn(`[WebSocketHub] No handler registered for client requests`);
         }
       } else {
-        console.log(`[WebSocketHub] Unrecognized message from ${client.id}:`, data.slice(0, 100));
+        // Log only message length, not content (could contain secrets)
+        logger.debug(`[WebSocketHub] Unrecognized message from ${client.id}, length=${data.length}`);
       }
     } catch (error) {
-      console.error(
+      logger.error(
         `[WebSocketHub] Failed to parse message from ${client.id}:`,
         error instanceof Error ? error.message : 'Unknown error'
       );
@@ -291,6 +293,6 @@ export class WebSocketHub {
       this.wss = null;
     }
 
-    console.log('[WebSocketHub] Shut down complete');
+    logger.info('[WebSocketHub] Shut down complete');
   }
 }
