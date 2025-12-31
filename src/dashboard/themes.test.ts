@@ -13,7 +13,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 vi.mock('./ui/elements', () => ({
   elements: {
     connectionStatus: null,
-    sessionIndicator: null,
     sessionFilter: null,
     sessionFilterBadges: null,
     thinkingContent: null,

@@ -1522,37 +1522,8 @@ body {
 }
 
 /* ========================================
-   Session Indicator & Badges
+   Session Badges
    ======================================== */
-
-.session-indicator {
-  display: none;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
-}
-
-.session-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.session-id {
-  font-family: var(--font-family-mono);
-  cursor: help;
-}
-
-.session-count {
-  color: var(--color-text-muted);
-  font-size: 10px;
-}
 
 /* Session badge on entries */
 .entry-session-badge {
@@ -1649,41 +1620,29 @@ body {
   flex-shrink: 0;
 }
 
-/* Session badge wrapper for positioning clear button */
-.session-filter-badge-wrapper {
-  display: flex;
-  align-items: center;
-  position: relative;
-}
-
-/* Session clear button (X) */
-.session-clear-btn {
-  display: flex;
+/* Inline close button (inside badge, hidden by default) */
+.session-close-btn {
+  display: none;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  margin-left: 2px;
-  padding: 0;
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
   border-radius: 50%;
+  font-size: 12px;
+  font-weight: 400;
   color: var(--color-text-muted);
-  font-size: 10px;
-  font-weight: 600;
-  cursor: pointer;
   transition: all 0.15s ease;
-  line-height: 1;
 }
 
-.session-clear-btn:hover {
+/* Show close button on badge hover */
+.session-filter-badge.has-close:hover .session-close-btn {
+  display: inline-flex;
+}
+
+.session-close-btn:hover {
   background: var(--color-accent-red);
-  border-color: var(--color-accent-red);
   color: white;
-}
-
-.session-clear-btn:active {
-  transform: scale(0.9);
 }
 
 /* Responsive session filter handled in main responsive section above */

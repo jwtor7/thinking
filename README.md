@@ -120,8 +120,8 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
+- **v0.11.2** — Session UI cleanup: inline close button on hover, removed redundant header indicator
 - **v0.11.1** — Security hardening: CSP headers, WebSocket size limits, CSRF protection, ReDoS fixes
 - **v0.11.0** — Theme system with 5 themes (dark, light, solarized variants) and system preference tracking
-- **v0.10.0** — Type-safe event handling with discriminated union types (`StrictMonitorEvent`)
 
 *[Full changelog →](./CHANGELOG.md)*

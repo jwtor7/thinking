@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.11.2] - 2025-12-31
+
+### Changed
+- **Session close button**: Moved inside badge, appears on hover only (clearer association)
+- **Session indicator removed**: Eliminated redundant session display from header
+
+### Fixed
+- Close button positioning ambiguity in session filter bar
+
+---
+
 ## [0.11.1] - 2025-12-29
 
 ### Security

@@ -64,7 +64,7 @@ export function trackSession(sessionId: string, timestamp: string): void {
       color: getSessionColorByHash(sessionId),
     });
     console.log(`[Dashboard] New session tracked: ${sessionId}`);
-    updateSessionIndicator();
+    updateSessionFilter();
   }
 
   // Update current session
@@ -102,7 +102,7 @@ export function handleSessionStart(event: SessionStartEvent): void {
   });
 
   state.currentSessionId = sessionId;
-  updateSessionIndicator();
+  updateSessionFilter();
 }
 
 /**
@@ -125,82 +125,12 @@ export function handleSessionStop(event: SessionStopEvent): void {
     state.currentSessionId = null;
   }
 
-  updateSessionIndicator();
+  updateSessionFilter();
 }
 
 // ============================================
 // Session UI Updates
 // ============================================
-
-/**
- * Update the session indicator in the header.
- * Shows the currently selected session (from the filter bar) rather than just the active session.
- * This ensures the header badge stays in sync with the user's session selection.
- */
-export function updateSessionIndicator(): void {
-  // Create the session indicator element if it doesn't exist in the DOM
-  let indicator = elements.sessionIndicator;
-
-  if (!indicator) {
-    // Create and insert the session indicator into the header
-    indicator = document.createElement('div');
-    indicator.id = 'session-indicator';
-    indicator.className = 'session-indicator';
-
-    // Insert after connection status
-    const connectionStatus = elements.connectionStatus;
-    if (connectionStatus && connectionStatus.parentNode) {
-      connectionStatus.parentNode.insertBefore(
-        indicator,
-        connectionStatus.nextSibling
-      );
-    }
-    elements.sessionIndicator = indicator;
-  }
-
-  // Determine which session to display in the header:
-  // - If a specific session is selected in the filter, show that session
-  // - If "all" is selected, show a summary or the current active session
-  const displaySessionId = state.selectedSession !== 'all'
-    ? state.selectedSession
-    : state.currentSessionId;
-
-  if (state.selectedSession === 'all' && state.sessions.size > 0) {
-    // "All" is selected - show the count of sessions
-    indicator.innerHTML = `
-      <span class="session-dot" style="background: var(--color-text-muted)"></span>
-      <span class="session-id">All (${state.sessions.size})</span>
-    `;
-    indicator.style.display = 'flex';
-  } else if (displaySessionId) {
-    const session = state.sessions.get(displaySessionId);
-    if (session) {
-      const shortId = session.id.slice(0, 8);
-      const title = session.workingDirectory
-        ? `Session: ${session.id}\nDirectory: ${session.workingDirectory}`
-        : `Session: ${session.id}`;
-
-      indicator.innerHTML = `
-        <span class="session-dot" style="background: ${session.color}"></span>
-        <span class="session-id" title="${escapeHtml(title)}">${escapeHtml(shortId)}</span>
-        ${state.sessions.size > 1 ? `<span class="session-count">(${state.sessions.size})</span>` : ''}
-      `;
-      indicator.style.display = 'flex';
-    }
-  } else if (state.sessions.size > 0) {
-    // Fallback: show count of sessions if no session to display
-    indicator.innerHTML = `
-      <span class="session-dot" style="background: var(--color-text-muted)"></span>
-      <span class="session-id">${state.sessions.size} session(s)</span>
-    `;
-    indicator.style.display = 'flex';
-  } else {
-    indicator.style.display = 'none';
-  }
-
-  // Also update the session filter UI
-  updateSessionFilter();
-}
 
 /**
  * Render the session filter bar with clickable session badges.
@@ -254,13 +184,14 @@ export function updateSessionFilter(): void {
     // Only show clear button for inactive sessions that have stored todos
     const hasTodos = state.sessionTodos.has(sessionId) && (state.sessionTodos.get(sessionId)?.length ?? 0) > 0;
     const showClearBtn = !session.active && hasTodos;
+    const clearBtnHtml = showClearBtn
+      ? `<span class="session-close-btn" data-session="${escapeHtml(sessionId)}" title="Clear session">×</span>`
+      : '';
 
-    html += `<div class="session-filter-badge-wrapper">
-      <button class="session-filter-badge ${isActive} ${isOnline}" data-session="${escapeHtml(sessionId)}" title="${escapeHtml(title)}">
-        <span class="session-filter-dot" style="background: ${session.color}"></span>
-        ${escapeHtml(shortId)}
-      </button>${showClearBtn ? `<button class="session-clear-btn" data-session="${escapeHtml(sessionId)}" title="Clear todos for this session">x</button>` : ''}
-    </div>`;
+    html += `<button class="session-filter-badge ${isActive} ${isOnline}${showClearBtn ? ' has-close' : ''}" data-session="${escapeHtml(sessionId)}" title="${escapeHtml(title)}">
+      <span class="session-filter-dot" style="background: ${session.color}"></span>
+      ${escapeHtml(shortId)}${clearBtnHtml}
+    </button>`;
   }
 
   html += '</div>';
@@ -268,20 +199,20 @@ export function updateSessionFilter(): void {
 
   // Attach click handlers using event delegation
   filterEl.querySelectorAll('.session-filter-badge').forEach((badge: Element) => {
-    badge.addEventListener('click', () => {
+    badge.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLElement;
+      // Handle close button click
+      if (target.classList.contains('session-close-btn')) {
+        e.stopPropagation();
+        const sessionId = target.dataset.session;
+        if (sessionId && callbacks) {
+          callbacks.clearSessionTodos(sessionId);
+        }
+        return;
+      }
+      // Normal session selection
       const sessionId = (badge as HTMLElement).dataset.session || 'all';
       selectSession(sessionId);
-    });
-  });
-
-  // Attach click handlers for session clear buttons
-  filterEl.querySelectorAll('.session-clear-btn').forEach((btn: Element) => {
-    btn.addEventListener('click', (e: Event) => {
-      e.stopPropagation(); // Prevent session selection
-      const sessionId = (btn as HTMLElement).dataset.session;
-      if (sessionId && callbacks) {
-        callbacks.clearSessionTodos(sessionId);
-      }
     });
   });
 }
@@ -296,7 +227,7 @@ export function updateSessionFilter(): void {
  */
 export function selectSession(sessionId: string): void {
   state.selectedSession = sessionId;
-  updateSessionIndicator(); // Updates both header indicator and filter bar
+  updateSessionFilter();
   filterAllBySession();
 
   // Show the plan associated with this session (if any)

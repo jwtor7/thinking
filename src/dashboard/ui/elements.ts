@@ -7,7 +7,6 @@
 
 export const elements = {
   connectionStatus: document.getElementById('connection-status')!,
-  sessionIndicator: document.getElementById('session-indicator'),
   sessionFilter: document.getElementById('session-filter'),
   clearBtn: document.getElementById('clear-btn')!,
   autoScrollCheckbox: document.getElementById('auto-scroll') as HTMLInputElement,

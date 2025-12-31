@@ -66,7 +66,6 @@ import {
 } from './handlers/agents';
 import {
   initSessions,
-  updateSessionIndicator,
   updateSessionFilter,
 } from './handlers/sessions';
 import {
@@ -220,8 +219,8 @@ function clearAllPanels(): void {
   // Clear session-plan associations to prevent memory leak
   state.sessionPlanMap.clear();
 
-  // Hide session indicator and filter
-  updateSessionIndicator();
+  // Hide session filter
+  updateSessionFilter();
 
   // Reset todos (both session-specific map and current display)
   state.sessionTodos.clear();
@@ -429,7 +428,7 @@ if (state.todos.length > 0) {
   renderTodoPanel();
 }
 if (state.sessions.size > 0) {
-  updateSessionIndicator();
+  updateSessionFilter();
 }
 
 // Initialize handler modules with callbacks
@@ -468,7 +467,6 @@ initPlans({
 initTodos({
   showToast,
   updateSessionFilter,
-  updateSessionIndicator,
 });
 
 // Initialize UI modules

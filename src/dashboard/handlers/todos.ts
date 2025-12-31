@@ -22,7 +22,6 @@ import { TodoItem } from '../types';
 export interface TodoCallbacks {
   showToast: (message: string, type: 'success' | 'error' | 'info', duration?: number) => void;
   updateSessionFilter: () => void;
-  updateSessionIndicator: () => void;
 }
 
 let callbacks: TodoCallbacks | null = null;
@@ -167,7 +166,6 @@ export function clearSessionTodos(sessionId: string): void {
   // Use callbacks for UI updates that would cause circular imports
   if (callbacks) {
     callbacks.updateSessionFilter();
-    callbacks.updateSessionIndicator();
     callbacks.showToast('Session todos cleared', 'success');
   }
 }
