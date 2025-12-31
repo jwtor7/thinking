@@ -11,6 +11,7 @@
     "build:server": "node scripts/build-server.js",
     "build:dashboard": "esbuild src/dashboard/app.ts --bundle --format=iife --outfile=src/dashboard/app.js",
     "start": "pkill -f 'node dist/server/index.js' 2>/dev/null; node dist/server/index.js",
+    "ship": "pnpm build && pkill -f 'node dist/server/index.js' 2>/dev/null; node dist/server/index.js &",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "screenshot": "scripts/screenshot-arc.sh",
