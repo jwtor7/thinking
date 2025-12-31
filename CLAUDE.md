@@ -69,11 +69,11 @@ git add -A && git commit -m "vX.X.X: Brief description"
 git tag -a vX.X.X -m "vX.X.X: Brief description"
 git push origin main --tags
 
-# 7. Rebuild and restart local server (so changes take effect)
-pnpm build:server && pnpm build:dashboard
-pkill -f "node dist/server/index.js" 2>/dev/null
-pnpm start &
+# 7. Rebuild and restart local server (AUTOMATIC - Claude runs this after push)
+pnpm ship
 ```
+
+**IMPORTANT**: After pushing any code changes, Claude MUST run `pnpm ship` to rebuild and restart the server.
 
 ### Version Bump Rules
 
