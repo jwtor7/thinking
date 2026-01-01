@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.11.3] - 2025-12-31
+
+### Changed
+- **Payload size limit increased**: MAX_PAYLOAD_SIZE raised from 10KB to 100KB for content truncation
+- **Large request handling**: Server now accepts large requests and truncates content fields, instead of rejecting immediately
+
+### Security
+- **Memory exhaustion protection**: Added 5MB hard streaming limit to prevent DoS from extremely large requests
+- **Two-tier payload approach**: 5MB streaming limit (reject) + 100KB content truncation (accept and trim)
+
+### Added
+- EventReceiver unit tests (8 new tests covering body size limits and content truncation)
+
+---
+
 ## [0.11.2] - 2025-12-31
 
 ### Changed

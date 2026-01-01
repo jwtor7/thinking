@@ -152,7 +152,7 @@ export const CONFIG = {
   /** Host to bind to (localhost only for security) */
   HOST: '127.0.0.1',
   /** Maximum payload size in bytes */
-  MAX_PAYLOAD_SIZE: 10 * 1024, // 10KB
+  MAX_PAYLOAD_SIZE: 100 * 1024, // 100KB
   /** Server version - read from package.json */
   VERSION: getVersion(),
   /**

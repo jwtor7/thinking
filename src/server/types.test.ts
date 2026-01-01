@@ -192,8 +192,8 @@ describe('CONFIG', () => {
     expect(CONFIG.HOST).toBe('127.0.0.1');
   });
 
-  it('should have MAX_PAYLOAD_SIZE as 10KB', () => {
-    expect(CONFIG.MAX_PAYLOAD_SIZE).toBe(10 * 1024);
+  it('should have MAX_PAYLOAD_SIZE as 100KB', () => {
+    expect(CONFIG.MAX_PAYLOAD_SIZE).toBe(100 * 1024);
   });
 
   it('should have VERSION defined', () => {

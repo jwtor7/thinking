@@ -161,8 +161,14 @@ export class EventReceiver {
 
   /**
    * Read the request body as a string.
+   *
+   * Has a hard 5MB streaming limit to prevent memory exhaustion from extremely
+   * large requests. This is separate from MAX_PAYLOAD_SIZE (100KB) which
+   * controls content truncation in parseAndValidateEvent.
    */
   private async readRequestBody(req: IncomingMessage): Promise<string> {
+    const MAX_BODY_SIZE = 5 * 1024 * 1024; // 5MB hard limit for memory safety
+
     return new Promise((resolve, reject) => {
       const chunks: Buffer[] = [];
       let totalSize = 0;
@@ -170,8 +176,8 @@ export class EventReceiver {
       req.on('data', (chunk: Buffer) => {
         totalSize += chunk.length;
 
-        // Reject if body exceeds max size (prevent memory exhaustion)
-        if (totalSize > CONFIG.MAX_PAYLOAD_SIZE) {
+        // Hard limit to prevent memory exhaustion (content truncation happens later)
+        if (totalSize > MAX_BODY_SIZE) {
           req.destroy();
           reject(new Error('Request body too large'));
           return;
