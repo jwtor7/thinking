@@ -363,9 +363,11 @@ describe('Phase 4: Dashboard Polish', () => {
       expect(appTsContent).toContain('activeElement instanceof HTMLInputElement');
     });
 
-    it('should have keyboard hints in footer', () => {
-      expect(indexHtmlContent).toContain('keyboard-hints');
-      expect(indexHtmlContent).toContain('<kbd>');
+    it('should handle keyboard shortcuts without static footer hints', () => {
+      // Keyboard hints were removed from static HTML footer (commit d944ada)
+      // Shortcuts are now handled purely via JavaScript event listeners
+      expect(appTsContent).toContain('keydown');
+      expect(appTsContent).toContain('key ===');
     });
 
     it('should have keyboard mode state for visual hints', () => {

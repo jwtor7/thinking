@@ -331,8 +331,8 @@ describe('Phase 1.4: Basic HTML Dashboard Shell', () => {
     expect(content).toContain('id="todo-content"');
     expect(content).toContain('id="plan-content"');
     // Agent tabs were replaced with view-tabs (created dynamically in app.ts)
-    // The footer contains keyboard hints showing the view shortcuts
-    expect(content).toContain('keyboard-hints');
+    // Keyboard hints were removed from static footer (commit d944ada)
+    // Shortcuts are now handled via JavaScript event listeners
   });
 
   it('should include required stylesheets and scripts', async () => {
