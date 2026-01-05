@@ -2,7 +2,7 @@
  * Markdown rendering utilities for the Thinking Monitor Dashboard
  */
 
-import { escapeHtml } from './html';
+import { escapeHtml, encodeHtmlAttribute } from './html';
 
 /**
  * Render simple markdown to HTML with XSS protection.
@@ -109,8 +109,9 @@ export function renderSimpleMarkdown(content: string): string {
     }
 
     // Safe URL - render as link with security attributes
-    // Re-escape the URL for the href attribute
-    const safeUrl = escapeHtml(decodedUrl);
+    // SECURITY: Use encodeHtmlAttribute (not escapeHtml) to escape quotes
+    // This prevents attribute breakout attacks like: [x](https://x" onclick="alert(1))
+    const safeUrl = encodeHtmlAttribute(decodedUrl);
     return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
   });
 

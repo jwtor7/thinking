@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.4] - 2026-01-04
+
+### Security
+- **CRITICAL-001: XSS via markdown links fixed** - Added `encodeHtmlAttribute()` function that properly escapes quotes in HTML attribute values, preventing attribute breakout attacks in rendered markdown links
+
+---
+
 ## [0.11.3] - 2025-12-31
 
 ### Changed
