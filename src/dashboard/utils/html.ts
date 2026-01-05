@@ -33,3 +33,19 @@ export function encodeHtmlAttribute(value: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 }
+
+/**
+ * Sanitize a string for safe use in CSS property values.
+ *
+ * Removes characters that could break out of a CSS value context
+ * or inject malicious CSS. Used for dynamic style attributes.
+ *
+ * @example
+ * // Safe for style attributes:
+ * `<span style="color: ${escapeCssValue(color)}">`
+ */
+export function escapeCssValue(value: string): string {
+  // Remove characters that could break out of CSS value context
+  // or be used for CSS injection attacks
+  return value.replace(/[;"'<>(){}\\]/g, '');
+}

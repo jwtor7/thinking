@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.6] - 2026-01-04
+
+### Security
+- **CRITICAL-002: CSS injection defense in style attributes** - Added `escapeCssValue()` function to sanitize dynamic color values in agent and session badge styling (defense in depth)
+
+---
+
 ## [0.11.5] - 2026-01-04
 
 ### Security

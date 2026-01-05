@@ -9,7 +9,7 @@
 import { state } from '../state';
 import { elements } from '../ui/elements';
 import { formatTime, formatDuration, summarizeInput } from '../utils/formatting';
-import { escapeHtml } from '../utils/html';
+import { escapeHtml, escapeCssValue } from '../utils/html';
 import { getSessionColor, getShortSessionId } from '../ui/filters';
 import { getAgentColor } from '../ui/colors';
 import { applyToolsFilter, updateToolsCount } from '../ui/filters';
@@ -98,8 +98,9 @@ export function handleToolStart(event: ToolStartEvent): void {
   }
 
   // Session badge HTML if we have a session ID
+  // SECURITY: escapeCssValue prevents CSS injection in style attributes
   const sessionBadge = sessionId
-    ? `<span class="entry-session-badge" style="background: ${getSessionColor(sessionId)}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>`
+    ? `<span class="entry-session-badge" style="background: ${escapeCssValue(getSessionColor(sessionId))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>`
     : '';
 
   // Generate preview text for collapsed state
@@ -128,7 +129,7 @@ export function handleToolStart(event: ToolStartEvent): void {
         ${sessionBadge}
       </div>
       <div class="tool-header-line2">
-        <span class="tool-agent" style="color: ${agentColor}">${escapeHtml(agentDisplayName)}</span>
+        <span class="tool-agent" style="color: ${escapeCssValue(agentColor)}">${escapeHtml(agentDisplayName)}</span>
         <span class="tool-name">${escapeHtml(toolName)}</span>
         <span class="tool-preview">${escapeHtml(preview)}</span>
       </div>

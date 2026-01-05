@@ -11,7 +11,7 @@ import type { ThinkingEvent } from '../types';
 import { state } from '../state';
 import { elements } from '../ui/elements';
 import { formatTime } from '../utils/formatting';
-import { escapeHtml } from '../utils/html';
+import { escapeHtml, escapeCssValue } from '../utils/html';
 import {
   getSessionColor,
   getShortSessionId,
@@ -106,8 +106,9 @@ export function handleThinking(event: ThinkingEvent): void {
   entry.dataset.content = content.toLowerCase(); // For filtering
 
   // Session badge HTML if we have a session ID
+  // SECURITY: escapeCssValue prevents CSS injection in style attributes
   const sessionBadge = sessionId
-    ? `<span class="entry-session-badge" style="background: ${getSessionColor(sessionId)}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>`
+    ? `<span class="entry-session-badge" style="background: ${escapeCssValue(getSessionColor(sessionId))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>`
     : '';
 
   // Get agent color for visual distinction
@@ -117,7 +118,7 @@ export function handleThinking(event: ThinkingEvent): void {
     <div class="thinking-entry-header">
       <span class="thinking-time">${escapeHtml(time)}</span>
       ${sessionBadge}
-      <span class="thinking-agent" style="color: ${agentColor}">${escapeHtml(agentDisplayName)}</span>
+      <span class="thinking-agent" style="color: ${escapeCssValue(agentColor)}">${escapeHtml(agentDisplayName)}</span>
       <span class="thinking-preview">${escapeHtml(preview)}...</span>
     </div>
     <div class="thinking-text">${escapeHtml(content)}</div>
