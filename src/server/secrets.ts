@@ -147,6 +147,9 @@ const SECRET_PATTERNS: SecretPattern[] = [
   },
 ];
 
+/** Maximum content length for regex-based redaction (ReDoS protection) */
+const MAX_REDACTION_LENGTH = 50_000; // 50KB
+
 /**
  * Redact secrets from a string based on known patterns.
  *
@@ -163,6 +166,14 @@ const SECRET_PATTERNS: SecretPattern[] = [
 export function redactSecrets(content: string): string {
   if (!content || typeof content !== 'string') {
     return content;
+  }
+
+  // ReDoS protection: cap content length for regex processing
+  // Patterns with {16,256} quantifiers can cause O(n²) backtracking on malicious input
+  let truncated = false;
+  if (content.length > MAX_REDACTION_LENGTH) {
+    content = content.slice(0, MAX_REDACTION_LENGTH);
+    truncated = true;
   }
 
   let redacted = content;
@@ -198,6 +209,11 @@ export function redactSecrets(content: string): string {
 
       return args[0]; // Fallback to original match
     });
+  }
+
+  // Append truncation notice if content was capped
+  if (truncated) {
+    redacted += '\n[... content truncated for security scanning ...]';
   }
 
   return redacted;

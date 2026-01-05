@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.5] - 2026-01-04
+
+### Security
+- **HIGH-001: ReDoS protection in secret redaction** - Added 50KB content length cap before regex processing to prevent O(n²) backtracking attacks that could freeze the server
+
+---
+
 ## [0.11.4] - 2026-01-04
 
 ### Security
