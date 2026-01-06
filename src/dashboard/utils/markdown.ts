@@ -5,6 +5,144 @@
 import { escapeHtml, encodeHtmlAttribute } from './html';
 
 /**
+ * Alignment type for table columns
+ */
+type TableAlignment = 'left' | 'center' | 'right';
+
+/**
+ * Parse GFM table alignment markers
+ * :--- = left, :---: = center, ---: = right, --- = left (default)
+ */
+function parseTableAlignment(separator: string): TableAlignment {
+  const trimmed = separator.trim();
+  const hasLeft = trimmed.startsWith(':');
+  const hasRight = trimmed.endsWith(':');
+
+  if (hasLeft && hasRight) return 'center';
+  if (hasRight) return 'right';
+  return 'left';
+}
+
+/**
+ * Render a GFM table to HTML
+ *
+ * Input is already HTML-escaped content, so cells are safe.
+ * Table structure is generated programmatically.
+ */
+function renderTable(lines: string[]): string {
+  if (lines.length < 2) return lines.join('\n');
+
+  // Parse header row - split by | and trim
+  const headerCells = lines[0]
+    .split('|')
+    .map((cell) => cell.trim())
+    .filter((cell) => cell !== '');
+
+  // Parse separator row to get alignments
+  const separatorCells = lines[1]
+    .split('|')
+    .map((cell) => cell.trim())
+    .filter((cell) => cell !== '');
+
+  // Validate separator row (must have --- patterns)
+  const isValidSeparator = separatorCells.every((cell) => /^:?-{3,}:?$/.test(cell));
+
+  if (!isValidSeparator || headerCells.length !== separatorCells.length) {
+    // Not a valid table, return as-is
+    return lines.join('\n');
+  }
+
+  // Parse alignments
+  const alignments: TableAlignment[] = separatorCells.map(parseTableAlignment);
+
+  // Build table HTML
+  let tableHtml = '<table class="md-table">';
+
+  // Header
+  tableHtml += '<thead><tr>';
+  headerCells.forEach((cell, i) => {
+    const align = alignments[i] || 'left';
+    tableHtml += `<th style="text-align: ${align}">${cell}</th>`;
+  });
+  tableHtml += '</tr></thead>';
+
+  // Body rows (skip header and separator)
+  if (lines.length > 2) {
+    tableHtml += '<tbody>';
+    for (let i = 2; i < lines.length; i++) {
+      const rowCells = lines[i]
+        .split('|')
+        .map((cell) => cell.trim())
+        .filter((cell) => cell !== '');
+
+      tableHtml += '<tr>';
+      // Pad with empty cells if row is short
+      for (let j = 0; j < headerCells.length; j++) {
+        const cell = rowCells[j] || '';
+        const align = alignments[j] || 'left';
+        tableHtml += `<td style="text-align: ${align}">${cell}</td>`;
+      }
+      tableHtml += '</tr>';
+    }
+    tableHtml += '</tbody>';
+  }
+
+  tableHtml += '</table>';
+  return tableHtml;
+}
+
+/**
+ * Detect and render GFM tables in content
+ *
+ * Tables are identified by:
+ * 1. Line starting and ending with |
+ * 2. Next line is separator with |---|
+ * 3. Zero or more data rows starting/ending with |
+ */
+function processTablesInContent(html: string): string {
+  const lines = html.split('\n');
+  const result: string[] = [];
+  let tableLines: string[] = [];
+  let inTable = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmedLine = line.trim();
+    const isTableRow = trimmedLine.startsWith('|') && trimmedLine.endsWith('|');
+
+    if (isTableRow) {
+      if (!inTable) {
+        // Check if next line is separator
+        const nextLine = lines[i + 1]?.trim() || '';
+        if (nextLine.startsWith('|') && nextLine.includes('---')) {
+          inTable = true;
+          tableLines = [line];
+        } else {
+          result.push(line);
+        }
+      } else {
+        tableLines.push(line);
+      }
+    } else {
+      if (inTable) {
+        // End of table
+        result.push(renderTable(tableLines));
+        tableLines = [];
+        inTable = false;
+      }
+      result.push(line);
+    }
+  }
+
+  // Handle table at end of content
+  if (inTable && tableLines.length > 0) {
+    result.push(renderTable(tableLines));
+  }
+
+  return result.join('\n');
+}
+
+/**
  * Render simple markdown to HTML with XSS protection.
  *
  * Security approach:
@@ -24,6 +162,7 @@ import { escapeHtml, encodeHtmlAttribute } from './html';
  * - Task lists: - [ ] unchecked or - [x] checked
  * - Blockquotes: > quote
  * - Horizontal rules: --- or ***
+ * - Tables: GFM tables with alignment (|:---|, |:---:|, |---:|)
  */
 export function renderSimpleMarkdown(content: string): string {
   // SECURITY: Escape ALL HTML first to prevent XSS
@@ -115,15 +254,43 @@ export function renderSimpleMarkdown(content: string): string {
     return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
   });
 
+  // Tables - process before line break conversion
+  // Tables rely on newline-separated rows for detection
+  html = processTablesInContent(html);
+
   // Line breaks - convert newlines to <br> for display
-  // But not inside <ul>, <pre>, or <blockquote> tags
+  // First collapse multiple blank lines into double line break (paragraph separator)
+  html = html.replace(/\n{3,}/g, '\n\n');
   html = html.replace(/\n/g, '<br>');
 
-  // Clean up extra <br> tags inside block elements
+  // Clean up extra <br> tags inside and around block elements
   html = html.replace(/<ul><br>/g, '<ul>');
   html = html.replace(/<br><\/ul>/g, '</ul>');
   html = html.replace(/<\/li><br>/g, '</li>');
   html = html.replace(/<br><li/g, '<li');
+
+  // Clean up <br> around headers
+  html = html.replace(/<br>(<h[123]>)/g, '$1');
+  html = html.replace(/(<\/h[123]>)<br>/g, '$1');
+
+  // Clean up <br> around tables
+  html = html.replace(/<br>(<table)/g, '$1');
+  html = html.replace(/(<\/table>)<br>/g, '$1');
+
+  // Clean up <br> around horizontal rules
+  html = html.replace(/<br>(<hr>)/g, '$1');
+  html = html.replace(/(<hr>)<br>/g, '$1');
+
+  // Clean up <br> around blockquotes
+  html = html.replace(/<br>(<blockquote>)/g, '$1');
+  html = html.replace(/(<\/blockquote>)<br>/g, '$1');
+
+  // Clean up <br> around code blocks
+  html = html.replace(/<br>(<pre>)/g, '$1');
+  html = html.replace(/(<\/pre>)<br>/g, '$1');
+
+  // Collapse multiple consecutive <br> to max 2 (one blank line)
+  html = html.replace(/(<br>){3,}/g, '<br><br>');
 
   return html;
 }

@@ -535,6 +535,78 @@ describe('Phase 4: Code Quality', () => {
   });
 });
 
+describe('GFM Table Support', () => {
+  describe('Table Parsing Functions', () => {
+    it('should have table alignment type', () => {
+      expect(appTsContent).toContain("type TableAlignment = 'left' | 'center' | 'right'");
+    });
+
+    it('should have parseTableAlignment function', () => {
+      expect(appTsContent).toContain('function parseTableAlignment');
+    });
+
+    it('should have renderTable function', () => {
+      expect(appTsContent).toContain('function renderTable');
+    });
+
+    it('should have processTablesInContent function', () => {
+      expect(appTsContent).toContain('function processTablesInContent');
+    });
+
+    it('should generate table HTML with correct structure', () => {
+      expect(appTsContent).toContain("<table class=\"md-table\">");
+      expect(appTsContent).toContain('<thead><tr>');
+      expect(appTsContent).toContain('<th style="text-align:');
+      expect(appTsContent).toContain('<td style="text-align:');
+      expect(appTsContent).toContain('</tbody>');
+    });
+
+    it('should validate table separator row', () => {
+      // Separator validation regex
+      expect(appTsContent).toMatch(/\^:\?-\{3,\}:\?\$/);
+    });
+  });
+
+  describe('Table CSS Styling', () => {
+    it('should have table styles for plan markdown', () => {
+      expect(stylesCssContent).toContain('.plan-markdown table.md-table');
+    });
+
+    it('should have table styles for thinking text', () => {
+      expect(stylesCssContent).toContain('.thinking-text table.md-table');
+    });
+
+    it('should have table header styling', () => {
+      expect(stylesCssContent).toContain('table.md-table th');
+      expect(stylesCssContent).toContain('background: var(--color-bg-tertiary)');
+    });
+
+    it('should have table cell styling', () => {
+      expect(stylesCssContent).toContain('table.md-table td');
+      expect(stylesCssContent).toContain('border: 1px solid var(--color-border)');
+    });
+
+    it('should have table row hover effect', () => {
+      expect(stylesCssContent).toContain('table.md-table tr:hover td');
+    });
+  });
+
+  describe('Table Security', () => {
+    it('should process tables after HTML escaping', () => {
+      // Table processing happens in renderSimpleMarkdown after escapeHtml
+      expect(appTsContent).toContain('let html = escapeHtml(content)');
+      expect(appTsContent).toContain('html = processTablesInContent(html)');
+    });
+
+    it('should only use safe alignment values', () => {
+      // parseTableAlignment returns only left/center/right
+      expect(appTsContent).toContain("return 'center'");
+      expect(appTsContent).toContain("return 'right'");
+      expect(appTsContent).toContain("return 'left'");
+    });
+  });
+});
+
 describe('Panel Collapse Feature', () => {
   describe('HTML Structure', () => {
     it('should have collapse buttons in panel headers', () => {

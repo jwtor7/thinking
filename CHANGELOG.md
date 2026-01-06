@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.11.7] - 2026-01-05
+
+### Added
+- **GFM table support in markdown** - Plan panel now renders GitHub-flavored markdown tables with alignment (`:---`, `:---:`, `---:`)
+
+### Fixed
+- **Excessive spacing in rendered markdown** - Collapsed multiple blank lines and removed unnecessary `<br>` tags around block elements (headers, tables, hr, blockquotes, code blocks)
+
+---
+
 ## [0.11.6] - 2026-01-04
 
 ### Security
