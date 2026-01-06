@@ -8,6 +8,7 @@
 import { state } from '../state';
 import { elements } from './elements';
 import { savePanelCollapseState } from '../storage/persistence';
+import { resetPanelFlex, rebuildResizers } from './resizer';
 
 /**
  * Panel names that can be collapsed
@@ -91,6 +92,13 @@ export function togglePanelCollapse(panelName: PanelName): void {
   btn.setAttribute('aria-label', `${isCollapsed ? 'Expand' : 'Collapse'} ${panelName} panel`);
   const shortcutKey = getShortcutKey(panelName);
   btn.title = `${isCollapsed ? 'Expand' : 'Collapse'} panel (Shift+${shortcutKey})`;
+
+  // Reset custom flex sizing when toggling collapse
+  // This allows CSS to control panel sizes after resize
+  resetPanelFlex(panel);
+
+  // Rebuild resizers to only show between visible panels
+  rebuildResizers();
 
   // Persist to localStorage
   savePanelCollapseState();

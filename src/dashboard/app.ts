@@ -49,6 +49,8 @@ import {
   initPanels,
   initPanelCollapseButtons,
 } from './ui/panels';
+import { initResizers } from './ui/resizer';
+import { initDragReorder } from './ui/drag-reorder';
 import {
   filterAllThinking,
   filterAllTools,
@@ -431,6 +433,12 @@ if (state.sessions.size > 0) {
   updateSessionFilter();
 }
 
+// Hide session-specific panels on initial load when "All" is selected
+if (state.selectedSession === 'all') {
+  elements.todoPanel?.classList.add('session-hidden');
+  elements.planPanel?.classList.add('session-hidden');
+}
+
 // Initialize handler modules with callbacks
 initThinking({
   getCurrentAgentContext,
@@ -488,6 +496,12 @@ initViewTabs();
 
 // Initialize panel collapse buttons
 initPanelCollapseButtons();
+
+// Initialize resizable panes
+initResizers();
+
+// Initialize drag-to-reorder for collapsed panels
+initDragReorder();
 
 // Initialize WebSocket with callbacks
 initWebSocket({

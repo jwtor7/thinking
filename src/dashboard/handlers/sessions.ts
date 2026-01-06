@@ -10,6 +10,7 @@ import { elements } from '../ui/elements';
 import { escapeHtml } from '../utils/html';
 import { getSessionColorByHash } from '../ui/colors';
 import { filterAllBySession } from '../ui/filters';
+import { rebuildResizers } from '../ui/resizer';
 import type { SessionStartEvent, SessionStopEvent } from '../types';
 
 // ============================================
@@ -222,6 +223,25 @@ export function updateSessionFilter(): void {
 // ============================================
 
 /**
+ * Toggle visibility of session-specific panels (TODO and PLAN).
+ * These panels are hidden when "All" sessions is selected since they're session-specific.
+ */
+function updateSessionPanelVisibility(sessionId: string): void {
+  const isAllSessions = sessionId === 'all';
+
+  // Hide TODO and PLAN panels when viewing all sessions
+  if (elements.todoPanel) {
+    elements.todoPanel.classList.toggle('session-hidden', isAllSessions);
+  }
+  if (elements.planPanel) {
+    elements.planPanel.classList.toggle('session-hidden', isAllSessions);
+  }
+
+  // Rebuild resizers to only show between visible panels
+  rebuildResizers();
+}
+
+/**
  * Select a session to filter by.
  * Updates event filtering, todo display, and shows the session's associated plan.
  */
@@ -230,12 +250,12 @@ export function selectSession(sessionId: string): void {
   updateSessionFilter();
   filterAllBySession();
 
+  // Update visibility of session-specific panels
+  updateSessionPanelVisibility(sessionId);
+
   // Show the plan associated with this session (if any)
   if (sessionId === 'all') {
-    // When "All" is selected, show empty state - plans are session-specific
-    if (callbacks) {
-      callbacks.displayEmptyPlan();
-    }
+    // When "All" is selected, panels are hidden - no need to update plan content
   } else {
     // Check if this session has an associated plan
     const associatedPlanPath = state.sessionPlanMap.get(sessionId);

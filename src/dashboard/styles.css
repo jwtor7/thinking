@@ -286,18 +286,11 @@ body {
    ======================================== */
 
 .panels {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md);
-  flex: 1;
-  overflow: hidden;
-}
-
-.panel-column {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  flex: 1;
   overflow: hidden;
 }
 
@@ -310,6 +303,11 @@ body {
   border-radius: var(--radius-md);
   overflow: hidden;
   min-height: 0;
+}
+
+/* Hide session-specific panels (TODO, PLAN) when "All" sessions is selected */
+.panel.session-hidden {
+  display: none;
 }
 
 .panel-header {
@@ -1345,22 +1343,6 @@ body {
    ======================================== */
 
 @media (max-width: 1024px) {
-  .panels {
-    grid-template-columns: 1fr;
-  }
-
-  .panel-column {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-md);
-  }
-
-  /* Stack thinking + tools on top, todo + plan on bottom */
-  .panel {
-    min-height: 200px;
-    max-height: 45vh;
-  }
-
   .panel-filter-input {
     width: 100px;
   }
@@ -1371,18 +1353,9 @@ body {
    ======================================== */
 
 @media (max-width: 768px) {
-  .panels {
-    grid-template-columns: 1fr;
-  }
-
-  .panel-column {
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* Single column layout */
+  /* Mobile: panels stack vertically with touch-friendly sizing */
   .panel {
-    min-height: 300px;
+    min-height: 200px;
     max-height: 50vh;
   }
 
@@ -1747,18 +1720,10 @@ body.keyboard-mode .view-tab-shortcut {
   opacity: 1;
 }
 
-/* Single view layout adjustments */
-.panels.single-view {
-  grid-template-columns: 1fr;
-}
-
-.panels.single-view .panel-column {
-  display: contents;
-}
-
+/* Single view layout - selected panel expands to full height */
 .panels.single-view .panel {
   max-height: none;
-  height: 100%;
+  flex: 1;
 }
 
 /* Responsive view tabs handled in main responsive section above */
@@ -2628,7 +2593,7 @@ input:focus-visible {
 }
 
 /* Non-collapsed panel expands to fill remaining space */
-.panel-column > .panel:not(.collapsed) {
+.panels > .panel:not(.collapsed) {
   flex: 1;
 }
 
@@ -2656,6 +2621,89 @@ input:focus-visible {
   .panel-collapse-icon {
     transition: none;
   }
+}
+
+/* ========================================
+   Resizable Panes
+   ======================================== */
+
+/* Vertical resizer (between panels) */
+.resizer-vertical {
+  flex-shrink: 0;
+  height: 12px;
+  margin: -6px 0;
+  cursor: row-resize;
+  background: transparent;
+  transition: background var(--duration-fast, 100ms) ease;
+  position: relative;
+  z-index: 5;
+}
+
+/* Hover and active states */
+.resizer-vertical:hover,
+.resizer-vertical.active {
+  background: var(--color-accent-blue);
+  opacity: 0.3;
+}
+
+.resizer-vertical.active {
+  opacity: 0.5;
+}
+
+/* Body cursor override during resize */
+body.resizing-vertical {
+  cursor: row-resize !important;
+  user-select: none;
+}
+
+body.resizing-vertical * {
+  cursor: inherit !important;
+}
+
+/* Mobile: hide resizers (not enough space for resizing to be useful) */
+@media (max-width: 768px) {
+  .resizer-vertical {
+    display: none;
+  }
+}
+
+/* ========================================
+   Drag-to-Reorder (Collapsed Panels)
+   ======================================== */
+
+/* Panel being dragged */
+.panel.dragging {
+  opacity: 0.9;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border-color: var(--color-accent-blue);
+}
+
+/* Placeholder where panel will be dropped */
+.drag-placeholder {
+  background: var(--color-bg-tertiary);
+  border: 2px dashed var(--color-accent-blue);
+  border-radius: var(--radius-md);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+/* Body cursor during drag */
+body.dragging-panel {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+body.dragging-panel * {
+  cursor: inherit !important;
+}
+
+/* Collapsed panel header shows grab cursor */
+.panel.collapsed .panel-header {
+  cursor: grab;
+}
+
+.panel.collapsed .panel-header:active {
+  cursor: grabbing;
 }
 
 /* ========================================

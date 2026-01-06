@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.11.8] - 2026-01-05
+
+### Changed
+- **Single-column vertical layout** - Replaced 2-column grid with vertically stacked panels for better usability
+- **Dynamic resizer rebuilding** - Resizers now rebuild automatically when panels collapse/expand or sessions change, fixing issues where resizing didn't work in certain states
+
+### Added
+- **Session-specific panel hiding** - TODO and PLAN panels automatically hide when "All" sessions is selected (they're session-specific and not useful in aggregated view)
+- **Drag-to-reorder collapsed panels** - Collapsed panels can now be dragged to reorder their position in the layout
+
+---
+
 ## [0.11.7] - 2026-01-05
 
 ### Added
