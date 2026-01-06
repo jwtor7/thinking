@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.12.0] - 2026-01-05
+
+### Changed
+- **Single-column vertical layout** - Major UI refactor from 2-column grid to vertically stacked panels for better usability
+- **Updated screenshot** - New dashboard screenshot reflecting the v0.12.0 layout
+
+### Added
+- **Resizable panels** - Drag resizers between panels to adjust heights
+- **Dynamic resizer rebuilding** - Resizers automatically rebuild when panels collapse/expand or sessions change
+- **Session-aware panel visibility** - TODO and PLAN panels auto-hide in "All" sessions view
+- **Drag-to-reorder collapsed panels** - Reorder collapsed panels by dragging
+- **GFM markdown tables** - GitHub-flavored table rendering with alignment support
+
+### Security
+- **XSS via markdown links** (CRITICAL-001) - Fixed attribute breakout in rendered links
+- **ReDoS protection** (HIGH-001) - Added 50KB content cap before regex processing
+- **CSS injection defense** (CRITICAL-002) - Sanitized dynamic color values
+
+---
+
 ## [0.11.8] - 2026-01-05
 
 ### Changed

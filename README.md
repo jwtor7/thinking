@@ -4,7 +4,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-0.11.1-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.12.0-purple)](./CHANGELOG.md)
 
 A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
 
@@ -28,11 +28,13 @@ Claude Code is powerful, but opaque. You see the output, not the process. Thinki
 | **Plan** | Active plan files with quick-open and reveal |
 
 **Plus:**
+- Single-column vertical layout with resizable panels
 - Session filtering across all panels
 - Keyboard shortcuts for everything
-- Collapsible panels with state persistence
+- Collapsible panels with drag-to-reorder
 - Right-click to open files in editor or Finder
 - Secret redaction (API keys, tokens, passwords)
+- GFM markdown table rendering
 
 ---
 
@@ -120,8 +122,8 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
-- **v0.11.3** — Payload handling: increased limit to 100KB, accept+truncate pattern, 5MB memory safety limit
-- **v0.11.2** — Session UI cleanup: inline close button on hover, removed redundant header indicator
-- **v0.11.1** — Security hardening: CSP headers, WebSocket size limits, CSRF protection, ReDoS fixes
+- **v0.12.0** — Single-column layout with resizable panels, drag-to-reorder, session-aware panel visibility
+- **v0.11.7** — GFM table support in markdown rendering
+- **v0.11.4–0.11.6** — Security fixes: XSS via markdown links, ReDoS protection, CSS injection defense
 
 *[Full changelog →](./CHANGELOG.md)*
