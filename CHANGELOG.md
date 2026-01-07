@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1] - 2026-01-07
+
+### Fixed
+- **Tool Activity pane legibility** - Tool input now renders with markdown formatting (line breaks, code blocks) instead of raw escaped text. Escape sequences (`\n`, `\t`, `\"`) are properly converted to actual characters. Removed height limits so content expands to fit
+
+---
+
 ## [0.12.0] - 2026-01-05
 
 ### Changed

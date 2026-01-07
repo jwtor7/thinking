@@ -122,6 +122,7 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
+- **v0.12.1** — Tool Activity pane now renders with proper formatting (line breaks, markdown)
 - **v0.12.0** — Single-column layout with resizable panels, drag-to-reorder, session-aware panel visibility
 - **v0.11.7** — GFM table support in markdown rendering
 - **v0.11.4–0.11.6** — Security fixes: XSS via markdown links, ReDoS protection, CSS injection defense

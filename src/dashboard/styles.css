@@ -588,8 +588,6 @@ body {
   background: var(--color-surface-0, var(--color-bg-primary));
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
-  max-height: 300px;
-  overflow-y: auto;
 }
 
 /* Legacy tool-time and tool-name for backward compatibility */
@@ -975,8 +973,6 @@ body {
   border-radius: var(--radius-sm);
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 150px;
-  overflow-y: auto;
 }
 
 /* Interactive file paths in tool entries */

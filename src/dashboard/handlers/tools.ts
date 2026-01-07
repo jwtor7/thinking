@@ -10,10 +10,27 @@ import { state } from '../state';
 import { elements } from '../ui/elements';
 import { formatTime, formatDuration, summarizeInput } from '../utils/formatting';
 import { escapeHtml, escapeCssValue } from '../utils/html';
+import { renderSimpleMarkdown } from '../utils/markdown';
 import { getSessionColor, getShortSessionId } from '../ui/filters';
 import { getAgentColor } from '../ui/colors';
 import { applyToolsFilter, updateToolsCount } from '../ui/filters';
 import type { ToolStartEvent, ToolEndEvent } from '../types';
+
+// ============================================
+// Utilities
+// ============================================
+
+/**
+ * Process JSON escape sequences to their actual characters.
+ * Converts \n, \t, \", \\ from literal backslash sequences to real characters.
+ */
+function processEscapes(str: string): string {
+  return str
+    .replace(/\\n/g, '\n')    // \n → newline
+    .replace(/\\t/g, '\t')    // \t → tab
+    .replace(/\\"/g, '"')     // \" → "
+    .replace(/\\\\/g, '\\');  // \\ → \
+}
 
 // ============================================
 // Callback Interface
@@ -137,7 +154,7 @@ export function handleToolStart(event: ToolStartEvent): void {
     <div class="tool-entry-details">
       <div class="tool-input-section">
         <div class="tool-input-label">INPUT</div>
-        <div class="tool-input-content">${escapeHtml(input || '(none)')}</div>
+        <div class="tool-input-content">${renderSimpleMarkdown(processEscapes(input || '(none)'))}</div>
       </div>
     </div>
   `;
