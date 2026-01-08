@@ -179,7 +179,15 @@ export interface ConnectionStatusEvent extends MonitorEventBase {
 }
 
 /** Hook type identifiers */
-export type HookType = 'PreToolUse' | 'PostToolUse' | 'Stop' | 'UserPromptSubmit';
+export type HookType =
+  | 'PreToolUse'
+  | 'PostToolUse'
+  | 'SubagentStart'
+  | 'SubagentStop'
+  | 'SessionStart'
+  | 'SessionStop'
+  | 'Stop'
+  | 'UserPromptSubmit';
 
 /** Hook decision identifiers */
 export type HookDecision = 'allow' | 'deny' | 'ask';

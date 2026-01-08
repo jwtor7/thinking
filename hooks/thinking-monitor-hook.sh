@@ -13,6 +13,8 @@
 # - SubagentStop: Fires when a subagent completes
 # - SessionStart: Fires when a Claude Code session starts
 # - SessionStop: Fires when a Claude Code session ends
+# - Stop: Fires when Claude is about to stop
+# - UserPromptSubmit: Fires when user submits a prompt
 #
 # Usage:
 # This script expects:
@@ -90,6 +92,38 @@ TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null || echo "")
 AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // empty' 2>/dev/null || echo "")
 
+# Helper function to send hook_execution event (tracks that a hook ran)
+send_hook_execution() {
+    local hook_type="$1"
+    local tool_name="$2"
+    local decision="$3"
+    local output="$4"
+
+    HOOK_EXEC_JSON=$(jq -n \
+        --arg type "hook_execution" \
+        --arg timestamp "$TIMESTAMP" \
+        --arg sessionId "$SESSION_ID" \
+        --arg agentId "$AGENT_ID" \
+        --arg hookType "$hook_type" \
+        --arg toolName "$tool_name" \
+        --arg decision "$decision" \
+        --arg hookName "thinking-monitor-hook" \
+        --arg output "$output" \
+        '{
+            type: $type,
+            timestamp: $timestamp,
+            sessionId: (if $sessionId == "" then null else $sessionId end),
+            agentId: (if $agentId == "" then null else $agentId end),
+            hookType: $hookType,
+            toolName: (if $toolName == "" then null else $toolName end),
+            decision: (if $decision == "" then null else $decision end),
+            hookName: $hookName,
+            output: (if $output == "" then null else $output end)
+        }')
+
+    send_event "$HOOK_EXEC_JSON"
+}
+
 # Build event JSON based on hook type
 case "$HOOK_TYPE" in
     "PreToolUse")
@@ -118,6 +152,9 @@ case "$HOOK_TYPE" in
                 input: $input,
                 toolCallId: (if $toolCallId == "" then null else $toolCallId end)
             }')
+
+        # Also send hook_execution event
+        send_hook_execution "PreToolUse" "$TOOL_NAME" "allow" ""
         ;;
 
     "PostToolUse")
@@ -149,6 +186,9 @@ case "$HOOK_TYPE" in
                 toolCallId: (if $toolCallId == "" then null else $toolCallId end),
                 durationMs: (if $durationMs == "" then null else ($durationMs | tonumber) end)
             }')
+
+        # Also send hook_execution event
+        send_hook_execution "PostToolUse" "$TOOL_NAME" "" ""
         ;;
 
     "SubagentStart")
@@ -171,6 +211,9 @@ case "$HOOK_TYPE" in
                 agentName: (if $agentName == "" then null else $agentName end),
                 parentAgentId: (if $parentAgentId == "" then null else $parentAgentId end)
             }')
+
+        # Also send hook_execution event
+        send_hook_execution "SubagentStart" "" "" "$SUBAGENT_NAME"
         ;;
 
     "SubagentStop")
@@ -190,6 +233,9 @@ case "$HOOK_TYPE" in
                 agentId: $agentId,
                 status: $status
             }')
+
+        # Also send hook_execution event
+        send_hook_execution "SubagentStop" "" "" "$STATUS"
         ;;
 
     "SessionStart")
@@ -206,6 +252,9 @@ case "$HOOK_TYPE" in
                 sessionId: $sessionId,
                 workingDirectory: (if $workingDirectory == "" then null else $workingDirectory end)
             }')
+
+        # Also send hook_execution event
+        send_hook_execution "SessionStart" "" "" "$CWD"
         ;;
 
     "SessionStop")
@@ -218,6 +267,23 @@ case "$HOOK_TYPE" in
                 timestamp: $timestamp,
                 sessionId: $sessionId
             }')
+
+        # Also send hook_execution event
+        send_hook_execution "SessionStop" "" "" ""
+        ;;
+
+    "Stop")
+        # Stop hook - fires when Claude is about to stop
+        # No specific event to send, just track the hook execution
+        send_hook_execution "Stop" "" "" ""
+        exit 0
+        ;;
+
+    "UserPromptSubmit")
+        # UserPromptSubmit hook - fires when user submits a prompt
+        # No specific event to send, just track the hook execution
+        send_hook_execution "UserPromptSubmit" "" "" ""
+        exit 0
         ;;
 
     *)

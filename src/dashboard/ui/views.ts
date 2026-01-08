@@ -134,9 +134,9 @@ export function applyViewFilter(): void {
 
   applyVisibility(elements.thinkingPanel, pv.thinking && (showAll || state.activeView === 'thinking'));
   applyVisibility(elements.toolsPanel, pv.tools && (showAll || state.activeView === 'tools'));
-  // Todo, Hooks, and Plan are only shown when explicitly selected
+  // Todo and Plan are only shown when explicitly selected; Hooks shows in All view too
   applyVisibility(elements.todoPanel, pv.todo && state.activeView === 'todo');
-  applyVisibility(elements.hooksPanel, pv.hooks && state.activeView === 'hooks');
+  applyVisibility(elements.hooksPanel, pv.hooks && (showAll || state.activeView === 'hooks'));
   applyVisibility(elements.planPanel, pv.plan && state.activeView === 'plan');
 
   // Adjust layout for single-panel view

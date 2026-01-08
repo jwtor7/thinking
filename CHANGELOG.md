@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.15.4] - 2026-01-07
+
+### Fixed
+- **Hooks panel now working** - Added `'hook_execution'` to server event validation (was silently rejecting all hook events)
+- **Hooks visible in All view** - Hooks panel now appears alongside Thinking and Tool Activity in the All view
+
+### Changed
+- Extended `HookType` to include all Claude Code hook types (SubagentStart, SubagentStop, SessionStart, SessionStop)
+- Hook script now sends `hook_execution` events to track when hooks run
+- Added cache-busting query parameter to app.js
+
+---
+
 ## [0.15.3] - 2026-01-07
 
 ### Changed
