@@ -4,7 +4,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-0.12.0-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.13.0-purple)](./CHANGELOG.md)
 
 A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
 
@@ -122,6 +122,7 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
+- **v0.13.0** — Tool duration badges with color-coded timing indicators (green <500ms, yellow 500ms-2s, red >2s)
 - **v0.12.1** — Tool Activity pane now renders with proper formatting (line breaks, markdown)
 - **v0.12.0** — Single-column layout with resizable panels, drag-to-reorder, session-aware panel visibility
 - **v0.11.7** — GFM table support in markdown rendering

@@ -25,6 +25,22 @@ export function formatDuration(ms: number): string {
   return `${seconds}s`;
 }
 
+/**
+ * Get CSS class for duration-based color coding.
+ * - 'fast' (green): < 500ms
+ * - 'medium' (yellow): 500ms - 2000ms
+ * - 'slow' (red): > 2000ms
+ */
+export function getDurationClass(ms: number): string {
+  if (ms < 500) {
+    return 'duration-fast';
+  } else if (ms <= 2000) {
+    return 'duration-medium';
+  } else {
+    return 'duration-slow';
+  }
+}
+
 export function summarizeInput(input: string | undefined): string {
   if (!input) return '';
 

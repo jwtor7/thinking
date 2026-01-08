@@ -990,9 +990,27 @@ body {
 
 .tool-duration {
   font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
   font-family: var(--font-family-mono);
   margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+/* Duration color coding based on speed */
+.tool-duration.duration-fast {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.tool-duration.duration-medium {
+  color: #eab308;
+  background: rgba(234, 179, 8, 0.15);
+}
+
+.tool-duration.duration-slow {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
 }
 
 /* ========================================

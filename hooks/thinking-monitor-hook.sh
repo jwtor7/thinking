@@ -95,7 +95,8 @@ case "$HOOK_TYPE" in
     "PreToolUse")
         TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
         TOOL_INPUT=$(echo "$INPUT" | jq -c '.tool_input // {}' 2>/dev/null || echo "{}")
-        TOOL_CALL_ID=$(echo "$INPUT" | jq -r '.tool_call_id // empty' 2>/dev/null || echo "")
+        # Claude Code uses tool_use_id, not tool_call_id
+        TOOL_CALL_ID=$(echo "$INPUT" | jq -r '.tool_use_id // .tool_call_id // empty' 2>/dev/null || echo "")
 
         # Truncate tool input to prevent large payloads
         TOOL_INPUT_TRUNCATED=$(echo "$TOOL_INPUT" | head -c 10000)
@@ -122,7 +123,9 @@ case "$HOOK_TYPE" in
     "PostToolUse")
         TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
         TOOL_OUTPUT=$(echo "$INPUT" | jq -c '.tool_output // .result // {}' 2>/dev/null || echo "{}")
-        TOOL_CALL_ID=$(echo "$INPUT" | jq -r '.tool_call_id // empty' 2>/dev/null || echo "")
+        # Claude Code uses tool_use_id, not tool_call_id
+        TOOL_CALL_ID=$(echo "$INPUT" | jq -r '.tool_use_id // .tool_call_id // empty' 2>/dev/null || echo "")
+        DURATION_MS=$(echo "$INPUT" | jq -r '.duration_ms // empty' 2>/dev/null || echo "")
 
         # Truncate tool output to prevent large payloads
         TOOL_OUTPUT_TRUNCATED=$(echo "$TOOL_OUTPUT" | head -c 10000)
@@ -135,6 +138,7 @@ case "$HOOK_TYPE" in
             --arg toolName "$TOOL_NAME" \
             --arg output "$TOOL_OUTPUT_TRUNCATED" \
             --arg toolCallId "$TOOL_CALL_ID" \
+            --arg durationMs "$DURATION_MS" \
             '{
                 type: $type,
                 timestamp: $timestamp,
@@ -142,7 +146,8 @@ case "$HOOK_TYPE" in
                 agentId: (if $agentId == "" then null else $agentId end),
                 toolName: $toolName,
                 output: $output,
-                toolCallId: (if $toolCallId == "" then null else $toolCallId end)
+                toolCallId: (if $toolCallId == "" then null else $toolCallId end),
+                durationMs: (if $durationMs == "" then null else ($durationMs | tonumber) end)
             }')
         ;;
 

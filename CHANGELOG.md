@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.13.0] - 2026-01-07
+
+### Added
+- **Tool duration badges** - Each tool call now displays elapsed time in milliseconds
+- **Color-coded duration indicators** - Badges show green for <500ms, yellow for 500ms-2s, red for >2s
+- **Server-side duration calculation** - Duration computed from tool_start to tool_end timestamps
+
+### Changed
+- **Hook script timing extraction** - Now correctly extracts tool_use_id from Claude Code events for accurate tool tracking
+- **EventReceiver tool timing** - Tracks tool timestamps for accurate duration measurement
+
+---
+
 ## [0.12.1] - 2026-01-07
 
 ### Fixed

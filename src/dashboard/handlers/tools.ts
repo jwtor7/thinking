@@ -8,7 +8,7 @@
 
 import { state } from '../state';
 import { elements } from '../ui/elements';
-import { formatTime, formatDuration, summarizeInput } from '../utils/formatting';
+import { formatTime, formatDuration, getDurationClass, summarizeInput } from '../utils/formatting';
 import { escapeHtml, escapeCssValue } from '../utils/html';
 import { renderSimpleMarkdown } from '../utils/markdown';
 import { getSessionColor, getShortSessionId } from '../ui/filters';
@@ -211,8 +211,10 @@ export function handleToolEnd(event: ToolEndEvent): void {
       const line2El = entry.querySelector('.tool-header-line2');
       if (line2El && !line2El.querySelector('.tool-duration')) {
         const durationEl = document.createElement('span');
-        durationEl.className = 'tool-duration';
+        const durationClass = getDurationClass(durationMs);
+        durationEl.className = `tool-duration ${durationClass}`;
         durationEl.textContent = formatDuration(durationMs);
+        durationEl.title = `Duration: ${durationMs}ms`;
         line2El.appendChild(durationEl);
       }
     }

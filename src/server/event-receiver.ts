@@ -32,6 +32,10 @@ const DEFAULT_EVENT_RATE_LIMIT: RateLimiterConfig = {
 export class EventReceiver {
   private hub: WebSocketHub;
   private rateLimiter: RateLimiter;
+  /** Track tool start times for duration calculation */
+  private toolStartTimes: Map<string, number> = new Map();
+  /** Max age for pending tool starts (5 minutes) */
+  private readonly TOOL_START_TTL_MS = 5 * 60 * 1000;
 
   constructor(hub: WebSocketHub, rateLimitConfig?: Partial<RateLimiterConfig>) {
     this.hub = hub;
@@ -39,6 +43,20 @@ export class EventReceiver {
       ...DEFAULT_EVENT_RATE_LIMIT,
       ...rateLimitConfig,
     });
+    // Periodically clean up stale tool start times
+    setInterval(() => this.cleanupStaleToolStarts(), 60000);
+  }
+
+  /**
+   * Clean up tool start times older than TTL.
+   */
+  private cleanupStaleToolStarts(): void {
+    const now = Date.now();
+    for (const [id, startTime] of this.toolStartTimes) {
+      if (now - startTime > this.TOOL_START_TTL_MS) {
+        this.toolStartTimes.delete(id);
+      }
+    }
   }
 
   /**
@@ -119,12 +137,15 @@ export class EventReceiver {
   ): Promise<void> {
     try {
       const body = await this.readRequestBody(req);
-      const event = this.parseAndValidateEvent(body);
+      let event = this.parseAndValidateEvent(body);
 
       if (!event) {
         this.sendError(res, 400, 'Invalid event format');
         return;
       }
+
+      // Track tool timing for duration calculation
+      event = this.processToolTiming(event);
 
       // Broadcast to connected WebSocket clients
       this.hub.broadcast(event);
@@ -142,6 +163,28 @@ export class EventReceiver {
         error instanceof Error ? error.message : 'Internal server error'
       );
     }
+  }
+
+  /**
+   * Process tool timing: track start times and calculate duration for end events.
+   */
+  private processToolTiming(event: MonitorEvent): MonitorEvent {
+    if (event.type === 'tool_start' && 'toolCallId' in event && event.toolCallId) {
+      // Record start time for duration calculation
+      this.toolStartTimes.set(event.toolCallId, Date.now());
+    } else if (event.type === 'tool_end' && 'toolCallId' in event && event.toolCallId) {
+      // Calculate duration if we have a start time
+      const startTime = this.toolStartTimes.get(event.toolCallId);
+      if (startTime) {
+        const durationMs = Date.now() - startTime;
+        this.toolStartTimes.delete(event.toolCallId);
+        // Add duration to event (override null/undefined from hook)
+        if (!('durationMs' in event) || event.durationMs === undefined || event.durationMs === null) {
+          return { ...event, durationMs };
+        }
+      }
+    }
+    return event;
   }
 
   /**
