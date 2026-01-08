@@ -1,0 +1,421 @@
+/* ========================================
+   Content - Thinking and Tool Entries
+   ======================================== */
+
+/* ========================================
+   Thinking Entry
+   ======================================== */
+
+.thinking-entry {
+  position: relative;
+  padding: var(--spacing-md) var(--spacing-lg);
+  padding-left: calc(var(--spacing-lg) + 4px);
+  border-left: 3px solid var(--color-accent-blue);
+  background: var(--color-surface-1, var(--color-bg-secondary));
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  margin-bottom: var(--spacing-sm);
+  transition: background var(--duration-fast, 100ms) ease, border-color 0.15s ease;
+  animation: entry-fade-in var(--duration-normal, 200ms) var(--ease-out, ease-out);
+}
+
+.thinking-entry:hover {
+  background: var(--color-surface-2, var(--color-bg-tertiary));
+}
+
+.thinking-entry.new {
+  animation: highlight 1s ease-out;
+}
+
+.thinking-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+  gap: var(--spacing-sm);
+  user-select: none;
+}
+
+/* Agent badge on the left side of header */
+.thinking-entry-agent,
+.thinking-agent {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium, 500);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-3, var(--color-bg-hover));
+}
+
+/* Time on the right side of header */
+.thinking-entry-time,
+.thinking-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+  margin-left: auto;
+}
+
+/* Content area with improved typography */
+.thinking-entry-content,
+.thinking-text {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed, 1.75);
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Preview text (hidden by default) */
+.thinking-preview {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  margin-left: var(--spacing-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+  display: none;
+  vertical-align: middle;
+}
+
+/* ========================================
+   Tool Entry
+   ======================================== */
+
+.tool-entry {
+  background: var(--color-surface-1, var(--color-bg-secondary));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-sm);
+  overflow: hidden;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  flex-direction: column;
+  align-items: stretch;
+  animation: entry-fade-in var(--duration-normal, 200ms) var(--ease-out, ease-out);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.tool-entry:hover {
+  border-color: var(--color-border-light);
+}
+
+.tool-entry.new {
+  animation: highlight 1s ease-out;
+}
+
+/* Tool entry running state */
+.tool-entry.tool-running {
+  border-left: 3px solid var(--color-accent-yellow);
+}
+
+.tool-entry.tool-running .tool-status {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Expanded card styling */
+.tool-entry:not(.collapsed) {
+  border-color: var(--color-accent-blue);
+}
+
+/* ========================================
+   Tool Entry Header
+   ======================================== */
+
+.tool-entry-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  transition: background var(--duration-fast, 100ms);
+}
+
+.tool-entry-header:hover {
+  background: var(--color-hover-overlay, rgba(255,255,255,0.05));
+}
+
+/* Two-line layout for collapsed tool entries */
+.tool-header-line1,
+.tool-header-line2 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.tool-header-line2 {
+  padding-left: 28px; /* Align with content after the status icon */
+}
+
+/* ========================================
+   Tool Entry Status Icons
+   ======================================== */
+
+.tool-entry-status {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.tool-entry-status-running {
+  color: var(--color-accent-yellow);
+}
+
+.tool-entry-status-running::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.tool-entry-status-complete {
+  color: var(--color-accent-green);
+}
+
+.tool-entry-status-complete::before {
+  content: '\2713'; /* checkmark */
+}
+
+.tool-entry-status-error {
+  color: var(--color-accent-red);
+}
+
+.tool-entry-status-error::before {
+  content: '\2715'; /* X */
+}
+
+/* ========================================
+   Tool Entry Elements
+   ======================================== */
+
+.tool-entry-name,
+.tool-name {
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--color-text-primary);
+  flex: 1;
+}
+
+.tool-name {
+  color: var(--color-accent-green);
+}
+
+.tool-entry-duration {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--color-text-muted);
+  padding: 2px 6px;
+  background: var(--color-surface-3, var(--color-bg-hover));
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.tool-entry-agent,
+.tool-agent {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium, 500);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-3, var(--color-bg-hover));
+  flex-shrink: 0;
+}
+
+.tool-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+  flex-shrink: 0;
+}
+
+/* ========================================
+   Tool Entry Chevron/Toggle
+   ======================================== */
+
+.tool-entry-chevron {
+  transition: transform var(--duration-fast, 100ms);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.tool-entry.expanded .tool-entry-chevron,
+.tool-entry:not(.collapsed) .tool-entry-chevron {
+  transform: rotate(90deg);
+}
+
+.tool-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--color-text-muted);
+  transition: transform var(--duration-fast, 100ms) ease, color var(--duration-fast, 100ms) ease;
+  flex-shrink: 0;
+}
+
+.tool-toggle::before {
+  content: '';
+  border: 4px solid transparent;
+  border-left: 6px solid currentColor;
+  border-right: 0;
+}
+
+.tool-entry:not(.collapsed) .tool-toggle {
+  transform: rotate(90deg);
+}
+
+.tool-entry:not(.collapsed) .tool-toggle,
+.tool-entry:hover .tool-toggle {
+  color: var(--color-text-secondary);
+}
+
+/* Preview text shown when collapsed */
+.tool-preview {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Hide preview when expanded */
+.tool-entry:not(.collapsed) .tool-preview {
+  display: none;
+}
+
+/* ========================================
+   Tool Entry Details
+   ======================================== */
+
+.tool-entry-details {
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-0, var(--color-bg-primary));
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+}
+
+/* Hide details when collapsed */
+.tool-entry.collapsed .tool-entry-details {
+  display: none;
+}
+
+.tool-input-section {
+  margin-bottom: var(--spacing-sm);
+}
+
+.tool-input-section:last-child {
+  margin-bottom: 0;
+}
+
+.tool-input-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-xs);
+}
+
+.tool-input-content {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-primary);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Interactive file paths in tool entries */
+.tool-file-path {
+  color: var(--color-text-link);
+  cursor: context-menu;
+  border-bottom: 1px dashed var(--color-text-link);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.tool-file-path:hover {
+  color: var(--color-status-running);
+  border-color: var(--color-status-running);
+}
+
+/* ========================================
+   Agent Tree (nested agents view)
+   ======================================== */
+
+.agent-node {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.agent-node:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.agent-node-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.agent-node-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transition: box-shadow 0.3s ease;
+}
+
+.agent-node-dot.active {
+  box-shadow: 0 0 8px currentColor;
+  animation: agentPulse 2s ease-in-out infinite;
+}
+
+.agent-node-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.agent-node-id {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+}
+
+.agent-node-children {
+  margin-left: var(--spacing-lg);
+  padding-left: var(--spacing-md);
+  border-left: 1px solid var(--color-border);
+}
+
+.agent-node-status {
+  font-size: var(--font-size-xs);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: var(--spacing-sm);
+}
+
+.agent-node-status-active {
+  background: rgba(63, 185, 80, 0.2);
+  color: var(--color-accent-green);
+}
+
+.agent-node-status-completed {
+  background: rgba(110, 118, 129, 0.2);
+  color: var(--color-text-muted);
+}
+
+.agent-node-status-failed {
+  background: rgba(248, 81, 73, 0.2);
+  color: var(--color-accent-red);
+}

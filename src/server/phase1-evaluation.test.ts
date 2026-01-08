@@ -307,8 +307,8 @@ describe('Phase 1.4: Basic HTML Dashboard Shell', () => {
     expect(stats.isFile()).toBe(true);
   });
 
-  it('should have styles.css file', async () => {
-    const cssPath = join(dashboardDir, 'styles.css');
+  it('should have css/main.css file', async () => {
+    const cssPath = join(dashboardDir, 'css', 'main.css');
     const stats = await stat(cssPath);
     expect(stats.isFile()).toBe(true);
   });
@@ -339,7 +339,7 @@ describe('Phase 1.4: Basic HTML Dashboard Shell', () => {
     const indexPath = join(dashboardDir, 'index.html');
     const content = await readFile(indexPath, 'utf-8');
 
-    expect(content).toContain('href="styles.css"');
+    expect(content).toContain('href="css/main.css"');
     expect(content).toContain('src="app.js"');
   });
 });

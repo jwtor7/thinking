@@ -1,0 +1,138 @@
+/**
+ * Thinking Monitor Dashboard Styles
+ * Dark theme optimized for readability and long viewing sessions.
+ */
+
+/* ========================================
+   CSS Variables
+   ======================================== */
+
+:root {
+  /* Colors - Dark Theme */
+  --color-bg-primary: #0d1117;
+  --color-bg-secondary: #161b22;
+  --color-bg-tertiary: #21262d;
+  --color-bg-hover: #30363d;
+
+  --color-border: #30363d;
+  --color-border-light: #21262d;
+
+  --color-text-primary: #e6edf3;
+  --color-text-secondary: #8b949e;
+  /* Slightly lighter than original #6e7681 for better WCAG AA contrast (4.5:1) */
+  --color-text-muted: #848d97;
+
+  /* Accent Colors */
+  --color-accent-blue: #58a6ff;
+  --color-accent-green: #3fb950;
+  --color-accent-yellow: #d29922;
+  --color-accent-red: #f85149;
+  --color-accent-purple: #a371f7;
+  --color-accent-orange: #db6d28;
+  --color-accent-cyan: #39c5cf;
+
+  /* Status Colors */
+  --color-status-connected: var(--color-accent-green);
+  --color-status-disconnected: var(--color-accent-red);
+  --color-status-pending: var(--color-accent-yellow);
+
+  /* Agent Colors - Used for visual distinction in tool activity panel */
+  --color-agent-main: var(--color-text-muted);           /* gray - main conversation */
+  --color-agent-code-implementer: var(--color-accent-green);   /* green - implementation work */
+  --color-agent-code-test-evaluator: var(--color-accent-cyan); /* cyan/teal - testing/evaluation */
+  --color-agent-haiku: var(--color-accent-orange);       /* orange - haiku agent */
+  --color-agent-opus: var(--color-accent-yellow);        /* gold/yellow - opus general purpose */
+  --color-agent-general: var(--color-accent-blue);       /* blue - general purpose (sonnet) */
+
+  /* Agent Fallback Colors - for agents not in the predefined list */
+  --color-agent-fallback-1: var(--color-accent-red);     /* red */
+  --color-agent-fallback-2: var(--color-accent-purple);  /* purple */
+  --color-agent-fallback-3: #ff7b72;                     /* coral */
+  --color-agent-fallback-4: #7ee787;                     /* light green */
+  --color-agent-fallback-5: #79c0ff;                     /* light blue */
+  --color-agent-fallback-6: #ffa657;                     /* peach */
+
+  /* Session Colors - for visual distinction between sessions */
+  --color-session-1: var(--color-accent-blue);   /* blue */
+  --color-session-2: var(--color-accent-green);  /* green */
+  --color-session-3: var(--color-accent-purple); /* purple */
+  --color-session-4: var(--color-accent-cyan);   /* cyan */
+  --color-session-5: var(--color-accent-yellow); /* yellow */
+  --color-session-6: var(--color-accent-orange); /* orange */
+  --color-session-7: var(--color-accent-red);    /* red */
+  --color-session-8: var(--color-text-muted);    /* gray */
+
+  /* Spacing (4px grid) */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
+  --spacing-3xl: 48px;
+
+  /* Font Families */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-family-mono: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+
+  /* Typography Scale */
+  --font-size-2xs: 10px;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 24px;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* Layout */
+  --header-height: 48px;
+  --agent-bar-height: 40px;
+  --footer-height: 28px;
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Elevation/Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
+  --shadow-glow-green: 0 0 12px rgba(63, 185, 80, 0.4);
+  --shadow-glow-blue: 0 0 12px rgba(88, 166, 255, 0.4);
+  --shadow-glow-red: 0 0 12px rgba(248, 81, 73, 0.4);
+
+  /* Motion */
+  --duration-instant: 50ms;
+  --duration-fast: 100ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 500ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* Surface Elevation */
+  --color-surface-0: #0d1117;
+  --color-surface-1: #161b22;
+  --color-surface-2: #1c2128;
+  --color-surface-3: #21262d;
+  --color-surface-4: #282e36;
+  --color-surface-overlay: rgba(22, 27, 34, 0.8);
+  --color-surface-glass: rgba(22, 27, 34, 0.6);
+
+  /* Interaction States */
+  --color-focus-ring: rgba(88, 166, 255, 0.4);
+  --color-hover-overlay: rgba(255, 255, 255, 0.05);
+  --color-active-overlay: rgba(255, 255, 255, 0.1);
+  --color-disabled-opacity: 0.5;
+}

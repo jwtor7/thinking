@@ -1,0 +1,303 @@
+/* ========================================
+   Components - Buttons, Toggles, Badges
+   ======================================== */
+
+/* ========================================
+   Buttons
+   ======================================== */
+
+.btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast, 100ms) var(--ease-default, ease);
+}
+
+.btn:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-text-muted);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.3));
+}
+
+.btn:active {
+  background: var(--color-border);
+  transform: translateY(0);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(88, 166, 255, 0.2);
+}
+
+/* Icon button style */
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-default);
+}
+
+.btn-icon:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-text-muted);
+  color: var(--color-text-primary);
+}
+
+.btn-icon:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+
+.btn-icon-gear {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* ========================================
+   Toggle
+   ======================================== */
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  cursor: pointer;
+}
+
+.toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent-blue);
+}
+
+.toggle-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* ========================================
+   Panel Badge
+   ======================================== */
+
+.panel-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--spacing-xs);
+  border-radius: 10px;
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--duration-fast, 100ms) var(--ease-bounce, ease);
+}
+
+.panel-badge.badge-pop {
+  animation: badge-pop 200ms var(--ease-bounce, ease);
+}
+
+@keyframes badge-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* ========================================
+   Entry Session Badge
+   ======================================== */
+
+.entry-session-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-family: var(--font-family-mono);
+  font-weight: 500;
+  color: var(--color-bg-primary);
+  cursor: help;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.entry-session-badge:hover {
+  opacity: 1;
+}
+
+/* Subtle badge styling when there's only one session */
+.thinking-entry[data-session]:not(:empty) .entry-session-badge,
+.tool-entry[data-session]:not(:empty) .entry-session-badge {
+  margin-right: var(--spacing-xs);
+}
+
+/* ========================================
+   Duration Badge
+   ======================================== */
+
+.tool-duration {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+/* Duration color coding based on speed */
+.tool-duration.duration-fast {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.tool-duration.duration-medium {
+  color: #eab308;
+  background: rgba(234, 179, 8, 0.15);
+}
+
+.tool-duration.duration-slow {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* ========================================
+   Plan Scope Badge
+   ======================================== */
+
+.plan-scope-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 6px;
+  margin-left: var(--spacing-sm);
+  background: var(--color-bg-hover);
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: help;
+  vertical-align: middle;
+}
+
+.plan-scope-badge:hover {
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+/* ========================================
+   Theme Toggle Dropdown
+   ======================================== */
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.theme-select {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  padding-right: calc(var(--spacing-sm) + 16px); /* Space for custom arrow */
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  font-family: var(--font-family);
+  cursor: pointer;
+  transition: background var(--duration-fast, 100ms) ease, border-color var(--duration-fast, 100ms) ease;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b949e' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--spacing-xs) center;
+  min-width: 100px;
+}
+
+.theme-select:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-text-muted);
+}
+
+.theme-select:focus {
+  outline: none;
+  border-color: var(--color-accent-blue);
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
+}
+
+.theme-select:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+
+.theme-select option {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  padding: var(--spacing-xs);
+}
+
+/* ========================================
+   Responsive: Mobile
+   ======================================== */
+
+@media (max-width: 768px) {
+  .toggle-label {
+    display: none;
+  }
+
+  .toggle {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Touch-friendly targets (min 44x44px) */
+  .btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  .btn-icon {
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .btn-icon-gear {
+    font-size: 20px;
+  }
+
+  .theme-select {
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--spacing-sm);
+  }
+}
+
+@media (max-width: 480px) {
+  .theme-select {
+    font-size: var(--font-size-xs);
+    min-width: 80px;
+  }
+}

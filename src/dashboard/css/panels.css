@@ -1,0 +1,509 @@
+/* ========================================
+   Panels - Structure and Layout
+   ======================================== */
+
+/* ========================================
+   Panels Container
+   ======================================== */
+
+.panels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Single view layout - selected panel expands to full height */
+.panels.single-view .panel {
+  max-height: none;
+  flex: 1;
+}
+
+/* ========================================
+   Panel Base
+   ======================================== */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Hide session-specific panels (TODO, PLAN) when "All" sessions is selected */
+.panel.session-hidden {
+  display: none;
+}
+
+/* Panel hidden state via panel selector */
+.panel.panel-hidden {
+  display: none !important;
+}
+
+/* ========================================
+   Panel Header
+   ======================================== */
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-surface-glass, rgba(22, 27, 34, 0.85));
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  /* Sticky with blur backdrop */
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.panel-title {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+}
+
+.panel-info {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-header-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* ========================================
+   Panel Content
+   ======================================== */
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--spacing-sm);
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+
+.panel-content:hover,
+.panel-content:focus-within {
+  scrollbar-color: var(--color-bg-hover) transparent;
+}
+
+/* Panel focus for keyboard navigation */
+.panel-content:focus {
+  outline: none;
+}
+
+.panel-content:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: -2px;
+}
+
+/* Auto-scroll indicator */
+.panel-content.scroll-paused::after {
+  content: 'Scroll paused';
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: block;
+  padding: 2px var(--spacing-sm);
+  background: var(--color-accent-yellow);
+  color: var(--color-bg-primary);
+  font-size: var(--font-size-xs);
+  text-align: center;
+  opacity: 0.9;
+}
+
+/* ========================================
+   Empty State
+   ======================================== */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--spacing-xl);
+}
+
+.empty-icon {
+  font-size: 24px;
+  margin-bottom: var(--spacing-sm);
+  opacity: 0.5;
+}
+
+.empty-state p {
+  font-size: var(--font-size-sm);
+}
+
+.empty-state .empty-hint {
+  margin-top: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: var(--spacing-md);
+  opacity: 0.6;
+  filter: grayscale(0.3);
+}
+
+.empty-state-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.empty-state-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* ========================================
+   Panel Filter/Search
+   ======================================== */
+
+.panel-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 2px var(--spacing-sm);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.panel-filter-input {
+  width: 120px;
+  padding: 2px 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family);
+  outline: none;
+  transition: all var(--duration-fast, 100ms) var(--ease-default, ease);
+  border: 1px solid transparent;
+}
+
+.panel-filter-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.panel-filter-input:hover {
+  border-color: var(--color-border);
+}
+
+.panel-filter-input:focus {
+  border-color: var(--color-accent-blue);
+  background: var(--color-surface-2, var(--color-bg-secondary));
+}
+
+.panel-filter-input:focus-visible {
+  outline: 2px solid var(--color-focus-ring, rgba(88, 166, 255, 0.4));
+  outline-offset: 2px;
+}
+
+.panel-filter-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0;
+  line-height: 1;
+  transition: opacity var(--duration-fast, 100ms);
+}
+
+.panel-filter-clear:hover {
+  color: var(--color-text-secondary);
+}
+
+.panel-filter-hidden {
+  display: none;
+}
+
+/* ========================================
+   Collapsible Panels
+   ======================================== */
+
+.panel-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin-right: var(--spacing-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-default);
+  flex-shrink: 0;
+}
+
+.panel-collapse-btn:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.panel-collapse-btn:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+
+.panel-collapse-icon {
+  font-size: 10px;
+  line-height: 1;
+  transition: transform var(--duration-fast) var(--ease-default);
+}
+
+/* Collapsed state - icon rotates */
+.panel.collapsed .panel-collapse-icon {
+  transform: rotate(-90deg);
+}
+
+/* Collapsed state - hide content */
+.panel.collapsed .panel-content {
+  display: none;
+}
+
+/* Collapsed state - remove header border */
+.panel.collapsed .panel-header {
+  border-bottom: none;
+}
+
+/* Collapsed panel takes minimum height */
+.panel.collapsed {
+  flex: 0 0 auto;
+}
+
+/* Non-collapsed panel expands to fill remaining space */
+.panels > .panel:not(.collapsed) {
+  flex: 1;
+}
+
+/* Plan panel special case - also hide plan-meta when collapsed */
+.panel-plan.collapsed .plan-meta {
+  display: none;
+}
+
+/* Collapsed panel header shows grab cursor */
+.panel.collapsed .panel-header {
+  cursor: grab;
+}
+
+.panel.collapsed .panel-header:active {
+  cursor: grabbing;
+}
+
+/* ========================================
+   Resizable Panes
+   ======================================== */
+
+.resizer-vertical {
+  flex-shrink: 0;
+  height: 12px;
+  margin: -6px 0;
+  cursor: row-resize;
+  background: transparent;
+  transition: background var(--duration-fast, 100ms) ease;
+  position: relative;
+  z-index: 5;
+}
+
+.resizer-vertical:hover,
+.resizer-vertical.active {
+  background: var(--color-accent-blue);
+  opacity: 0.3;
+}
+
+.resizer-vertical.active {
+  opacity: 0.5;
+}
+
+/* Body cursor override during resize */
+body.resizing-vertical {
+  cursor: row-resize !important;
+  user-select: none;
+}
+
+body.resizing-vertical * {
+  cursor: inherit !important;
+}
+
+/* ========================================
+   Drag-to-Reorder (Collapsed Panels)
+   ======================================== */
+
+.panel.dragging {
+  opacity: 0.9;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border-color: var(--color-accent-blue);
+}
+
+.drag-placeholder {
+  background: var(--color-bg-tertiary);
+  border: 2px dashed var(--color-accent-blue);
+  border-radius: var(--radius-md);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+body.dragging-panel {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+body.dragging-panel * {
+  cursor: inherit !important;
+}
+
+/* ========================================
+   Skeleton Loading
+   ======================================== */
+
+.skeleton {
+  background: linear-gradient(90deg, var(--color-bg-tertiary) 25%, var(--color-bg-hover) 50%, var(--color-bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-text {
+  height: 14px;
+  margin-bottom: 8px;
+}
+
+.skeleton-text-sm {
+  height: 12px;
+  width: 60%;
+}
+
+/* ========================================
+   Responsive: Tablet
+   ======================================== */
+
+@media (max-width: 1024px) {
+  .panel-filter-input {
+    width: 100px;
+  }
+}
+
+/* ========================================
+   Responsive: Mobile
+   ======================================== */
+
+@media (max-width: 768px) {
+  /* Mobile: panels stack vertically with touch-friendly sizing */
+  .panel {
+    min-height: 200px;
+    max-height: 50vh;
+  }
+
+  .panels {
+    padding: var(--spacing-sm);
+    gap: var(--spacing-sm);
+  }
+
+  .panel-header {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  .panel-filter-input {
+    width: 80px;
+  }
+
+  .panel-collapse-btn {
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .panel-collapse-icon {
+    font-size: 14px;
+  }
+
+  /* Hide non-active panels on mobile when using view navigation */
+  .panels[data-view="thinking"] .panel:not(.panel-thinking),
+  .panels[data-view="tools"] .panel:not(.panel-tools),
+  .panels[data-view="todo"] .panel:not(.panel-todo),
+  .panels[data-view="plan"] .panel:not(.panel-plan) {
+    display: none;
+  }
+
+  /* When in "all" view on mobile, stack vertically with limited height */
+  .panels[data-view="all"] .panel {
+    max-height: 40vh;
+  }
+
+  /* Hide resizers on mobile */
+  .resizer-vertical {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .panel-header {
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+  }
+
+  .panel-filter {
+    width: 100%;
+    order: 1;
+  }
+
+  .panel-header-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* ========================================
+   Reduced Motion
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-collapse-icon {
+    transition: none;
+  }
+}

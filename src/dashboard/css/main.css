@@ -1,0 +1,42 @@
+/**
+ * Thinking Monitor Dashboard Styles
+ * Dark theme optimized for readability and long viewing sessions.
+ *
+ * This file imports all component stylesheets in the correct cascade order.
+ */
+
+/* Core: Variables must come first */
+@import url('./variables.css');
+
+/* Core: Reset and base styles */
+@import url('./reset.css');
+
+/* Core: Animations (keyframes) */
+@import url('./animations.css');
+
+/* Layout: App structure, header, footer, navigation */
+@import url('./layout.css');
+
+/* Components: Buttons, toggles, badges, form elements */
+@import url('./components.css');
+
+/* Panels: Panel structure, filtering, collapsing */
+@import url('./panels.css');
+
+/* Content: Thinking entries, tool entries, agent tree */
+@import url('./content.css');
+
+/* Todos: Todo panel specific styles */
+@import url('./todos.css');
+
+/* Hooks: Hook entry styles */
+@import url('./hooks.css');
+
+/* Markdown: Plan markdown rendering */
+@import url('./markdown.css');
+
+/* Modals: Panel selector, context menus, toasts */
+@import url('./modals.css');
+
+/* Accessibility: Focus states, screen reader, reduced motion */
+@import url('./accessibility.css');

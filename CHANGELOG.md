@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.15.3] - 2026-01-07
+
+### Changed
+- **Modular CSS architecture** - Split monolithic `styles.css` (3,121 lines) into 13 focused modules in `src/dashboard/css/`:
+  - `variables.css` - CSS custom properties
+  - `reset.css` - Browser reset
+  - `animations.css` - Keyframes and transitions
+  - `layout.css` - App structure
+  - `components.css` - Buttons, badges
+  - `panels.css` - Panel containers
+  - `content.css` - Entries, agent tree
+  - `todos.css` - TODO panel
+  - `hooks.css` - Hooks panel
+  - `markdown.css` - Plan markdown
+  - `modals.css` - Dialogs, menus
+  - `accessibility.css` - Focus states
+  - `main.css` - Import hub
+- Added server ports documentation to CLAUDE.md
+
+---
+
 ## [0.15.2] - 2026-01-07
 
 ### Fixed

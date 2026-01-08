@@ -1,0 +1,462 @@
+/* ========================================
+   App Layout
+   ======================================== */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ========================================
+   Header
+   ======================================== */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-height);
+  padding: 0 var(--spacing-lg);
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.header-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--color-text-primary);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+/* Header control wrapper */
+.header-control {
+  display: flex;
+  align-items: center;
+}
+
+/* Status Indicator */
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-connected .status-dot {
+  background: var(--color-status-connected);
+  box-shadow: 0 0 6px var(--color-status-connected);
+}
+
+.status-disconnected .status-dot {
+  background: var(--color-status-disconnected);
+}
+
+.status-connecting .status-dot {
+  background: var(--color-status-pending);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-reconnecting {
+  cursor: pointer;
+}
+
+.status-reconnecting:hover {
+  background: var(--color-bg-hover);
+}
+
+.status-reconnecting .status-dot {
+  background: var(--color-status-pending);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.reconnect-countdown {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-left: var(--spacing-xs);
+}
+
+.status-error {
+  color: var(--color-accent-red);
+}
+
+/* ========================================
+   Footer
+   ======================================== */
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--footer-height);
+  padding: 0 var(--spacing-lg);
+  background: var(--color-bg-secondary);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+/* ========================================
+   Keyboard Hints in Footer
+   ======================================== */
+
+.keyboard-hints {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.keyboard-hints kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  font-family: var(--font-family-mono);
+  font-size: 10px;
+  margin-right: 2px;
+}
+
+/* ========================================
+   View Navigation Tabs
+   ======================================== */
+
+.view-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--agent-bar-height);
+  padding: 0 var(--spacing-lg);
+  background: var(--color-bg-primary);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  gap: var(--spacing-xs);
+}
+
+.view-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.view-tab:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.view-tab.active {
+  background: var(--color-accent-blue);
+  border-color: var(--color-accent-blue);
+  color: white;
+}
+
+.view-tab-shortcut {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-bg-primary);
+  padding: 1px 4px;
+  border-radius: 2px;
+  margin-left: var(--spacing-xs);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  text-transform: uppercase;
+}
+
+.view-tab.active .view-tab-shortcut {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+body.keyboard-mode .view-tab-shortcut {
+  opacity: 1;
+}
+
+/* ========================================
+   Session Filter Bar
+   ======================================== */
+
+.session-filter {
+  display: none;
+  align-items: center;
+  height: var(--agent-bar-height);
+  padding: 0 var(--spacing-lg);
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.session-filter-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.5px;
+  margin-right: var(--spacing-md);
+}
+
+.session-filter-badges {
+  display: flex;
+  gap: var(--spacing-sm);
+  overflow-x: auto;
+}
+
+.session-filter-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  font-family: var(--font-family-mono);
+}
+
+.session-filter-badge:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.session-filter-badge.active {
+  background: var(--color-surface-3, var(--color-bg-tertiary));
+  border-color: var(--color-accent-blue);
+  color: var(--color-text-primary);
+  box-shadow: 0 0 0 1px var(--color-accent-blue);
+}
+
+.session-filter-badge.online .session-filter-dot {
+  box-shadow: 0 0 4px currentColor;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.session-filter-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Inline close button (inside badge, hidden by default) */
+.session-close-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+  transition: all 0.15s ease;
+}
+
+/* Show close button on badge hover */
+.session-filter-badge.has-close:hover .session-close-btn {
+  display: inline-flex;
+}
+
+.session-close-btn:hover {
+  background: var(--color-accent-red);
+  color: white;
+}
+
+/* ========================================
+   Connection Overlay
+   ======================================== */
+
+.connection-overlay {
+  position: fixed;
+  /* Position overlay below the navigation bars (header + view tabs + session filter)
+     but above the footer, allowing users to interact with navigation while waiting for connection */
+  top: calc(var(--header-height) + var(--agent-bar-height) + var(--agent-bar-height));
+  left: 0;
+  right: 0;
+  bottom: var(--footer-height);
+  background: rgba(13, 17, 23, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.connection-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.connection-overlay-content {
+  text-align: center;
+  padding: var(--spacing-xl);
+}
+
+.connection-overlay-icon {
+  font-size: 48px;
+  margin-bottom: var(--spacing-lg);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.connection-overlay-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.connection-overlay-message {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.connection-overlay-retry {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--color-accent-blue);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: white;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.connection-overlay-retry:hover {
+  background: #4c96eb;
+}
+
+/* ========================================
+   Responsive: Tablet (768px - 1024px)
+   ======================================== */
+
+@media (max-width: 1024px) {
+  .panel-filter-input {
+    width: 100px;
+  }
+}
+
+/* ========================================
+   Responsive: Mobile (<768px)
+   ======================================== */
+
+@media (max-width: 768px) {
+  /* Header adjustments */
+  .header {
+    padding: 0 var(--spacing-sm);
+    flex-wrap: wrap;
+    height: auto;
+    min-height: var(--header-height);
+    gap: var(--spacing-xs);
+  }
+
+  .header-title {
+    font-size: var(--font-size-md);
+  }
+
+  .header-controls {
+    gap: var(--spacing-sm);
+  }
+
+  /* View tabs - horizontal scroll on mobile */
+  .view-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    justify-content: flex-start;
+    padding: 0 var(--spacing-sm);
+  }
+
+  .view-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Session filter - horizontal scroll */
+  .session-filter {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding: 0 var(--spacing-sm);
+  }
+
+  .session-filter-label {
+    display: none;
+  }
+
+  /* Footer - simplified */
+  .footer {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  .keyboard-hints {
+    display: none; /* Hide on mobile - no keyboard */
+  }
+}
+
+/* ========================================
+   Responsive: Small Mobile (<480px)
+   ======================================== */
+
+@media (max-width: 480px) {
+  .header {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  .header-title {
+    font-size: var(--font-size-sm);
+    letter-spacing: 0;
+  }
+
+  .header-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .view-tab {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-xs);
+  }
+
+  .view-tab-shortcut {
+    display: none;
+  }
+}

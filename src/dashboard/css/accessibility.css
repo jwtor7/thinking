@@ -1,0 +1,88 @@
+/* ========================================
+   Accessibility - Focus States, Screen Reader, Reduced Motion
+   ======================================== */
+
+/* ========================================
+   Screen Reader Only
+   ======================================== */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ========================================
+   Skip Link
+   ======================================== */
+
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-accent-blue);
+  color: white;
+  z-index: 100;
+  transition: top var(--duration-fast);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* ========================================
+   Enhanced Focus Indicators
+   ======================================== */
+
+:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+
+/* Button focus */
+.btn:focus-visible,
+.view-tab:focus-visible,
+.session-filter-badge:focus-visible,
+.plan-action-btn:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(88, 166, 255, 0.2);
+}
+
+/* Focus Ring Enhancement */
+.btn:focus-visible,
+.panel-filter-input:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--color-focus-ring, rgba(88, 166, 255, 0.4));
+  outline-offset: 2px;
+}
+
+/* Focus visible states for form elements */
+.toggle input:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+
+/* ========================================
+   Reduced Motion
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

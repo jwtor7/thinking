@@ -1,0 +1,154 @@
+/* ========================================
+   Hooks Panel Styles
+   ======================================== */
+
+/* ========================================
+   Hook Entry
+   ======================================== */
+
+.hook-entry {
+  background: var(--color-surface-1, var(--color-bg-secondary));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  animation: fadeIn 0.15s ease-out;
+}
+
+.hook-entry:hover {
+  border-color: var(--color-border-light);
+  background: var(--color-surface-2, var(--color-bg-tertiary));
+}
+
+.hook-entry.new {
+  animation: highlight 1s ease-out;
+}
+
+/* ========================================
+   Hook Entry Header
+   ======================================== */
+
+.hook-entry-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-xs);
+}
+
+.hook-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+  flex-shrink: 0;
+}
+
+/* ========================================
+   Hook Type Badges
+   ======================================== */
+
+.hook-type {
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.hook-type-pre {
+  background: rgba(88, 166, 255, 0.2);
+  color: var(--color-accent-blue);
+}
+
+.hook-type-post {
+  background: rgba(163, 113, 247, 0.2);
+  color: var(--color-accent-purple);
+}
+
+.hook-type-stop {
+  background: rgba(248, 81, 73, 0.2);
+  color: var(--color-accent-red);
+}
+
+.hook-type-prompt {
+  background: rgba(57, 197, 207, 0.2);
+  color: var(--color-accent-cyan);
+}
+
+/* ========================================
+   Hook Tool Badge
+   ======================================== */
+
+.hook-tool {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent-green);
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--color-surface-3, var(--color-bg-hover));
+}
+
+/* ========================================
+   Hook Decision Badges
+   ======================================== */
+
+.hook-decision {
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-bold);
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.hook-decision-allow {
+  background: rgba(63, 185, 80, 0.2);
+  color: var(--color-accent-green);
+  border: 1px solid rgba(63, 185, 80, 0.4);
+}
+
+.hook-decision-deny {
+  background: rgba(248, 81, 73, 0.2);
+  color: var(--color-accent-red);
+  border: 1px solid rgba(248, 81, 73, 0.4);
+}
+
+.hook-decision-ask {
+  background: rgba(210, 153, 34, 0.2);
+  color: var(--color-accent-yellow);
+  border: 1px solid rgba(210, 153, 34, 0.4);
+}
+
+/* ========================================
+   Hook Entry Content
+   ======================================== */
+
+.hook-entry-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.hook-name {
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-mono);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.hook-output {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--color-text-muted);
+  background: var(--color-bg-primary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 80px;
+  overflow-y: auto;
+}

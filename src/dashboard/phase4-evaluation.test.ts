@@ -32,14 +32,29 @@ function getAllTsContent(dir: string): string {
   return content;
 }
 
+// Read all CSS files from dashboard/css directory for static analysis
+function getAllCssContent(dir: string): string {
+  let content = '';
+  const entries = readdirSync(dir);
+  for (const entry of entries) {
+    const fullPath = join(dir, entry);
+    const stat = statSync(fullPath);
+    if (stat.isFile() && entry.endsWith('.css')) {
+      content += readFileSync(fullPath, 'utf-8') + '\n';
+    }
+  }
+  return content;
+}
+
 // Read the source files for static analysis
 const indexHtmlPath = join(__dirname, 'index.html');
-const stylesCssPath = join(__dirname, 'styles.css');
+const cssDir = join(__dirname, 'css');
 
 // Read all dashboard TypeScript files (after refactoring, code is split across modules)
 const appTsContent = getAllTsContent(__dirname);
 const indexHtmlContent = readFileSync(indexHtmlPath, 'utf-8');
-const stylesCssContent = readFileSync(stylesCssPath, 'utf-8');
+// Read all CSS files from css/ directory (after modular split)
+const stylesCssContent = getAllCssContent(cssDir);
 
 describe('Phase 4: Dashboard Polish', () => {
   describe('XSS Prevention - Security', () => {

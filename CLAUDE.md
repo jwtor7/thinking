@@ -44,6 +44,15 @@ See `~/.claude/plans/splendid-hopping-fairy.md` for full PRD.
 - esbuild for bundling
 - ws for WebSocket server
 
+## Server Ports
+
+| Service | Port | URL |
+|---------|------|-----|
+| Dashboard | 3356 | http://127.0.0.1:3356 |
+| WebSocket + Events | 3355 | ws://127.0.0.1:3355 |
+
+**To open dashboard in Chrome:** `open -a "Google Chrome" "http://127.0.0.1:3356"`
+
 ## Versioning & Changelog (MANDATORY)
 
 **Every code change requires version bump and documentation updates.**
