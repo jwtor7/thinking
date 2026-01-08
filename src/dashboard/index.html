@@ -30,6 +30,9 @@
           <input type="checkbox" id="auto-scroll" checked>
           <span class="toggle-label">Auto-scroll</span>
         </label>
+        <button id="panel-selector-btn" class="btn btn-icon" title="Panel Settings (Shift+P)" aria-label="Panel visibility settings">
+          <span class="btn-icon-gear">&#9881;</span>
+        </button>
         <div id="theme-toggle-container" class="header-control"></div>
       </div>
     </header>
@@ -105,7 +108,7 @@
         <!-- Plan Panel -->
         <section class="panel panel-plan" aria-labelledby="plan-panel-title">
           <header class="panel-header">
-            <button class="panel-collapse-btn" data-panel="plan" aria-expanded="true" aria-label="Collapse Plan panel" title="Collapse panel (Shift+P)">
+            <button class="panel-collapse-btn" data-panel="plan" aria-expanded="true" aria-label="Collapse Plan panel" title="Collapse panel">
               <span class="panel-collapse-icon">&#9660;</span>
             </button>
             <h2 class="panel-title" id="plan-panel-title">PLAN <span class="plan-scope-badge" title="Plans are workspace-level files shared across all sessions">workspace</span></h2>

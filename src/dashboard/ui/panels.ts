@@ -55,11 +55,12 @@ function getPanelElements(): Record<PanelName, { panel: HTMLElement | null; btn:
 
 /**
  * Get the keyboard shortcut key for a panel.
+ * Note: Plan panel no longer has a keyboard shortcut (Shift+P is used for panel selector).
  *
  * @param panelName - The panel name
- * @returns The shortcut key character
+ * @returns The shortcut key character, or null if no shortcut
  */
-function getShortcutKey(panelName: PanelName): string {
+function getShortcutKey(panelName: PanelName): string | null {
   switch (panelName) {
     case 'thinking':
       return 'T';
@@ -68,7 +69,7 @@ function getShortcutKey(panelName: PanelName): string {
     case 'todo':
       return 'D';
     case 'plan':
-      return 'P';
+      return null; // Shift+P is used for panel selector
   }
 }
 
@@ -91,7 +92,9 @@ export function togglePanelCollapse(panelName: PanelName): void {
   btn.setAttribute('aria-expanded', String(!isCollapsed));
   btn.setAttribute('aria-label', `${isCollapsed ? 'Expand' : 'Collapse'} ${panelName} panel`);
   const shortcutKey = getShortcutKey(panelName);
-  btn.title = `${isCollapsed ? 'Expand' : 'Collapse'} panel (Shift+${shortcutKey})`;
+  btn.title = shortcutKey
+    ? `${isCollapsed ? 'Expand' : 'Collapse'} panel (Shift+${shortcutKey})`
+    : `${isCollapsed ? 'Expand' : 'Collapse'} panel`;
 
   // Reset custom flex sizing when toggling collapse
   // This allows CSS to control panel sizes after resize

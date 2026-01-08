@@ -10,6 +10,7 @@ export const elements = {
   sessionFilter: document.getElementById('session-filter'),
   clearBtn: document.getElementById('clear-btn')!,
   autoScrollCheckbox: document.getElementById('auto-scroll') as HTMLInputElement,
+  panelSelectorBtn: document.getElementById('panel-selector-btn') as HTMLButtonElement,
   viewTabs: document.getElementById('view-tabs'),
   thinkingPanel: document.querySelector('.panel-thinking') as HTMLElement,
   toolsPanel: document.querySelector('.panel-tools') as HTMLElement,

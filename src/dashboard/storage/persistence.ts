@@ -9,10 +9,11 @@
  * be called after DOM is ready.
  */
 
-import { TodoItem, StoredPlanAssociation, ThemeId } from '../types';
+import { TodoItem, StoredPlanAssociation, ThemeId, PanelVisibility } from '../types';
 import {
   STORAGE_KEY_TODOS,
   STORAGE_KEY_PANEL_COLLAPSE,
+  STORAGE_KEY_PANEL_VISIBILITY,
   STORAGE_KEY_THEME,
   DEFAULT_THEME,
   PLAN_ASSOCIATION_MAX_AGE_MS,
@@ -341,4 +342,89 @@ export function loadThemePreference(): ThemeId {
     console.warn('[Dashboard] Failed to load theme preference from localStorage:', error);
     return DEFAULT_THEME as ThemeId;
   }
+}
+
+// ============================================
+// Panel Visibility Persistence
+// ============================================
+
+/**
+ * Default panel visibility (all panels visible).
+ */
+const DEFAULT_PANEL_VISIBILITY: PanelVisibility = {
+  thinking: true,
+  todo: true,
+  tools: true,
+  plan: true,
+};
+
+/**
+ * Valid panel names for validation.
+ */
+const VALID_PANEL_NAMES: (keyof PanelVisibility)[] = ['thinking', 'todo', 'tools', 'plan'];
+
+/**
+ * Check if a value is a valid panel name.
+ */
+function isValidPanelName(value: unknown): value is keyof PanelVisibility {
+  return typeof value === 'string' && VALID_PANEL_NAMES.includes(value as keyof PanelVisibility);
+}
+
+/**
+ * Save panel visibility settings to localStorage.
+ */
+export function savePanelVisibility(): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_PANEL_VISIBILITY, JSON.stringify(state.panelVisibility));
+    console.log('[Dashboard] Saved panel visibility settings');
+  } catch (error) {
+    console.warn('[Dashboard] Failed to save panel visibility to localStorage:', error);
+  }
+}
+
+/**
+ * Load panel visibility settings from localStorage.
+ * Returns stored settings or defaults if not found/invalid.
+ *
+ * @returns Panel visibility settings
+ */
+export function loadPanelVisibility(): PanelVisibility {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_PANEL_VISIBILITY);
+    if (!stored) {
+      console.log('[Dashboard] No panel visibility settings found, using defaults');
+      return { ...DEFAULT_PANEL_VISIBILITY };
+    }
+
+    const parsed = JSON.parse(stored);
+    if (typeof parsed !== 'object' || parsed === null) {
+      console.warn('[Dashboard] Invalid panel visibility format, using defaults');
+      localStorage.removeItem(STORAGE_KEY_PANEL_VISIBILITY);
+      return { ...DEFAULT_PANEL_VISIBILITY };
+    }
+
+    // Validate and merge with defaults
+    const result: PanelVisibility = { ...DEFAULT_PANEL_VISIBILITY };
+    for (const [key, value] of Object.entries(parsed)) {
+      if (isValidPanelName(key) && typeof value === 'boolean') {
+        result[key] = value;
+      }
+    }
+
+    console.log('[Dashboard] Loaded panel visibility settings from localStorage');
+    return result;
+  } catch (error) {
+    console.warn('[Dashboard] Failed to load panel visibility from localStorage:', error);
+    return { ...DEFAULT_PANEL_VISIBILITY };
+  }
+}
+
+/**
+ * Restore panel visibility from localStorage and update state.
+ * Should be called during initialization before DOM manipulation.
+ */
+export function restorePanelVisibility(): void {
+  const visibility = loadPanelVisibility();
+  state.panelVisibility = visibility;
+  console.log('[Dashboard] Restored panel visibility state');
 }

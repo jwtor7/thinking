@@ -22,6 +22,8 @@ export interface KeyboardCallbacks {
   handlePlanOpenClick: () => void;
   /** Reveal the current plan in Finder */
   handlePlanRevealClick: () => void;
+  /** Toggle the panel selector modal */
+  togglePanelSelector: () => void;
 }
 
 /**
@@ -49,7 +51,8 @@ export function initKeyboard(cbs: KeyboardCallbacks): void {
  * - 's' - Toggle auto-scroll
  * - '/' - Focus thinking filter
  * - 'Escape' - Clear filters and blur
- * - Shift+T/O/D/P - Toggle panel collapse (Thinking/Tools/Todo/Plan)
+ * - Shift+T/O/D - Toggle panel collapse (Thinking/Tools/Todo)
+ * - Shift+P - Open panel selector modal
  * - A/T/O/D/P (without shift) - Select view (All/Thinking/Tools/Todo/Plan)
  * - Cmd/Ctrl+O - Open plan in default app
  * - Cmd/Ctrl+Shift+R - Reveal plan in Finder
@@ -113,7 +116,7 @@ export function handleKeydown(event: KeyboardEvent): void {
     return;
   }
 
-  // Panel collapse shortcuts (Shift + t/o/d/p)
+  // Panel collapse shortcuts (Shift + t/o/d) and panel selector (Shift + p)
   if (event.shiftKey && !event.ctrlKey && !event.metaKey) {
     switch (event.key.toLowerCase()) {
       case 't':
@@ -129,8 +132,11 @@ export function handleKeydown(event: KeyboardEvent): void {
         togglePanelCollapse('todo');
         return;
       case 'p':
+        // Shift+P opens the panel selector modal
         event.preventDefault();
-        togglePanelCollapse('plan');
+        if (callbacks) {
+          callbacks.togglePanelSelector();
+        }
         return;
     }
   }

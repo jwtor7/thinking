@@ -44,6 +44,12 @@ export const state: AppState = {
     tools: false,
     plan: false,
   },
+  panelVisibility: {
+    thinking: true,
+    todo: true,
+    tools: true,
+    plan: true,
+  },
 };
 
 /**

@@ -84,6 +84,23 @@ export interface AppState {
   todos: TodoItem[];
   // Panel collapse states - maps panel name to collapsed boolean
   panelCollapseState: Record<string, boolean>;
+  // Panel visibility states - which panels are shown/hidden
+  panelVisibility: PanelVisibility;
+}
+
+// ============================================
+// Panel Visibility Types
+// ============================================
+
+/**
+ * Panel visibility configuration.
+ * Controls which panels are shown in the dashboard.
+ */
+export interface PanelVisibility {
+  thinking: boolean;
+  todo: boolean;
+  tools: boolean;
+  plan: boolean;
 }
 
 // ============================================

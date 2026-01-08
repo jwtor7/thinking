@@ -735,7 +735,8 @@ describe('Panel Collapse Feature', () => {
       expect(appTsContent).toContain("togglePanelCollapse('thinking')");
       expect(appTsContent).toContain("togglePanelCollapse('tools')");
       expect(appTsContent).toContain("togglePanelCollapse('todo')");
-      expect(appTsContent).toContain("togglePanelCollapse('plan')");
+      // Note: Shift+P is now used for togglePanelSelector instead of togglePanelCollapse('plan')
+      expect(appTsContent).toContain('togglePanelSelector');
     });
 
     it('should announce collapse state for screen readers', () => {

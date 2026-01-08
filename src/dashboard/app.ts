@@ -28,6 +28,7 @@ import { elements } from './ui/elements';
 import {
   restoreTodosFromStorage,
   restorePanelCollapseState,
+  restorePanelVisibility,
   loadSessionPlanAssociations,
   loadThemePreference,
 } from './storage/persistence';
@@ -56,6 +57,11 @@ import {
   filterAllTools,
 } from './ui/filters';
 import { initKeyboard } from './ui/keyboard';
+import {
+  initPanelSelector,
+  togglePanelSelector,
+  applyAllPanelVisibility,
+} from './ui/panel-selector';
 
 // Import handler modules
 import { handleEvent } from './handlers/dispatcher';
@@ -418,6 +424,7 @@ document.addEventListener('keydown', (e) => {
 
 // Restore persisted state from localStorage before connecting
 restorePanelCollapseState();
+restorePanelVisibility();
 restoreTodosFromStorage();
 loadSessionPlanAssociations();
 
@@ -489,6 +496,10 @@ initKeyboard({
   clearAllPanels: clearAllPanels,
   handlePlanOpenClick: handlePlanOpenClick,
   handlePlanRevealClick: handlePlanRevealClick,
+  togglePanelSelector: togglePanelSelector,
+});
+initPanelSelector({
+  announceStatus: announceStatus,
 });
 
 // Initialize view tabs navigation
@@ -496,6 +507,12 @@ initViewTabs();
 
 // Initialize panel collapse buttons
 initPanelCollapseButtons();
+
+// Apply restored panel visibility to DOM
+applyAllPanelVisibility();
+
+// Panel selector button click handler
+elements.panelSelectorBtn.addEventListener('click', togglePanelSelector);
 
 // Initialize resizable panes
 initResizers();
@@ -512,5 +529,5 @@ initWebSocket({
 
 connect();
 console.log('[Dashboard] Thinking Monitor initialized');
-console.log('[Dashboard] Keyboard shortcuts: a/t/o/d/p=views, Shift+t/o/d/p=collapse, c=clear, s=scroll, /=search, Esc=clear filters');
+console.log('[Dashboard] Keyboard shortcuts: a/t/o/d/p=views, Shift+t/o/d=collapse, Shift+p=panel settings, c=clear, s=scroll, /=search, Esc=clear filters');
 console.log('[Dashboard] Plan shortcuts: Cmd+O=open, Cmd+Shift+R=reveal, right-click=context menu');

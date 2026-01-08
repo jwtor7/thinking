@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.14.0] - 2026-01-07
+
+### Added
+- Panel Selector modal for showing/hiding dashboard panels
+- Gear icon (⚙) button in header to open panel settings
+- Shift+P keyboard shortcut to toggle panel selector
+- localStorage persistence for panel visibility preferences
+- `PanelVisibility` interface and state management
+- `.panel-hidden` CSS class for completely hiding panels
+
+---
+
 ## [0.13.0] - 2026-01-07
 
 ### Added
