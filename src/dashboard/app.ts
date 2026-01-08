@@ -99,6 +99,7 @@ import {
   clearSessionTodos,
   renderTodoPanel,
 } from './handlers/todos';
+import { initHooks } from './handlers/hooks.js';
 
 // ============================================
 // Accessibility Helpers
@@ -211,6 +212,7 @@ function clearAllPanels(): void {
   state.eventCount = 0;
   state.thinkingCount = 0;
   state.toolsCount = 0;
+  state.hooksCount = 0;
   state.agentsCount = 0;
   state.agents.clear();
   state.pendingTools.clear();
@@ -247,6 +249,9 @@ function clearAllPanels(): void {
   elements.thinkingCount.textContent = '0';
   elements.toolsCount.textContent = '0';
   elements.todoCount.textContent = '0';
+  if (elements.hooksCount) {
+    elements.hooksCount.textContent = '0';
+  }
 
   // Clear filters
   state.thinkingFilter = '';
@@ -280,6 +285,16 @@ function clearAllPanels(): void {
       <p class="empty-state-subtitle">Todo items will appear here</p>
     </div>
   `;
+
+  if (elements.hooksContent) {
+    elements.hooksContent.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">&#9881;</div>
+        <p class="empty-state-title">No hook activity</p>
+        <p class="empty-state-subtitle">Hook executions will appear here</p>
+      </div>
+    `;
+  }
 
   // Show feedback toast
   showToast('Panels cleared', 'info');
@@ -482,6 +497,11 @@ initPlans({
 initTodos({
   showToast,
   updateSessionFilter,
+});
+
+initHooks({
+  appendAndTrim,
+  smartScroll,
 });
 
 // Initialize UI modules

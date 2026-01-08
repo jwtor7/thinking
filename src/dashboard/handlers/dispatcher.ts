@@ -5,7 +5,8 @@ import { trackSession, handleSessionStart, handleSessionStop } from './sessions'
 import { handleThinking } from './thinking';
 import { handleToolStart, handleToolEnd } from './tools';
 import { handleAgentStart, handleAgentStop } from './agents';
-import { handlePlanList, handlePlanUpdate, handlePlanDelete } from './plans';
+import { handlePlanList, handlePlanUpdate, handlePlanDelete } from './plans.js';
+import { handleHookExecution } from './hooks.js';
 
 /**
  * Main event dispatcher that routes incoming WebSocket events to appropriate handlers.
@@ -59,6 +60,9 @@ export function handleEvent(event: StrictMonitorEvent): void {
       break;
     case 'plan_list':
       handlePlanList(event);
+      break;
+    case 'hook_execution':
+      handleHookExecution(event);
       break;
     default:
       console.log('[Dashboard] Unhandled event type:', event.type);

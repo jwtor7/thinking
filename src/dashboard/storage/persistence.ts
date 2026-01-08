@@ -28,7 +28,7 @@ import { elements } from '../ui/elements';
 // Panel Types (local to this module)
 // ============================================
 
-type PanelName = 'thinking' | 'todo' | 'tools' | 'plan';
+type PanelName = 'thinking' | 'todo' | 'tools' | 'hooks' | 'plan';
 
 /**
  * Panel elements mapping for collapse state restoration.
@@ -39,6 +39,7 @@ function getPanelElements(): Record<PanelName, { panel: HTMLElement | null; btn:
     thinking: { panel: elements.thinkingPanel, btn: elements.thinkingCollapseBtn },
     todo: { panel: elements.todoPanel, btn: elements.todoCollapseBtn },
     tools: { panel: elements.toolsPanel, btn: elements.toolsCollapseBtn },
+    hooks: { panel: elements.hooksPanel, btn: elements.hooksCollapseBtn },
     plan: { panel: elements.planPanel, btn: elements.planCollapseBtn },
   };
 }
@@ -349,19 +350,20 @@ export function loadThemePreference(): ThemeId {
 // ============================================
 
 /**
- * Default panel visibility (all panels visible).
+ * Default panel visibility (all panels visible except hooks).
  */
 const DEFAULT_PANEL_VISIBILITY: PanelVisibility = {
   thinking: true,
   todo: true,
   tools: true,
+  hooks: false,
   plan: true,
 };
 
 /**
  * Valid panel names for validation.
  */
-const VALID_PANEL_NAMES: (keyof PanelVisibility)[] = ['thinking', 'todo', 'tools', 'plan'];
+const VALID_PANEL_NAMES: (keyof PanelVisibility)[] = ['thinking', 'todo', 'tools', 'hooks', 'plan'];
 
 /**
  * Check if a value is a valid panel name.

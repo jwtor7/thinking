@@ -17,6 +17,7 @@ import { rebuildResizers } from './resizer';
 const PANEL_LABELS: Record<keyof PanelVisibility, string> = {
   thinking: 'Thinking',
   tools: 'Tools',
+  hooks: 'Hooks',
   todo: 'Todo',
   plan: 'Plan',
 };
@@ -24,7 +25,7 @@ const PANEL_LABELS: Record<keyof PanelVisibility, string> = {
 /**
  * Order of panels in the selector UI.
  */
-const PANEL_ORDER: (keyof PanelVisibility)[] = ['thinking', 'todo', 'tools', 'plan'];
+const PANEL_ORDER: (keyof PanelVisibility)[] = ['thinking', 'todo', 'tools', 'hooks', 'plan'];
 
 /**
  * Modal element reference, created lazily on first open.
@@ -169,6 +170,7 @@ export function applyPanelVisibility(panelName: keyof PanelVisibility, visible: 
     thinking: elements.thinkingPanel,
     todo: elements.todoPanel,
     tools: elements.toolsPanel,
+    hooks: elements.hooksPanel,
     plan: elements.planPanel,
   };
 

@@ -17,6 +17,7 @@ export const state: AppState = {
   eventCount: 0,
   thinkingCount: 0,
   toolsCount: 0,
+  hooksCount: 0,
   agentsCount: 0,
   agents: new Map(),
   pendingTools: new Map(),
@@ -42,12 +43,14 @@ export const state: AppState = {
     thinking: false,
     todo: false,
     tools: false,
+    hooks: false,
     plan: false,
   },
   panelVisibility: {
     thinking: true,
     todo: true,
     tools: true,
+    hooks: false,
     plan: true,
   },
 };

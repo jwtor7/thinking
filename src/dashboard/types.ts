@@ -24,6 +24,9 @@ export type {
   PlanDeleteEvent,
   PlanListEvent,
   ConnectionStatusEvent,
+  HookExecutionEvent,
+  HookType,
+  HookDecision,
 } from '../shared/types.js';
 
 // ============================================
@@ -50,6 +53,7 @@ export interface AppState {
   eventCount: number;
   thinkingCount: number;
   toolsCount: number;
+  hooksCount: number;
   agentsCount: number;
   agents: Map<string, AgentInfo>;
   pendingTools: Map<string, ToolInfo>;
@@ -100,6 +104,7 @@ export interface PanelVisibility {
   thinking: boolean;
   todo: boolean;
   tools: boolean;
+  hooks: boolean;
   plan: boolean;
 }
 

@@ -24,6 +24,8 @@ export type MonitorEventType =
   | 'plan_update'
   | 'plan_delete'
   | 'plan_list'
+  // Hook execution events (from PreToolUse/PostToolUse/Stop/UserPromptSubmit hooks)
+  | 'hook_execution'
   // Connection status (internal)
   | 'connection_status';
 
@@ -176,6 +178,27 @@ export interface ConnectionStatusEvent extends MonitorEventBase {
   clientCount: number;
 }
 
+/** Hook type identifiers */
+export type HookType = 'PreToolUse' | 'PostToolUse' | 'Stop' | 'UserPromptSubmit';
+
+/** Hook decision identifiers */
+export type HookDecision = 'allow' | 'deny' | 'ask';
+
+/** Hook execution event - emitted when a hook runs */
+export interface HookExecutionEvent extends MonitorEventBase {
+  type: 'hook_execution';
+  /** Type of hook that executed */
+  hookType: HookType;
+  /** Name of the tool (for PreToolUse/PostToolUse hooks) */
+  toolName?: string;
+  /** Decision made by the hook (for PreToolUse hooks) */
+  decision?: HookDecision;
+  /** Name of the hook that ran */
+  hookName: string;
+  /** Output from the hook execution */
+  output?: string;
+}
+
 // ============================================================================
 // Discriminated Union Type
 // ============================================================================
@@ -197,7 +220,8 @@ export type StrictMonitorEvent =
   | PlanUpdateEvent
   | PlanDeleteEvent
   | PlanListEvent
-  | ConnectionStatusEvent;
+  | ConnectionStatusEvent
+  | HookExecutionEvent;
 
 /**
  * Message envelope for WebSocket communication.

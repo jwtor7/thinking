@@ -11,7 +11,7 @@ import { elements } from './elements';
 /**
  * View type definition
  */
-export type ViewType = 'all' | 'thinking' | 'tools' | 'todo' | 'plan';
+export type ViewType = 'all' | 'thinking' | 'tools' | 'todo' | 'hooks' | 'plan';
 
 /**
  * Callbacks for view navigation events
@@ -50,6 +50,7 @@ export function initViewTabs(): void {
     { id: 'thinking', label: 'Thinking', shortcut: 't' },
     { id: 'tools', label: 'Tools', shortcut: 'o' },
     { id: 'todo', label: 'Todo', shortcut: 'd' },
+    { id: 'hooks', label: 'Hooks', shortcut: 'h' },
     { id: 'plan', label: 'Plan', shortcut: 'p' },
   ];
 
@@ -105,7 +106,7 @@ export function applyViewFilter(): void {
   if (!panels) return;
 
   // Remove any existing view-specific classes
-  panels.classList.remove('view-all', 'view-thinking', 'view-tools', 'view-todo', 'view-plan');
+  panels.classList.remove('view-all', 'view-thinking', 'view-tools', 'view-todo', 'view-hooks', 'view-plan');
 
   // Add the current view class
   panels.classList.add(`view-${state.activeView}`);
@@ -127,6 +128,10 @@ export function applyViewFilter(): void {
   if (elements.todoPanel) {
     elements.todoPanel.style.display =
       (showAll || state.activeView === 'todo') ? '' : 'none';
+  }
+  if (elements.hooksPanel) {
+    elements.hooksPanel.style.display =
+      (showAll || state.activeView === 'hooks') ? '' : 'none';
   }
   if (elements.planPanel) {
     elements.planPanel.style.display =

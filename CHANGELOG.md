@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.15.0] - 2026-01-07
+
+### Added
+- **HOOKS panel** - New panel to track hook executions (PreToolUse, PostToolUse, Stop, UserPromptSubmit)
+- **Hooks view tab** - Added "Hooks" to the view tab bar for filtering to hooks-only view
+- **Keyboard shortcut H** - Press `h` to switch to Hooks view, `Shift+H` to collapse/expand panel
+- **HookExecutionEvent type** - Server-side event type for hook tracking
+- Color-coded decision badges (green=allow, red=deny, yellow=ask)
+- Hook type badges with distinct colors per hook type
+
+---
+
 ## [0.14.0] - 2026-01-07
 
 ### Added
