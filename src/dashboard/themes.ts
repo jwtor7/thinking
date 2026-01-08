@@ -162,6 +162,7 @@ const lightTheme: ThemeColors = {
 
 /**
  * Solarized Light theme - warm and easy on the eyes
+ * Uses darker text colors (base02/base01/base00) for better contrast on light backgrounds
  */
 const solarizedTheme: ThemeColors = {
   bgPrimary: '#fdf6e3',
@@ -172,9 +173,10 @@ const solarizedTheme: ThemeColors = {
   border: '#d9d2b9',
   borderLight: '#eee8d5',
 
-  textPrimary: '#657b83',
-  textSecondary: '#839496',
-  textMuted: '#93a1a1',
+  // Higher contrast: using base02, base01, base00 for darker text
+  textPrimary: '#073642',    // base02 - darkest text for maximum contrast
+  textSecondary: '#586e75',  // base01 - secondary emphasis
+  textMuted: '#657b83',      // base00 - muted but still readable
 
   accentBlue: '#268bd2',
   accentGreen: '#859900',
@@ -207,6 +209,7 @@ const solarizedTheme: ThemeColors = {
 
 /**
  * Solarized Dark theme - muted and atmospheric
+ * Uses lighter text colors (base2/base1/base0) for better contrast on dark backgrounds
  */
 const solarizedDarkTheme: ThemeColors = {
   bgPrimary: '#002b36',
@@ -217,9 +220,10 @@ const solarizedDarkTheme: ThemeColors = {
   border: '#0d5568',
   borderLight: '#073642',
 
-  textPrimary: '#839496',
-  textSecondary: '#657b83',
-  textMuted: '#586e75',
+  // Higher contrast: using base2, base1, base0 for lighter text
+  textPrimary: '#eee8d5',    // base2 - lightest text for maximum contrast
+  textSecondary: '#93a1a1',  // base1 - secondary emphasis
+  textMuted: '#839496',      // base0 - muted but still readable
 
   accentBlue: '#268bd2',
   accentGreen: '#859900',

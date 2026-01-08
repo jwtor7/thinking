@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.2] - 2026-01-07
+
+### Fixed
+- **Solarized theme contrast improvements** - Solarized Light now uses darker text colors (base02/base01/base00) for better readability; Solarized Dark now uses lighter text colors (base2/base1/base0) for better contrast against dark backgrounds
+
+---
+
 ## [0.15.1] - 2026-01-07
 
 ### Changed
