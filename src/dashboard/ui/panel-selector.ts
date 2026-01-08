@@ -10,6 +10,7 @@ import { PanelVisibility } from '../types';
 import { elements } from './elements';
 import { savePanelVisibility } from '../storage/persistence';
 import { rebuildResizers } from './resizer';
+import { applyViewFilter } from './views';
 
 /**
  * Panel names mapped to their display labels.
@@ -142,8 +143,8 @@ function createModal(): HTMLElement {
 function handlePanelToggle(panelName: keyof PanelVisibility, visible: boolean): void {
   state.panelVisibility[panelName] = visible;
 
-  // Update DOM - show/hide the panel
-  applyPanelVisibility(panelName, visible);
+  // Apply view filter which respects both panel visibility and active view
+  applyViewFilter();
 
   // Rebuild resizers for visible panels
   rebuildResizers();
@@ -189,11 +190,11 @@ export function applyPanelVisibility(panelName: keyof PanelVisibility, visible: 
 /**
  * Apply all panel visibility states to DOM.
  * Called during initialization to restore saved state.
+ * Uses applyViewFilter to respect both panel visibility and active view.
  */
 export function applyAllPanelVisibility(): void {
-  for (const panelName of PANEL_ORDER) {
-    applyPanelVisibility(panelName, state.panelVisibility[panelName]);
-  }
+  // Apply view filter which respects both panel visibility and active view
+  applyViewFilter();
   rebuildResizers();
 }
 

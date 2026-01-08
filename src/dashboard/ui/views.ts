@@ -114,29 +114,30 @@ export function applyViewFilter(): void {
   // Set data-view attribute for CSS targeting (especially mobile)
   panels.dataset.view = state.activeView;
 
-  // Show/hide panels based on active view
+  // Show/hide panels based on active view AND panel visibility settings
+  // "All" view shows only Thinking and Tool Activity panels
+  // Panels hidden via Panel Selector stay hidden regardless of view
   const showAll = state.activeView === 'all';
+  const pv = state.panelVisibility;
 
-  if (elements.thinkingPanel) {
-    elements.thinkingPanel.style.display =
-      (showAll || state.activeView === 'thinking') ? '' : 'none';
-  }
-  if (elements.toolsPanel) {
-    elements.toolsPanel.style.display =
-      (showAll || state.activeView === 'tools') ? '' : 'none';
-  }
-  if (elements.todoPanel) {
-    elements.todoPanel.style.display =
-      (showAll || state.activeView === 'todo') ? '' : 'none';
-  }
-  if (elements.hooksPanel) {
-    elements.hooksPanel.style.display =
-      (showAll || state.activeView === 'hooks') ? '' : 'none';
-  }
-  if (elements.planPanel) {
-    elements.planPanel.style.display =
-      (showAll || state.activeView === 'plan') ? '' : 'none';
-  }
+  // Helper to apply visibility - manages both panel-hidden class and display style
+  const applyVisibility = (panel: HTMLElement | null, isVisible: boolean) => {
+    if (!panel) return;
+    if (isVisible) {
+      panel.classList.remove('panel-hidden');
+      panel.style.display = '';
+    } else {
+      panel.classList.add('panel-hidden');
+      panel.style.display = 'none';
+    }
+  };
+
+  applyVisibility(elements.thinkingPanel, pv.thinking && (showAll || state.activeView === 'thinking'));
+  applyVisibility(elements.toolsPanel, pv.tools && (showAll || state.activeView === 'tools'));
+  // Todo, Hooks, and Plan are only shown when explicitly selected
+  applyVisibility(elements.todoPanel, pv.todo && state.activeView === 'todo');
+  applyVisibility(elements.hooksPanel, pv.hooks && state.activeView === 'hooks');
+  applyVisibility(elements.planPanel, pv.plan && state.activeView === 'plan');
 
   // Adjust layout for single-panel view
   if (!showAll) {

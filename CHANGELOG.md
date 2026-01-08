@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.15.1] - 2026-01-07
+
+### Changed
+- **"All" view now shows only Thinking and Tool Activity** - Todo, Hooks, and Plan panels require explicit tab selection
+- View filter now properly manages `panel-hidden` class to work with Panel Selector
+
+### Fixed
+- Panel visibility now respects both Panel Selector settings AND view tab selection
+
+---
+
 ## [0.15.0] - 2026-01-07
 
 ### Added
