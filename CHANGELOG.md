@@ -1,9 +1,13 @@
 # Changelog
 
-## [0.15.4] - 2026-01-08
+## [0.15.5] - 2026-01-08
 
 ### Changed
-- **Feature development paused** - Remaining roadmap features either lack data sources (Token Widget, Skills Panel, Background Tasks) or were skipped by user preference (Global Search, Edit Diff View)
+- **View tab order** - Reordered to: All → Thinking → Tools → Hooks → Plan → Todo
+- **Session-aware tabs** - Todo and Plan tabs hidden when "All sessions" selected (these panels are session-specific)
+
+### Fixed
+- **Panel collapse in single view** - Collapse toggle now hidden when viewing a single panel (collapse only makes sense in "All" view)
 
 ---
 

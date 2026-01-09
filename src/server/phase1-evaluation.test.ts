@@ -340,7 +340,8 @@ describe('Phase 1.4: Basic HTML Dashboard Shell', () => {
     const content = await readFile(indexPath, 'utf-8');
 
     expect(content).toContain('href="css/main.css"');
-    expect(content).toContain('src="app.js"');
+    // Allow version query parameter in script src
+    expect(content).toMatch(/src="app\.js(\?v=[\d.]+)?"/);
   });
 });
 

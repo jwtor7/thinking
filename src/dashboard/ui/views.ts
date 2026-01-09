@@ -7,6 +7,7 @@
 
 import { state } from '../state';
 import { elements } from './elements';
+import type { PanelName } from './panels';
 
 /**
  * View type definition
@@ -49,9 +50,9 @@ export function initViewTabs(): void {
     { id: 'all', label: 'All', shortcut: 'a' },
     { id: 'thinking', label: 'Thinking', shortcut: 't' },
     { id: 'tools', label: 'Tools', shortcut: 'o' },
-    { id: 'todo', label: 'Todo', shortcut: 'd' },
     { id: 'hooks', label: 'Hooks', shortcut: 'h' },
     { id: 'plan', label: 'Plan', shortcut: 'p' },
+    { id: 'todo', label: 'Todo', shortcut: 'd' },
   ];
 
   views.forEach((view) => {
@@ -99,6 +100,35 @@ export function updateViewTabs(): void {
 }
 
 /**
+ * Update view tab visibility based on session selection.
+ * Hides Todo and Plan tabs when "All sessions" is selected since they're session-specific.
+ * If currently viewing Todo or Plan, auto-switches to "All" view.
+ *
+ * @param isAllSessions - True when "All" sessions is selected
+ */
+export function updateSessionViewTabs(isAllSessions: boolean): void {
+  if (!elements.viewTabs) return;
+
+  const todoTab = elements.viewTabs.querySelector('[data-view="todo"]') as HTMLElement | null;
+  const planTab = elements.viewTabs.querySelector('[data-view="plan"]') as HTMLElement | null;
+
+  if (isAllSessions) {
+    // Hide Todo and Plan tabs
+    if (todoTab) todoTab.style.display = 'none';
+    if (planTab) planTab.style.display = 'none';
+
+    // If currently on Todo or Plan view, switch to All view
+    if (state.activeView === 'todo' || state.activeView === 'plan') {
+      selectView('all');
+    }
+  } else {
+    // Show Todo and Plan tabs
+    if (todoTab) todoTab.style.display = '';
+    if (planTab) planTab.style.display = '';
+  }
+}
+
+/**
  * Apply the view filter to show/hide panels.
  */
 export function applyViewFilter(): void {
@@ -142,6 +172,26 @@ export function applyViewFilter(): void {
   // Adjust layout for single-panel view
   if (!showAll) {
     panels.classList.add('single-view');
+
+    // In single-panel view, ensure the active panel is expanded
+    // (collapsing doesn't make sense when viewing only one panel)
+    const panelName = state.activeView as PanelName;
+    if (state.panelCollapseState[panelName]) {
+      state.panelCollapseState[panelName] = false;
+
+      // Get the panel element and remove collapsed class
+      const panelElements: Record<PanelName, HTMLElement | null> = {
+        thinking: elements.thinkingPanel,
+        tools: elements.toolsPanel,
+        todo: elements.todoPanel,
+        hooks: elements.hooksPanel,
+        plan: elements.planPanel,
+      };
+      const panel = panelElements[panelName];
+      if (panel) {
+        panel.classList.remove('collapsed');
+      }
+    }
   } else {
     panels.classList.remove('single-view');
   }

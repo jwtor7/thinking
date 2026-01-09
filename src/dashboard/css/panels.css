@@ -315,6 +315,12 @@
   flex: 1;
 }
 
+/* Hide collapse buttons in single-panel view - collapsing doesn't make sense
+   when viewing only one panel */
+.panels.single-view .panel-collapse-btn {
+  display: none;
+}
+
 /* Plan panel special case - also hide plan-meta when collapsed */
 .panel-plan.collapsed .plan-meta {
   display: none;

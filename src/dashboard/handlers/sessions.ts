@@ -11,6 +11,7 @@ import { escapeHtml } from '../utils/html';
 import { getSessionColorByHash } from '../ui/colors';
 import { filterAllBySession } from '../ui/filters';
 import { rebuildResizers } from '../ui/resizer';
+import { updateSessionViewTabs } from '../ui/views';
 import type { SessionStartEvent, SessionStopEvent } from '../types';
 
 // ============================================
@@ -247,11 +248,16 @@ function updateSessionPanelVisibility(sessionId: string): void {
  */
 export function selectSession(sessionId: string): void {
   state.selectedSession = sessionId;
+  const isAllSessions = sessionId === 'all';
+
   updateSessionFilter();
   filterAllBySession();
 
   // Update visibility of session-specific panels
   updateSessionPanelVisibility(sessionId);
+
+  // Update view tab visibility (hide Todo/Plan tabs when "All" selected)
+  updateSessionViewTabs(isAllSessions);
 
   // Show the plan associated with this session (if any)
   if (sessionId === 'all') {
