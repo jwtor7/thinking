@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.4] - 2026-01-08
+
+### Changed
+- **Feature development paused** - Remaining roadmap features either lack data sources (Token Widget, Skills Panel, Background Tasks) or were skipped by user preference (Global Search, Edit Diff View)
+
+---
+
 ## [0.15.4] - 2026-01-07
 
 ### Fixed

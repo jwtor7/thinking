@@ -122,10 +122,10 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
+- **v0.15.4** (2026-01-08) — Feature development paused; remaining features blocked on Claude Code event support
 - **v0.15.4** (2026-01-07) — Fixed Hooks panel: events now properly validated and panel visible in All view
 - **v0.15.3** (2026-01-07) — Modular CSS architecture: split styles.css into 13 focused modules
-- **v0.15.2** (2026-01-07) — Solarized theme contrast improvements (darker text in Light, lighter text in Dark)
+- **v0.15.2** (2026-01-07) — Solarized theme contrast improvements
 - **v0.15.1** (2026-01-07) — "All" view now shows only Thinking and Tool Activity panels
-- **v0.15.0** (2026-01-07) — HOOKS panel for tracking hook executions with view tab and keyboard shortcut
 
 *[Full changelog →](./CHANGELOG.md)*
