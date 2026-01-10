@@ -420,17 +420,17 @@ function sendResponse(res: ServerResponse, statusCode: number, data: ExportRespo
 }
 
 /**
- * Response for open-file endpoint.
+ * Response for reveal-file endpoint.
  */
-interface OpenFileResponse {
+interface RevealFileResponse {
   success: boolean;
   error?: string;
 }
 
 /**
- * Send a JSON response for open-file endpoint.
+ * Send a JSON response for reveal-file endpoint.
  */
-function sendOpenFileResponse(res: ServerResponse, statusCode: number, data: OpenFileResponse): void {
+function sendRevealFileResponse(res: ServerResponse, statusCode: number, data: RevealFileResponse): void {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
   });
@@ -438,10 +438,10 @@ function sendOpenFileResponse(res: ServerResponse, statusCode: number, data: Ope
 }
 
 /**
- * Handle a request to open a file with the system default application.
+ * Handle a request to reveal a file in Finder.
  *
  * Expected request:
- * POST /api/open-file
+ * POST /api/reveal-file
  * Content-Type: application/json
  * { "path": "/absolute/path/to/file.md" }
  *
@@ -458,12 +458,12 @@ function sendOpenFileResponse(res: ServerResponse, statusCode: number, data: Ope
  * @param res - The HTTP response
  * @returns true if the request was handled, false if it should be passed to the next handler
  */
-export async function handleOpenFileRequest(
+export async function handleRevealFileRequest(
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<boolean> {
-  // Only handle /api/open-file endpoint
-  if (req.url !== '/api/open-file') {
+  // Only handle /api/reveal-file endpoint
+  if (req.url !== '/api/reveal-file') {
     return false;
   }
 
@@ -492,14 +492,14 @@ export async function handleOpenFileRequest(
 
   // Only handle POST
   if (req.method !== 'POST') {
-    sendOpenFileResponse(res, 405, { success: false, error: 'Method not allowed' });
+    sendRevealFileResponse(res, 405, { success: false, error: 'Method not allowed' });
     return true;
   }
 
   // Reject requests from unknown origins
   if (origin && !allowedOrigins.includes(origin)) {
-    logger.warn(`[OpenFile] Rejected request from invalid origin: ${origin}`);
-    sendOpenFileResponse(res, 403, { success: false, error: 'Forbidden: Invalid origin' });
+    logger.warn(`[RevealFile] Rejected request from invalid origin: ${origin}`);
+    sendRevealFileResponse(res, 403, { success: false, error: 'Forbidden: Invalid origin' });
     return true;
   }
 
@@ -512,20 +512,20 @@ export async function handleOpenFileRequest(
       // Limit body size (path should be small)
       const totalSize = chunks.reduce((sum, c) => sum + c.length, 0);
       if (totalSize > 4096) {
-        sendOpenFileResponse(res, 413, { success: false, error: 'Request body too large' });
+        sendRevealFileResponse(res, 413, { success: false, error: 'Request body too large' });
         return true;
       }
     }
     const bodyStr = Buffer.concat(chunks).toString('utf-8');
     body = JSON.parse(bodyStr);
   } catch {
-    sendOpenFileResponse(res, 400, { success: false, error: 'Invalid JSON body' });
+    sendRevealFileResponse(res, 400, { success: false, error: 'Invalid JSON body' });
     return true;
   }
 
   // Validate body
   if (typeof body !== 'object' || body === null) {
-    sendOpenFileResponse(res, 400, { success: false, error: 'Invalid request body' });
+    sendRevealFileResponse(res, 400, { success: false, error: 'Invalid request body' });
     return true;
   }
 
@@ -533,35 +533,36 @@ export async function handleOpenFileRequest(
 
   // Validate path is a string
   if (typeof filePath !== 'string' || filePath.length === 0) {
-    sendOpenFileResponse(res, 400, { success: false, error: 'Invalid path. Must be a non-empty string' });
+    sendRevealFileResponse(res, 400, { success: false, error: 'Invalid path. Must be a non-empty string' });
     return true;
   }
 
   // Validate path is absolute
   if (!isAbsolute(filePath)) {
-    sendOpenFileResponse(res, 400, { success: false, error: 'Invalid path. Must be an absolute path' });
+    sendRevealFileResponse(res, 400, { success: false, error: 'Invalid path. Must be an absolute path' });
     return true;
   }
 
   // Security: Only allow .md files
   if (!filePath.endsWith('.md')) {
-    sendOpenFileResponse(res, 400, { success: false, error: 'Invalid path. Only .md files are allowed' });
+    sendRevealFileResponse(res, 400, { success: false, error: 'Invalid path. Only .md files are allowed' });
     return true;
   }
 
   // Normalize path to prevent traversal
   const normalizedPath = resolve(normalize(filePath));
   if (normalizedPath.includes('/../') || normalizedPath.endsWith('/..')) {
-    sendOpenFileResponse(res, 400, { success: false, error: 'Invalid path. Path contains traversal sequences' });
+    sendRevealFileResponse(res, 400, { success: false, error: 'Invalid path. Path contains traversal sequences' });
     return true;
   }
 
-  // Open the file with the system default application (macOS)
+  // Reveal the file in Finder (macOS)
   try {
     await new Promise<void>((resolvePromise, reject) => {
       // Use double quotes and escape any quotes in the path
+      // -R flag reveals the file in Finder instead of opening it
       const escapedPath = normalizedPath.replace(/"/g, '\\"');
-      exec(`open "${escapedPath}"`, (error) => {
+      exec(`open -R "${escapedPath}"`, (error) => {
         if (error) {
           reject(error);
         } else {
@@ -570,12 +571,12 @@ export async function handleOpenFileRequest(
       });
     });
 
-    logger.info(`[OpenFile] Opened file: ${normalizedPath}`);
-    sendOpenFileResponse(res, 200, { success: true });
+    logger.info(`[RevealFile] Revealed file in Finder: ${normalizedPath}`);
+    sendRevealFileResponse(res, 200, { success: true });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logger.error(`[OpenFile] Failed to open file:`, errorMessage);
-    sendOpenFileResponse(res, 500, { success: false, error: 'Failed to open file' });
+    logger.error(`[RevealFile] Failed to reveal file:`, errorMessage);
+    sendRevealFileResponse(res, 500, { success: false, error: 'Failed to reveal file' });
   }
 
   return true;

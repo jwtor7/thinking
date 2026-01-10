@@ -4,7 +4,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-0.16.5-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.16.6-purple)](./CHANGELOG.md)
 
 A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
 
@@ -122,6 +122,7 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
+- **v0.16.6** (2026-01-10) — Reveal exported file in Finder instead of opening
 - **v0.16.5** (2026-01-10) — Auto-open exported markdown file in system viewer
 - **v0.16.4** (2026-01-10) — Export button disabled when "All" sessions selected
 - **v0.16.3** (2026-01-10) — File browser in export modal, save .md files anywhere

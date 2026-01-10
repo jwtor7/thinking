@@ -468,20 +468,20 @@ async function handleExport(): Promise<void> {
       }
       closeExportModal();
 
-      // Open the exported file with the system default markdown viewer
+      // Reveal the exported file in Finder
       if (result.path) {
         try {
-          const openResponse = await fetch('http://localhost:3355/api/open-file', {
+          const revealResponse = await fetch('http://localhost:3355/api/reveal-file', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ path: result.path }),
           });
-          const openResult = await openResponse.json();
-          if (!openResult.success) {
-            console.warn('[Export] Failed to open file:', openResult.error);
+          const revealResult = await revealResponse.json();
+          if (!revealResult.success) {
+            console.warn('[Export] Failed to reveal file:', revealResult.error);
           }
-        } catch (openError) {
-          console.warn('[Export] Failed to open file:', openError);
+        } catch (revealError) {
+          console.warn('[Export] Failed to reveal file:', revealError);
         }
       }
     } else {

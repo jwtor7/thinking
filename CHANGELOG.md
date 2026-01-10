@@ -1,9 +1,16 @@
 # Changelog
 
+## [0.16.6] - 2026-01-10
+
+### Changed
+- **Reveal in Finder instead of open** - After export, reveals the file in Finder (selected) instead of opening in markdown viewer
+
+---
+
 ## [0.16.5] - 2026-01-10
 
 ### Added
-- **Auto-open exported file** - After saving, the markdown file automatically opens in the system's default markdown viewer
+- **Auto-open exported file** - After saving, the markdown file automatically opens in the system's default markdown viewer (replaced by reveal in v0.16.6)
 
 ---
 
