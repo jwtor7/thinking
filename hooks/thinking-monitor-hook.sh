@@ -36,6 +36,12 @@ MONITOR_URL="http://127.0.0.1:3355/event"
 # Timeout for curl requests (seconds)
 CURL_TIMEOUT=1
 
+# Fast health check - skip if server isn't running (~10ms vs ~1s timeout)
+# Uses /dev/tcp for speed (no curl overhead)
+if ! (echo > /dev/tcp/127.0.0.1/3355) 2>/dev/null; then
+    exit 0
+fi
+
 # Maximum input size in bytes (1MB)
 # Normal Claude events are typically under 100KB; this provides ample headroom
 MAX_INPUT_SIZE=1048576

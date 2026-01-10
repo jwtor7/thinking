@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.15.6] - 2026-01-10
+
+### Changed
+- **thinking-monitor-hook.sh** - Added fast TCP health check (~10ms vs ~1s timeout); skips hook execution if server isn't running
+
+### Removed
+- **Playwright MCP artifacts** - Deleted `.playwright-mcp/` directory (55 screenshots, ~12MB) after MCP removal
+- **Accidental npm cache** - Removed `~/.npm/` directory that was mistakenly created and tracked inside repo
+
+---
+
 ## [0.15.5] - 2026-01-08
 
 ### Changed
