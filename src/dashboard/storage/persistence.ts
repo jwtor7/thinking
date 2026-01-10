@@ -350,13 +350,13 @@ export function loadThemePreference(): ThemeId {
 // ============================================
 
 /**
- * Default panel visibility (all panels visible except hooks).
+ * Default panel visibility (all panels visible).
  */
 const DEFAULT_PANEL_VISIBILITY: PanelVisibility = {
   thinking: true,
   todo: true,
   tools: true,
-  hooks: false,
+  hooks: true,
   plan: true,
 };
 

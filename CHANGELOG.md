@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.7] - 2026-01-10
+
+### Changed
+- **Hooks panel enabled by default** - New users now see the Hooks panel by default in Panel Visibility settings
+
+---
+
 ## [0.15.6] - 2026-01-10
 
 ### Changed

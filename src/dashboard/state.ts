@@ -50,7 +50,7 @@ export const state: AppState = {
     thinking: true,
     todo: true,
     tools: true,
-    hooks: false,
+    hooks: true,
     plan: true,
   },
 };
