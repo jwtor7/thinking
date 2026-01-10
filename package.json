@@ -1,6 +1,6 @@
 {
   "name": "thinking-monitor",
-  "version": "0.15.5",
+  "version": "0.15.6",
   "description": "Real-time monitoring dashboard for Claude Code thinking, agents, and tool activity",
   "type": "module",
   "main": "dist/server/index.js",
