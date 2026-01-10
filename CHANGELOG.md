@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.4] - 2026-01-10
+
+### Changed
+- **Export requires session** - Export button disabled when "All" sessions selected; must select a specific session to export
+- **Keyboard shortcut guard** - `Cmd+E` shows toast "Select a session to export" when All is selected
+
+---
+
 ## [0.16.3] - 2026-01-10
 
 ### Added

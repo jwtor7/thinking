@@ -107,7 +107,8 @@ import {
 import { initHooks } from './handlers/hooks.js';
 import {
   initExportModal,
-  openExportModal,
+  updateExportButtonState,
+  tryOpenExportModal,
 } from './ui/export-modal';
 
 // ============================================
@@ -311,6 +312,9 @@ function clearAllPanels(): void {
   // Announce for screen readers
   announceStatus('All panels cleared');
 
+  // Update export button state (disabled when "All" is selected)
+  updateExportButtonState();
+
   // NOTE: Plan state is intentionally NOT cleared.
   // Plans are workspace-level resources and should persist across clear operations.
   // Only events, sessions, and todos are cleared.
@@ -324,7 +328,7 @@ function clearAllPanels(): void {
 elements.connectionOverlayRetry.addEventListener('click', retryNow);
 
 // Export button
-elements.exportBtn.addEventListener('click', openExportModal);
+elements.exportBtn.addEventListener('click', tryOpenExportModal);
 
 // Clear button
 elements.clearBtn.addEventListener('click', clearAllPanels);
@@ -508,6 +512,7 @@ initSessions({
   renderTodoPanel,
   updateTodosForCurrentSession,
   showToast,
+  updateExportButtonState,
 });
 
 initPlans({
@@ -539,7 +544,7 @@ initKeyboard({
   handlePlanOpenClick: handlePlanOpenClick,
   handlePlanRevealClick: handlePlanRevealClick,
   togglePanelSelector: togglePanelSelector,
-  openExportModal: openExportModal,
+  tryOpenExportModal: tryOpenExportModal,
 });
 initPanelSelector({
   announceStatus: announceStatus,
@@ -556,6 +561,9 @@ initViewTabs();
 if (state.selectedSession === 'all') {
   updateSessionViewTabs(true);
 }
+
+// Set initial export button state (disabled when "All" is selected)
+updateExportButtonState();
 
 // Initialize panel collapse buttons
 initPanelCollapseButtons();

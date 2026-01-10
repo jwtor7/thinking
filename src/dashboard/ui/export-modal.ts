@@ -6,6 +6,7 @@
  */
 
 import { state } from '../state';
+import { elements } from './elements';
 import { extractSessionData, formatAsMarkdown } from '../utils/markdown-export';
 
 /**
@@ -599,4 +600,57 @@ function handleEscapeKey(event: KeyboardEvent): void {
   if (event.key === 'Escape') {
     closeExportModal();
   }
+}
+
+// ============================================
+// Export Button State Management
+// ============================================
+
+/**
+ * Check if export is allowed based on current session selection.
+ * Export requires a specific session to be selected (not "All").
+ *
+ * @returns true if a specific session is selected, false otherwise
+ */
+export function isExportAllowed(): boolean {
+  return state.selectedSession !== 'all';
+}
+
+/**
+ * Update the export button's enabled/disabled state.
+ * Should be called whenever session selection changes.
+ */
+export function updateExportButtonState(): void {
+  const exportBtn = elements.exportBtn as HTMLButtonElement;
+  if (!exportBtn) return;
+
+  const allowed = isExportAllowed();
+
+  if (allowed) {
+    exportBtn.disabled = false;
+    exportBtn.title = 'Export as Markdown (Cmd+E)';
+    exportBtn.classList.remove('btn-disabled');
+  } else {
+    exportBtn.disabled = true;
+    exportBtn.title = 'Select a session to export';
+    exportBtn.classList.add('btn-disabled');
+  }
+}
+
+/**
+ * Attempt to open the export modal, checking if export is allowed.
+ * Shows a toast message if export is not allowed (All sessions selected).
+ *
+ * @returns true if modal was opened, false if blocked
+ */
+export function tryOpenExportModal(): boolean {
+  if (!isExportAllowed()) {
+    if (callbacks) {
+      callbacks.showToast('Select a session to export', 'info');
+    }
+    return false;
+  }
+
+  openExportModal();
+  return true;
 }

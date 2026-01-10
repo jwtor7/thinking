@@ -24,8 +24,8 @@ export interface KeyboardCallbacks {
   handlePlanRevealClick: () => void;
   /** Toggle the panel selector modal */
   togglePanelSelector: () => void;
-  /** Open the export modal */
-  openExportModal: () => void;
+  /** Try to open the export modal (checks if allowed first) */
+  tryOpenExportModal: () => boolean;
 }
 
 /**
@@ -178,7 +178,7 @@ export function handleKeydown(event: KeyboardEvent): void {
     if (event.key.toLowerCase() === 'e' && !event.shiftKey) {
       event.preventDefault();
       if (callbacks) {
-        callbacks.openExportModal();
+        callbacks.tryOpenExportModal();
       }
       return;
     }

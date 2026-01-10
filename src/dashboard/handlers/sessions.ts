@@ -44,6 +44,7 @@ export interface SessionCallbacks {
   renderTodoPanel: () => void;
   updateTodosForCurrentSession: () => void;
   showToast: (message: string, type: 'success' | 'error' | 'info', duration?: number) => void;
+  updateExportButtonState: () => void;
 }
 
 let callbacks: SessionCallbacks | null = null;
@@ -431,6 +432,11 @@ export function selectSession(sessionId: string): void {
     if (callbacks) {
       callbacks.renderTodoPanel();
     }
+  }
+
+  // Update export button state (disabled when "All" is selected)
+  if (callbacks) {
+    callbacks.updateExportButtonState();
   }
 }
 
