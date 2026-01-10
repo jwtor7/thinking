@@ -467,6 +467,23 @@ async function handleExport(): Promise<void> {
         callbacks.announceStatus('Export successful');
       }
       closeExportModal();
+
+      // Open the exported file with the system default markdown viewer
+      if (result.path) {
+        try {
+          const openResponse = await fetch('http://localhost:3355/api/open-file', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: result.path }),
+          });
+          const openResult = await openResponse.json();
+          if (!openResult.success) {
+            console.warn('[Export] Failed to open file:', openResult.error);
+          }
+        } catch (openError) {
+          console.warn('[Export] Failed to open file:', openError);
+        }
+      }
     } else {
       if (callbacks) {
         callbacks.showToast(result.error || 'Export failed', 'error');

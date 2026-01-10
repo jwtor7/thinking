@@ -13,6 +13,7 @@
 import { writeFile, mkdir, readdir, stat, realpath } from 'node:fs/promises';
 import { dirname, normalize, resolve, isAbsolute, join } from 'node:path';
 import { homedir } from 'node:os';
+import { exec } from 'node:child_process';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { logger } from './logger.ts';
 import { CONFIG } from './types.ts';
@@ -416,4 +417,166 @@ function sendResponse(res: ServerResponse, statusCode: number, data: ExportRespo
     'Content-Type': 'application/json',
   });
   res.end(JSON.stringify(data));
+}
+
+/**
+ * Response for open-file endpoint.
+ */
+interface OpenFileResponse {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Send a JSON response for open-file endpoint.
+ */
+function sendOpenFileResponse(res: ServerResponse, statusCode: number, data: OpenFileResponse): void {
+  res.writeHead(statusCode, {
+    'Content-Type': 'application/json',
+  });
+  res.end(JSON.stringify(data));
+}
+
+/**
+ * Handle a request to open a file with the system default application.
+ *
+ * Expected request:
+ * POST /api/open-file
+ * Content-Type: application/json
+ * { "path": "/absolute/path/to/file.md" }
+ *
+ * Returns:
+ * { "success": true }
+ * or { "success": false, "error": "..." }
+ *
+ * Security:
+ * - Only allows .md files
+ * - Validates path is absolute and normalized
+ * - Localhost-only binding ensures only local access
+ *
+ * @param req - The HTTP request
+ * @param res - The HTTP response
+ * @returns true if the request was handled, false if it should be passed to the next handler
+ */
+export async function handleOpenFileRequest(
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<boolean> {
+  // Only handle /api/open-file endpoint
+  if (req.url !== '/api/open-file') {
+    return false;
+  }
+
+  // Security: CSRF protection via Origin header validation
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    `http://localhost:${CONFIG.STATIC_PORT}`,
+    `http://127.0.0.1:${CONFIG.STATIC_PORT}`,
+  ];
+
+  // Set CORS headers
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', `http://localhost:${CONFIG.STATIC_PORT}`);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return true;
+  }
+
+  // Only handle POST
+  if (req.method !== 'POST') {
+    sendOpenFileResponse(res, 405, { success: false, error: 'Method not allowed' });
+    return true;
+  }
+
+  // Reject requests from unknown origins
+  if (origin && !allowedOrigins.includes(origin)) {
+    logger.warn(`[OpenFile] Rejected request from invalid origin: ${origin}`);
+    sendOpenFileResponse(res, 403, { success: false, error: 'Forbidden: Invalid origin' });
+    return true;
+  }
+
+  // Parse request body
+  let body: unknown;
+  try {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) {
+      chunks.push(chunk as Buffer);
+      // Limit body size (path should be small)
+      const totalSize = chunks.reduce((sum, c) => sum + c.length, 0);
+      if (totalSize > 4096) {
+        sendOpenFileResponse(res, 413, { success: false, error: 'Request body too large' });
+        return true;
+      }
+    }
+    const bodyStr = Buffer.concat(chunks).toString('utf-8');
+    body = JSON.parse(bodyStr);
+  } catch {
+    sendOpenFileResponse(res, 400, { success: false, error: 'Invalid JSON body' });
+    return true;
+  }
+
+  // Validate body
+  if (typeof body !== 'object' || body === null) {
+    sendOpenFileResponse(res, 400, { success: false, error: 'Invalid request body' });
+    return true;
+  }
+
+  const { path: filePath } = body as { path?: string };
+
+  // Validate path is a string
+  if (typeof filePath !== 'string' || filePath.length === 0) {
+    sendOpenFileResponse(res, 400, { success: false, error: 'Invalid path. Must be a non-empty string' });
+    return true;
+  }
+
+  // Validate path is absolute
+  if (!isAbsolute(filePath)) {
+    sendOpenFileResponse(res, 400, { success: false, error: 'Invalid path. Must be an absolute path' });
+    return true;
+  }
+
+  // Security: Only allow .md files
+  if (!filePath.endsWith('.md')) {
+    sendOpenFileResponse(res, 400, { success: false, error: 'Invalid path. Only .md files are allowed' });
+    return true;
+  }
+
+  // Normalize path to prevent traversal
+  const normalizedPath = resolve(normalize(filePath));
+  if (normalizedPath.includes('/../') || normalizedPath.endsWith('/..')) {
+    sendOpenFileResponse(res, 400, { success: false, error: 'Invalid path. Path contains traversal sequences' });
+    return true;
+  }
+
+  // Open the file with the system default application (macOS)
+  try {
+    await new Promise<void>((resolvePromise, reject) => {
+      // Use double quotes and escape any quotes in the path
+      const escapedPath = normalizedPath.replace(/"/g, '\\"');
+      exec(`open "${escapedPath}"`, (error) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolvePromise();
+        }
+      });
+    });
+
+    logger.info(`[OpenFile] Opened file: ${normalizedPath}`);
+    sendOpenFileResponse(res, 200, { success: true });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[OpenFile] Failed to open file:`, errorMessage);
+    sendOpenFileResponse(res, 500, { success: false, error: 'Failed to open file' });
+  }
+
+  return true;
 }

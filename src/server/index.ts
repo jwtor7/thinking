@@ -18,7 +18,7 @@ import { StaticServer } from './static-server.ts';
 import { TranscriptWatcher } from './transcript-watcher.ts';
 import { PlanWatcher } from './plan-watcher.ts';
 import { handleFileActionRequest } from './file-actions.ts';
-import { handleExportRequest, handleBrowseRequest } from './export-handler.ts';
+import { handleExportRequest, handleBrowseRequest, handleOpenFileRequest } from './export-handler.ts';
 import { CONFIG } from './types.ts';
 import { logger } from './logger.ts';
 
@@ -65,6 +65,12 @@ async function main(): Promise<void> {
     // Try to handle as export request
     const exportHandled = await handleExportRequest(req, res);
     if (exportHandled) {
+      return;
+    }
+
+    // Try to handle as open-file request
+    const openFileHandled = await handleOpenFileRequest(req, res);
+    if (openFileHandled) {
       return;
     }
 

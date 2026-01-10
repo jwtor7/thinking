@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.5] - 2026-01-10
+
+### Added
+- **Auto-open exported file** - After saving, the markdown file automatically opens in the system's default markdown viewer
+
+---
+
 ## [0.16.4] - 2026-01-10
 
 ### Changed
