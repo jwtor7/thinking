@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.16.1] - 2026-01-10
+
+### Fixed
+- **Session bar infinite expansion** - Fixed bug where all 1400+ historical transcript files were tracked as sessions on startup, causing the session bar to overflow with badges
+- **Reveal in Finder not working** - Fixed Content Security Policy to allow HTTP requests to the API port (was only allowing WebSocket)
+- **Reveal in Finder wrong port** - Fixed fetch URL to use correct API port (3355) instead of relative URL
+- **CORS for file actions** - Dynamic CORS headers now match the request origin for both `localhost` and `127.0.0.1` variants
+- **Tooltip TypeError** - Fixed `target.closest is not a function` error when hovering over text nodes in session badges
+
+### Changed
+- Sessions are now only tracked when new activity occurs (not from historical transcript files)
+
+---
+
+## [0.16.0] - 2026-01-10
+
+### Added
+- **Folder-based session names** - Session badges now display folder names (e.g., `thinking`) instead of session IDs for better readability
+- **Session grouping by folder** - Sessions from the same folder share colors and are sorted together in the filter bar
+- **Custom session tooltips** - Hover over session badges to see full session ID and working directory path
+- **Session context menu** - Right-click session badges to "Reveal in Finder" (opens the session's working directory)
+- **Activity-based pulsing** - Session dots only pulse when there's activity within the last 10 seconds, then stop
+- **Status bar session indicator** - Footer shows the most recently active session; click to select it
+- **getSessionColorByFolder()** - New color utility that hashes folder names for consistent visual grouping
+
+### Changed
+- Session filter bar now sorts sessions alphabetically by folder name
+- Online sessions without recent activity show a static glow instead of pulsing animation
+
+---
+
 ## [0.15.7] - 2026-01-10
 
 ### Changed

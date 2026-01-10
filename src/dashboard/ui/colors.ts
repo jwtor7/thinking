@@ -87,6 +87,33 @@ export function getSessionColorByHash(sessionId: string): string {
 }
 
 /**
+ * Get a consistent color for a folder name using a hash.
+ * Sessions in the same folder will get the same color for visual grouping.
+ * Falls back to session ID hash if no folder name provided.
+ */
+export function getSessionColorByFolder(folderName: string, fallbackSessionId?: string): string {
+  initCssColors();
+
+  // Use folder name if available, otherwise fall back to session ID
+  const hashSource = folderName || fallbackSessionId;
+  if (!hashSource || SESSION_COLORS.length === 0) {
+    return 'var(--color-text-muted)';
+  }
+
+  // Simple hash function for folder name
+  let hash = 0;
+  for (let i = 0; i < hashSource.length; i++) {
+    const char = hashSource.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+
+  // Use absolute value and modulo to get color index
+  const colorIndex = Math.abs(hash) % SESSION_COLORS.length;
+  return SESSION_COLORS[colorIndex];
+}
+
+/**
  * Get the display color for an agent.
  * Returns a consistent color based on the agent name.
  * Known agents get predefined colors; unknown agents cycle through fallback colors.

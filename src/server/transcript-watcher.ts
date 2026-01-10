@@ -53,6 +53,33 @@ interface TrackedFile {
 }
 
 /**
+ * Extracts the working directory from a transcript file path.
+ * Transcript files are stored in directories like:
+ *   ~/.claude/projects/-Users-true-dev-thinking/session-xxx.jsonl
+ * This converts the directory name back to a path:
+ *   -Users-true-dev-thinking -> /Users/<REDACTED>/dev/thinking
+ */
+export function extractWorkingDirectory(filePath: string): string | undefined {
+  // Get the parent directory name (e.g., "-Users-true-dev-thinking")
+  const parentDir = dirname(filePath);
+  const dirName = parentDir.split('/').pop();
+
+  if (!dirName || !dirName.startsWith('-')) {
+    return undefined;
+  }
+
+  // Convert dashes back to slashes: -Users-true-dev-thinking -> /Users/<REDACTED>/dev/thinking
+  const workingDir = dirName.replace(/-/g, '/');
+
+  // Validate it looks like a reasonable path
+  if (!workingDir.startsWith('/')) {
+    return undefined;
+  }
+
+  return workingDir;
+}
+
+/**
  * Validates that a path is within the allowed ~/.claude/ directory.
  * This is a security measure to prevent watching arbitrary paths.
  */
@@ -90,6 +117,11 @@ export class TranscriptWatcher {
    * During initial scan, files should be tracked but not processed (tail -f behavior).
    */
   private isInitialScan = true;
+  /**
+   * Track sessions we've already announced via session_start events.
+   * Maps sessionId to workingDirectory (if known).
+   */
+  private announcedSessions: Map<string, string | undefined> = new Map();
 
   constructor(hub: WebSocketHub) {
     this.hub = hub;
@@ -325,6 +357,19 @@ export class TranscriptWatcher {
    * to avoid flooding the dashboard with historical data. We use file SIZE as the marker,
    * not line count, to ensure we only process bytes written AFTER we start tracking.
    */
+  /**
+   * Extract session ID from a transcript file path.
+   * Transcript files are named with their session ID: {session-id}.jsonl
+   */
+  private extractSessionIdFromPath(filePath: string): string | undefined {
+    const filename = filePath.split('/').pop();
+    if (!filename || !filename.endsWith('.jsonl')) {
+      return undefined;
+    }
+    // Remove .jsonl extension to get session ID
+    return filename.slice(0, -6);
+  }
+
   private async trackFile(filePath: string): Promise<void> {
     if (!isValidClaudePath(filePath) || this.trackedFiles.has(filePath)) {
       return;
@@ -334,6 +379,17 @@ export class TranscriptWatcher {
       const stats = await stat(filePath);
       if (!stats.isFile()) {
         return;
+      }
+
+      // Extract session info from file path (session ID from filename, workingDir from parent dir)
+      const sessionId = this.extractSessionIdFromPath(filePath);
+      const workingDirectory = extractWorkingDirectory(filePath);
+
+      // Only register sessions for NEW files (created after server started)
+      // We don't want to track all 1000+ historical sessions from the initial scan
+      if (!this.isInitialScan && sessionId && !this.announcedSessions.has(sessionId)) {
+        this.announcedSessions.set(sessionId, workingDirectory);
+        this.broadcastSessionStart(sessionId, workingDirectory);
       }
 
       // ALWAYS skip existing content on startup - only process NEW bytes
@@ -479,7 +535,7 @@ export class TranscriptWatcher {
   /**
    * Process a single JSONL line.
    */
-  private async processLine(line: string, _filePath: string): Promise<void> {
+  private async processLine(line: string, filePath: string): Promise<void> {
     if (!line.trim()) {
       return;
     }
@@ -492,12 +548,40 @@ export class TranscriptWatcher {
       return;
     }
 
+    // Extract working directory from file path
+    const workingDirectory = extractWorkingDirectory(filePath);
+
+    // Announce new sessions via session_start event
+    if (parsed.sessionId && !this.announcedSessions.has(parsed.sessionId)) {
+      this.announcedSessions.set(parsed.sessionId, workingDirectory);
+      this.broadcastSessionStart(parsed.sessionId, workingDirectory, parsed.timestamp);
+    }
+
     // Extract thinking blocks from assistant messages
     const thinkingBlocks = this.extractThinking(parsed);
 
     for (const thinking of thinkingBlocks) {
       this.broadcastThinking(thinking, parsed.sessionId, parsed.agentId, parsed.timestamp);
     }
+  }
+
+  /**
+   * Broadcast a session_start event when a new session is first seen.
+   */
+  private broadcastSessionStart(
+    sessionId: string,
+    workingDirectory?: string,
+    timestamp?: string
+  ): void {
+    const event = {
+      type: 'session_start' as const,
+      timestamp: timestamp || new Date().toISOString(),
+      sessionId,
+      workingDirectory,
+    };
+
+    this.hub.broadcast(event);
+    logger.debug(`[TranscriptWatcher] Broadcast session_start for ${sessionId} (${workingDirectory || 'no path'})`);
   }
 
   /**
@@ -541,6 +625,17 @@ export class TranscriptWatcher {
 
     this.hub.broadcast(event);
     logger.debug(`[TranscriptWatcher] Broadcast thinking (${safeContent.slice(0, 50)}...)`);
+  }
+
+  /**
+   * Get all known sessions with their working directories.
+   * Used to send session_start events to newly connected clients.
+   */
+  getKnownSessions(): Array<{ sessionId: string; workingDirectory?: string }> {
+    return Array.from(this.announcedSessions.entries()).map(([sessionId, workingDirectory]) => ({
+      sessionId,
+      workingDirectory,
+    }));
   }
 
   /**

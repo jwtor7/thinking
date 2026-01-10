@@ -178,6 +178,7 @@
     <!-- Footer -->
     <footer class="footer" role="contentinfo">
       <span id="server-info">Server: --</span>
+      <span id="active-session-indicator" class="active-session-indicator" title="Click to select session"></span>
       <span id="event-count">Events: 0</span>
     </footer>
   </div>
@@ -194,6 +195,14 @@
     </button>
   </div>
 
-  <script src="app.js?v=0.15.4" defer></script>
+  <!-- Session Context Menu -->
+  <div class="session-context-menu" id="session-context-menu" role="menu" aria-label="Session actions">
+    <button class="session-context-menu-item" id="session-context-menu-reveal" role="menuitem">
+      <span class="session-context-menu-icon">&#128193;</span>
+      Reveal in Finder
+    </button>
+  </div>
+
+  <script src="app.js?v=0.16.0" defer></script>
 </body>
 </html>

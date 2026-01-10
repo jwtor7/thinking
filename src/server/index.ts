@@ -111,6 +111,17 @@ async function main(): Promise<void> {
 
   // Send current state to newly connected clients
   hub.onClientConnect(async (sendEvent) => {
+    // Send session_start events for all known sessions (with working directories)
+    const knownSessions = transcriptWatcher.getKnownSessions();
+    for (const { sessionId, workingDirectory } of knownSessions) {
+      sendEvent({
+        type: 'session_start',
+        timestamp: new Date().toISOString(),
+        sessionId,
+        workingDirectory,
+      });
+    }
+
     // Send the list of all available plans
     const planListEvent = planWatcher.getPlanListEvent();
     if (planListEvent.plans.length > 0) {

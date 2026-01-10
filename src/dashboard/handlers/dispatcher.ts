@@ -1,7 +1,7 @@
 import { state } from '../state';
 import { elements } from '../ui/elements';
 import type { StrictMonitorEvent, ConnectionStatusEvent } from '../types';
-import { trackSession, handleSessionStart, handleSessionStop } from './sessions';
+import { trackSession, handleSessionStart, handleSessionStop, updateSessionActivity } from './sessions';
 import { handleThinking } from './thinking';
 import { handleToolStart, handleToolEnd } from './tools';
 import { handleAgentStart, handleAgentStop } from './agents';
@@ -33,12 +33,24 @@ export function handleEvent(event: StrictMonitorEvent): void {
       break;
     case 'thinking':
       handleThinking(event);
+      // Update activity for thinking events
+      if (event.sessionId) {
+        updateSessionActivity(event.sessionId);
+      }
       break;
     case 'tool_start':
       handleToolStart(event);
+      // Update activity for tool events
+      if (event.sessionId) {
+        updateSessionActivity(event.sessionId);
+      }
       break;
     case 'tool_end':
       handleToolEnd(event);
+      // Update activity for tool events
+      if (event.sessionId) {
+        updateSessionActivity(event.sessionId);
+      }
       break;
     case 'agent_start':
       handleAgentStart(event);
@@ -63,6 +75,10 @@ export function handleEvent(event: StrictMonitorEvent): void {
       break;
     case 'hook_execution':
       handleHookExecution(event);
+      // Update activity for hook events
+      if (event.sessionId) {
+        updateSessionActivity(event.sessionId);
+      }
       break;
     default:
       console.log('[Dashboard] Unhandled event type:', event.type);

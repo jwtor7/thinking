@@ -51,4 +51,11 @@ export const elements = {
   todoCollapseBtn: document.querySelector('.panel-todo .panel-collapse-btn') as HTMLButtonElement,
   toolsCollapseBtn: document.querySelector('.panel-tools .panel-collapse-btn') as HTMLButtonElement,
   planCollapseBtn: document.querySelector('.panel-plan .panel-collapse-btn') as HTMLButtonElement,
+  // Session context menu
+  sessionContextMenu: document.getElementById('session-context-menu'),
+  sessionContextMenuReveal: document.getElementById('session-context-menu-reveal'),
+  // Status bar active session indicator
+  activeSessionIndicator: document.getElementById('active-session-indicator'),
+  // Session tooltip element (created dynamically)
+  sessionTooltip: null as HTMLElement | null,
 };

@@ -150,13 +150,13 @@ export class StaticServer {
         // CSP: Defense-in-depth XSS protection
         // - 'self' for scripts (no inline scripts)
         // - 'unsafe-inline' for styles (required for dynamic theming)
-        // - WebSocket connection allowed to localhost WS port
+        // - WebSocket and HTTP connections allowed to localhost WS port (for file actions API)
         'Content-Security-Policy':
           "default-src 'self'; " +
           "script-src 'self'; " +
           "style-src 'self' 'unsafe-inline'; " +
           "img-src 'self' data:; " +
-          `connect-src 'self' ws://localhost:${CONFIG.WS_PORT} ws://127.0.0.1:${CONFIG.WS_PORT}`,
+          `connect-src 'self' ws://localhost:${CONFIG.WS_PORT} ws://127.0.0.1:${CONFIG.WS_PORT} http://localhost:${CONFIG.WS_PORT} http://127.0.0.1:${CONFIG.WS_PORT}`,
       });
 
       res.end(content);

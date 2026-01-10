@@ -76,7 +76,11 @@ import {
 import {
   initSessions,
   updateSessionFilter,
+  initStatusBarSession,
+  hideSessionContextMenu,
+  handleRevealSessionInFinder,
 } from './handlers/sessions';
+import { initTooltip } from './ui/tooltip';
 import {
   initPlans,
   displayPlan,
@@ -425,14 +429,24 @@ document.addEventListener('click', (e) => {
   if (!elements.planContextMenu.contains(target)) {
     hidePlanContextMenu();
   }
+  // Also close session context menu
+  if (elements.sessionContextMenu && !elements.sessionContextMenu.contains(target)) {
+    hideSessionContextMenu();
+  }
 });
 
 // Close context menu on Escape key
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     hidePlanContextMenu();
+    hideSessionContextMenu();
   }
 });
+
+// Session context menu action
+if (elements.sessionContextMenuReveal) {
+  elements.sessionContextMenuReveal.addEventListener('click', handleRevealSessionInFinder);
+}
 
 // ============================================
 // Initialize
@@ -545,6 +559,12 @@ initResizers();
 
 // Initialize drag-to-reorder for collapsed panels
 initDragReorder();
+
+// Initialize custom tooltip system for session badges
+initTooltip();
+
+// Initialize status bar session click handler
+initStatusBarSession();
 
 // Initialize WebSocket with callbacks
 initWebSocket({

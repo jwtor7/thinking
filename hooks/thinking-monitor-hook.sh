@@ -245,7 +245,12 @@ case "$HOOK_TYPE" in
         ;;
 
     "SessionStart")
-        CWD=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null || echo "")
+        # Try multiple field names for working directory
+        CWD=$(echo "$INPUT" | jq -r '.cwd // .working_directory // .workingDirectory // empty' 2>/dev/null || echo "")
+        # If no cwd in input, fall back to PWD environment variable
+        if [ -z "$CWD" ]; then
+            CWD="$PWD"
+        fi
 
         EVENT_JSON=$(jq -n \
             --arg type "session_start" \

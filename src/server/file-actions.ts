@@ -85,6 +85,30 @@ interface FileActionResponse {
 }
 
 /**
+ * Check if a path is safe for the "reveal" action.
+ * The reveal action opens Finder at a location, which is a safe read-only operation.
+ * We allow any absolute path that doesn't contain traversal patterns.
+ */
+function isSafeRevealPath(filePath: string): boolean {
+  if (!filePath || typeof filePath !== 'string') {
+    return false;
+  }
+
+  // Must be absolute
+  if (!filePath.startsWith('/')) {
+    return false;
+  }
+
+  // No traversal patterns
+  const normalizedPath = resolve(normalize(filePath));
+  if (normalizedPath.includes('..')) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Validates a file action request.
  * Returns an error message if invalid, or null if valid.
  */
@@ -110,9 +134,17 @@ function validateRequest(body: unknown): string | null {
     return 'Invalid path. Must be an absolute path starting with /';
   }
 
-  // Validate path is within allowed directory (~/.claude/)
-  if (!isAllowedPath(req.path)) {
-    return 'Access denied. Path must be within ~/.claude/ directory';
+  // For "reveal" action, allow any safe path (just opens Finder - safe operation)
+  // For "open" action, restrict to ~/.claude/ (could execute files)
+  if (req.action === 'reveal') {
+    if (!isSafeRevealPath(req.path as string)) {
+      return 'Invalid path for reveal action';
+    }
+  } else {
+    // "open" action - restrict to ~/.claude/
+    if (!isAllowedPath(req.path as string)) {
+      return 'Access denied. Path must be within ~/.claude/ directory';
+    }
   }
 
   return null;
@@ -188,8 +220,22 @@ export async function handleFileActionRequest(
     return false;
   }
 
-  // Set CORS headers for local development
-  res.setHeader('Access-Control-Allow-Origin', `http://localhost:${CONFIG.STATIC_PORT}`);
+  // Security: CSRF protection via Origin header validation
+  // Localhost-only binding already limits attack surface, but Origin
+  // validation prevents cross-origin requests from malicious sites
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    `http://localhost:${CONFIG.STATIC_PORT}`,
+    `http://127.0.0.1:${CONFIG.STATIC_PORT}`,
+  ];
+
+  // Set CORS headers dynamically based on request origin
+  // Must match the exact origin for CORS to work
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', `http://localhost:${CONFIG.STATIC_PORT}`);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -206,15 +252,7 @@ export async function handleFileActionRequest(
     return true;
   }
 
-  // Security: CSRF protection via Origin header validation
-  // Localhost-only binding already limits attack surface, but Origin
-  // validation prevents cross-origin requests from malicious sites
-  const origin = req.headers.origin;
-  const allowedOrigins = [
-    `http://localhost:${CONFIG.STATIC_PORT}`,
-    `http://127.0.0.1:${CONFIG.STATIC_PORT}`,
-  ];
-
+  // Reject requests from unknown origins
   if (origin && !allowedOrigins.includes(origin)) {
     logger.warn(`[FileActions] Rejected request from invalid origin: ${origin}`);
     sendResponse(res, 403, { success: false, error: 'Forbidden: Invalid origin' });

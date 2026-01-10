@@ -8,11 +8,24 @@
 import { state } from '../state';
 import { elements } from '../ui/elements';
 import { escapeHtml } from '../utils/html';
-import { getSessionColorByHash } from '../ui/colors';
+import { getSessionColorByFolder } from '../ui/colors';
 import { filterAllBySession } from '../ui/filters';
 import { rebuildResizers } from '../ui/resizer';
 import { updateSessionViewTabs } from '../ui/views';
 import type { SessionStartEvent, SessionStopEvent } from '../types';
+
+// ============================================
+// Activity Tracking Constants
+// ============================================
+
+/** Time threshold in ms - sessions with activity within this window are "active" */
+const ACTIVITY_THRESHOLD_MS = 10_000;
+
+/** Interval in ms for checking activity status */
+const ACTIVITY_CHECK_INTERVAL_MS = 5_000;
+
+/** Activity checker interval ID */
+let activityCheckerInterval: ReturnType<typeof setInterval> | null = null;
 
 // ============================================
 // Callback Pattern for Circular Import Prevention
@@ -41,6 +54,96 @@ let callbacks: SessionCallbacks | null = null;
  */
 export function initSessions(cbs: SessionCallbacks): void {
   callbacks = cbs;
+  // Start the activity checker when sessions are initialized
+  startActivityChecker();
+}
+
+// ============================================
+// Display Name Utilities
+// ============================================
+
+/**
+ * Extract folder name from a working directory path.
+ * Falls back to session ID (first 8 chars) if no path available.
+ */
+export function getSessionDisplayName(workingDirectory?: string, sessionId?: string): string {
+  if (workingDirectory) {
+    // Remove trailing slash and get last path component
+    const parts = workingDirectory.replace(/\/$/, '').split('/');
+    const folderName = parts[parts.length - 1];
+    if (folderName) {
+      return folderName;
+    }
+  }
+  // Fall back to short session ID
+  return sessionId?.slice(0, 8) || 'unknown';
+}
+
+/**
+ * Get the folder name from a session for color grouping.
+ * Returns the folder name if available, undefined otherwise.
+ */
+export function getSessionFolderName(workingDirectory?: string): string | undefined {
+  if (workingDirectory) {
+    const parts = workingDirectory.replace(/\/$/, '').split('/');
+    return parts[parts.length - 1] || undefined;
+  }
+  return undefined;
+}
+
+// ============================================
+// Activity Tracking
+// ============================================
+
+/**
+ * Update the last activity time for a session.
+ * Called when events are received from this session.
+ */
+export function updateSessionActivity(sessionId: string): void {
+  const session = state.sessions.get(sessionId);
+  if (session) {
+    session.lastActivityTime = Date.now();
+    // Update status bar when activity occurs
+    updateStatusBarSession();
+  }
+}
+
+/**
+ * Check if a session has had activity within the threshold.
+ */
+export function hasRecentActivity(sessionId: string): boolean {
+  const session = state.sessions.get(sessionId);
+  if (!session || !session.lastActivityTime) {
+    return false;
+  }
+  return Date.now() - session.lastActivityTime < ACTIVITY_THRESHOLD_MS;
+}
+
+/**
+ * Start the activity checker interval.
+ * Refreshes the session filter periodically to update pulse states.
+ */
+function startActivityChecker(): void {
+  if (activityCheckerInterval) {
+    return; // Already running
+  }
+  activityCheckerInterval = setInterval(() => {
+    // Only update if we have sessions
+    if (state.sessions.size > 0) {
+      updateSessionFilter();
+      updateStatusBarSession();
+    }
+  }, ACTIVITY_CHECK_INTERVAL_MS);
+}
+
+/**
+ * Stop the activity checker interval.
+ */
+export function stopActivityChecker(): void {
+  if (activityCheckerInterval) {
+    clearInterval(activityCheckerInterval);
+    activityCheckerInterval = null;
+  }
 }
 
 // ============================================
@@ -59,11 +162,13 @@ export function trackSession(sessionId: string, timestamp: string): void {
   const isSessionSwitch = state.currentSessionId !== null && state.currentSessionId !== sessionId;
 
   if (isNewSession) {
+    // No working directory yet - use session ID for color (will update on session_start)
     state.sessions.set(sessionId, {
       id: sessionId,
       startTime: timestamp,
       active: true,
-      color: getSessionColorByHash(sessionId),
+      color: getSessionColorByFolder('', sessionId),
+      lastActivityTime: Date.now(),
     });
     console.log(`[Dashboard] New session tracked: ${sessionId}`);
     updateSessionFilter();
@@ -92,15 +197,17 @@ export function trackSession(sessionId: string, timestamp: string): void {
 export function handleSessionStart(event: SessionStartEvent): void {
   const sessionId = event.sessionId;
   const workingDirectory = event.workingDirectory;
+  const folderName = getSessionFolderName(workingDirectory);
 
-  console.log(`[Dashboard] Session started: ${sessionId}`, { workingDirectory });
+  console.log(`[Dashboard] Session started: ${sessionId}`, { workingDirectory, folderName });
 
   state.sessions.set(sessionId, {
     id: sessionId,
     workingDirectory,
     startTime: event.timestamp,
     active: true,
-    color: getSessionColorByHash(sessionId),
+    color: getSessionColorByFolder(folderName || '', sessionId),
+    lastActivityTime: Date.now(),
   });
 
   state.currentSessionId = sessionId;
@@ -137,22 +244,30 @@ export function handleSessionStop(event: SessionStopEvent): void {
 /**
  * Render the session filter bar with clickable session badges.
  * Shows when there are multiple sessions to filter between.
+ * Sorts sessions by folder name for visual grouping.
  */
 export function updateSessionFilter(): void {
   // Create session filter element if it doesn't exist
   let filterEl = elements.sessionFilter;
 
   if (!filterEl) {
-    filterEl = document.createElement('div');
-    filterEl.id = 'session-filter';
-    filterEl.className = 'session-filter';
+    // Double-check DOM to prevent duplicates
+    const existingEl = document.getElementById('session-filter');
+    if (existingEl) {
+      elements.sessionFilter = existingEl;
+      filterEl = existingEl;
+    } else {
+      filterEl = document.createElement('div');
+      filterEl.id = 'session-filter';
+      filterEl.className = 'session-filter';
 
-    // Insert after view tabs (or header if no view tabs)
-    const viewTabs = elements.viewTabs || document.querySelector('.header');
-    if (viewTabs && viewTabs.parentNode) {
-      viewTabs.parentNode.insertBefore(filterEl, viewTabs.nextSibling);
+      // Insert after view tabs (or header if no view tabs)
+      const viewTabs = elements.viewTabs || document.querySelector('.header');
+      if (viewTabs && viewTabs.parentNode) {
+        viewTabs.parentNode.insertBefore(filterEl, viewTabs.nextSibling);
+      }
+      elements.sessionFilter = filterEl;
     }
-    elements.sessionFilter = filterEl;
   }
 
   // Show filter when there are any sessions (even just one)
@@ -174,25 +289,39 @@ export function updateSessionFilter(): void {
     All
   </button>`;
 
+  // Sort sessions by folder name for grouping
+  const sortedSessions = Array.from(state.sessions.entries()).sort((a, b) => {
+    const folderA = getSessionDisplayName(a[1].workingDirectory, a[0]);
+    const folderB = getSessionDisplayName(b[1].workingDirectory, b[0]);
+    return folderA.localeCompare(folderB);
+  });
+
   // Individual session badges
-  for (const [sessionId, session] of state.sessions) {
-    const shortId = sessionId.slice(0, 8);
+  for (const [sessionId, session] of sortedSessions) {
+    const displayName = getSessionDisplayName(session.workingDirectory, sessionId);
     const isActive = state.selectedSession === sessionId ? 'active' : '';
     const isOnline = session.active ? 'online' : '';
-    const title = session.workingDirectory
-      ? `${sessionId}\n${session.workingDirectory}`
-      : sessionId;
+    const isPulsing = hasRecentActivity(sessionId) ? 'pulsing' : '';
 
     // Only show clear button for inactive sessions that have stored todos
     const hasTodos = state.sessionTodos.has(sessionId) && (state.sessionTodos.get(sessionId)?.length ?? 0) > 0;
     const showClearBtn = !session.active && hasTodos;
     const clearBtnHtml = showClearBtn
-      ? `<span class="session-close-btn" data-session="${escapeHtml(sessionId)}" title="Clear session">×</span>`
+      ? `<span class="session-close-btn" data-session="${escapeHtml(sessionId)}" title="Clear session">&times;</span>`
       : '';
 
-    html += `<button class="session-filter-badge ${isActive} ${isOnline}${showClearBtn ? ' has-close' : ''}" data-session="${escapeHtml(sessionId)}" title="${escapeHtml(title)}">
+    // Build class list
+    const classes = ['session-filter-badge', isActive, isOnline, isPulsing]
+      .filter(Boolean)
+      .join(' ') + (showClearBtn ? ' has-close' : '');
+
+    html += `<button class="${classes}"
+      data-session="${escapeHtml(sessionId)}"
+      data-session-tooltip="true"
+      data-session-id="${escapeHtml(sessionId)}"
+      data-session-path="${escapeHtml(session.workingDirectory || '')}">
       <span class="session-filter-dot" style="background: ${session.color}"></span>
-      ${escapeHtml(shortId)}${clearBtnHtml}
+      ${escapeHtml(displayName)}${clearBtnHtml}
     </button>`;
   }
 
@@ -215,6 +344,15 @@ export function updateSessionFilter(): void {
       // Normal session selection
       const sessionId = (badge as HTMLElement).dataset.session || 'all';
       selectSession(sessionId);
+    });
+
+    // Context menu for Reveal in Finder
+    badge.addEventListener('contextmenu', (e: Event) => {
+      const mouseEvent = e as MouseEvent;
+      const sessionId = (badge as HTMLElement).dataset.session;
+      if (sessionId && sessionId !== 'all') {
+        handleSessionContextMenu(mouseEvent, sessionId);
+      }
     });
   });
 }
@@ -294,4 +432,163 @@ export function selectSession(sessionId: string): void {
       callbacks.renderTodoPanel();
     }
   }
+}
+
+// ============================================
+// Session Context Menu
+// ============================================
+
+/** Currently shown context menu session ID */
+let contextMenuSessionId: string | null = null;
+
+/**
+ * Handle right-click on a session badge.
+ * Shows a context menu with "Reveal in Finder" option.
+ */
+function handleSessionContextMenu(e: MouseEvent, sessionId: string): void {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const session = state.sessions.get(sessionId);
+  if (!session?.workingDirectory) {
+    return; // No path to reveal
+  }
+
+  contextMenuSessionId = sessionId;
+  showSessionContextMenu(e.clientX, e.clientY);
+}
+
+/**
+ * Show the session context menu at the specified position.
+ */
+function showSessionContextMenu(x: number, y: number): void {
+  const menu = elements.sessionContextMenu;
+  if (!menu) return;
+
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+  menu.classList.add('visible');
+}
+
+/**
+ * Hide the session context menu.
+ */
+export function hideSessionContextMenu(): void {
+  const menu = elements.sessionContextMenu;
+  if (menu) {
+    menu.classList.remove('visible');
+  }
+  contextMenuSessionId = null;
+}
+
+/**
+ * Handle "Reveal in Finder" click from context menu.
+ */
+export function handleRevealSessionInFinder(): void {
+  if (!contextMenuSessionId) return;
+
+  const session = state.sessions.get(contextMenuSessionId);
+  if (!session?.workingDirectory) return;
+
+  // Use the file:// URL scheme to open Finder at the path
+  // This works on macOS to reveal the folder in Finder
+  const path = session.workingDirectory;
+
+  // Create a temporary link and trigger download to open in Finder
+  // This is a workaround since window.open('file://') doesn't work in browsers
+  // Instead, we'll use the server endpoint if available
+  console.log(`[Dashboard] Reveal in Finder: ${path}`);
+
+  // Try to use the server API to reveal in Finder
+  // Note: API is on port 3355, dashboard is on port 3356
+  fetch('http://localhost:3355/file-action', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'reveal', path }),
+  })
+    .then(async response => {
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('[Dashboard] Reveal in Finder failed:', response.status, text);
+        // Fallback: show a toast with the path
+        if (callbacks) {
+          callbacks.showToast(`Path: ${path}`, 'info', 5000);
+        }
+      } else {
+        console.log('[Dashboard] Reveal in Finder succeeded');
+      }
+    })
+    .catch(err => {
+      console.error('[Dashboard] Reveal in Finder fetch error:', err);
+      if (callbacks) {
+        callbacks.showToast(`Path: ${path}`, 'info', 5000);
+      }
+    });
+
+  hideSessionContextMenu();
+}
+
+// ============================================
+// Status Bar Active Session
+// ============================================
+
+/**
+ * Find the most recently active session.
+ * Returns the session with the most recent lastActivityTime.
+ */
+function findMostRecentActiveSession(): { id: string; session: typeof state.sessions extends Map<string, infer V> ? V : never } | null {
+  let mostRecent: { id: string; session: typeof state.sessions extends Map<string, infer V> ? V : never } | null = null;
+  let mostRecentTime = 0;
+
+  for (const [id, session] of state.sessions) {
+    if (session.lastActivityTime && session.lastActivityTime > mostRecentTime) {
+      mostRecentTime = session.lastActivityTime;
+      mostRecent = { id, session };
+    }
+  }
+
+  return mostRecent;
+}
+
+/**
+ * Update the status bar with the most recently active session.
+ */
+export function updateStatusBarSession(): void {
+  const indicator = elements.activeSessionIndicator;
+  if (!indicator) return;
+
+  const mostRecent = findMostRecentActiveSession();
+
+  if (!mostRecent) {
+    indicator.innerHTML = '';
+    indicator.style.display = 'none';
+    return;
+  }
+
+  const { id, session } = mostRecent;
+  const displayName = getSessionDisplayName(session.workingDirectory, id);
+  const isActive = hasRecentActivity(id);
+
+  indicator.style.display = 'flex';
+  indicator.innerHTML = `
+    <span class="active-session-dot${isActive ? ' pulsing' : ''}" style="background: ${session.color}"></span>
+    <span class="active-session-name">${escapeHtml(displayName)}</span>
+  `;
+  indicator.dataset.sessionId = id;
+}
+
+/**
+ * Initialize the status bar click handler.
+ * Clicking the active session indicator selects that session.
+ */
+export function initStatusBarSession(): void {
+  const indicator = elements.activeSessionIndicator;
+  if (!indicator) return;
+
+  indicator.addEventListener('click', () => {
+    const sessionId = indicator.dataset.sessionId;
+    if (sessionId) {
+      selectSession(sessionId);
+    }
+  });
 }

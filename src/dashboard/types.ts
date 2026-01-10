@@ -155,6 +155,7 @@ export interface SessionInfo {
   endTime?: string;
   active: boolean;
   color: string; // For visual distinction
+  lastActivityTime?: number; // Timestamp of last activity (for pulsing)
 }
 
 // ============================================
