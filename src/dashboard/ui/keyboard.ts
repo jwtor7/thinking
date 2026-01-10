@@ -24,6 +24,8 @@ export interface KeyboardCallbacks {
   handlePlanRevealClick: () => void;
   /** Toggle the panel selector modal */
   togglePanelSelector: () => void;
+  /** Open the export modal */
+  openExportModal: () => void;
 }
 
 /**
@@ -54,6 +56,7 @@ export function initKeyboard(cbs: KeyboardCallbacks): void {
  * - Shift+T/O/D/H - Toggle panel collapse (Thinking/Tools/Todo/Hooks)
  * - Shift+P - Open panel selector modal
  * - A/T/O/D/H/P (without shift) - Select view (All/Thinking/Tools/Todo/Hooks/Plan)
+ * - Cmd/Ctrl+E - Export as Markdown
  * - Cmd/Ctrl+O - Open plan in default app
  * - Cmd/Ctrl+Shift+R - Reveal plan in Finder
  *
@@ -171,6 +174,15 @@ export function handleKeydown(event: KeyboardEvent): void {
 
   // Plan file actions with Cmd/Ctrl modifiers
   if (event.metaKey || event.ctrlKey) {
+    // Cmd+E / Ctrl+E - Export as Markdown
+    if (event.key.toLowerCase() === 'e' && !event.shiftKey) {
+      event.preventDefault();
+      if (callbacks) {
+        callbacks.openExportModal();
+      }
+      return;
+    }
+
     // Cmd+O / Ctrl+O - Open in default app
     if (event.key.toLowerCase() === 'o' && !event.shiftKey) {
       if (state.currentPlanPath && callbacks) {

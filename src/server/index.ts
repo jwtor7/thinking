@@ -18,6 +18,7 @@ import { StaticServer } from './static-server.ts';
 import { TranscriptWatcher } from './transcript-watcher.ts';
 import { PlanWatcher } from './plan-watcher.ts';
 import { handleFileActionRequest } from './file-actions.ts';
+import { handleExportRequest } from './export-handler.ts';
 import { CONFIG } from './types.ts';
 import { logger } from './logger.ts';
 
@@ -47,11 +48,21 @@ async function main(): Promise<void> {
   // Create event receiver
   const eventReceiver = new EventReceiver(hub);
 
+  // Track known working directories for export path validation
+  // This is populated by the transcript watcher as sessions are discovered
+  const allowedWorkingDirs = new Set<string>();
+
   // Create HTTP server for WebSocket and event receiver
   const httpServer = createServer(async (req, res) => {
     // Try to handle as file action request
     const fileActionHandled = await handleFileActionRequest(req, res);
     if (fileActionHandled) {
+      return;
+    }
+
+    // Try to handle as export request
+    const exportHandled = await handleExportRequest(req, res, allowedWorkingDirs);
+    if (exportHandled) {
       return;
     }
 
@@ -114,6 +125,10 @@ async function main(): Promise<void> {
     // Send session_start events for all known sessions (with working directories)
     const knownSessions = transcriptWatcher.getKnownSessions();
     for (const { sessionId, workingDirectory } of knownSessions) {
+      // Track working directories for export path validation
+      if (workingDirectory) {
+        allowedWorkingDirs.add(workingDirectory);
+      }
       sendEvent({
         type: 'session_start',
         timestamp: new Date().toISOString(),

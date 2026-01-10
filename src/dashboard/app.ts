@@ -105,6 +105,10 @@ import {
   renderTodoPanel,
 } from './handlers/todos';
 import { initHooks } from './handlers/hooks.js';
+import {
+  initExportModal,
+  openExportModal,
+} from './ui/export-modal';
 
 // ============================================
 // Accessibility Helpers
@@ -319,6 +323,9 @@ function clearAllPanels(): void {
 // Connection overlay retry button
 elements.connectionOverlayRetry.addEventListener('click', retryNow);
 
+// Export button
+elements.exportBtn.addEventListener('click', openExportModal);
+
 // Clear button
 elements.clearBtn.addEventListener('click', clearAllPanels);
 
@@ -532,8 +539,13 @@ initKeyboard({
   handlePlanOpenClick: handlePlanOpenClick,
   handlePlanRevealClick: handlePlanRevealClick,
   togglePanelSelector: togglePanelSelector,
+  openExportModal: openExportModal,
 });
 initPanelSelector({
+  announceStatus: announceStatus,
+});
+initExportModal({
+  showToast: showToast,
   announceStatus: announceStatus,
 });
 
@@ -576,4 +588,4 @@ initWebSocket({
 connect();
 console.log('[Dashboard] Thinking Monitor initialized');
 console.log('[Dashboard] Keyboard shortcuts: a/t/o/d/p=views, Shift+t/o/d=collapse, Shift+p=panel settings, c=clear, s=scroll, /=search, Esc=clear filters');
-console.log('[Dashboard] Plan shortcuts: Cmd+O=open, Cmd+Shift+R=reveal, right-click=context menu');
+console.log('[Dashboard] Plan shortcuts: Cmd+O=open, Cmd+Shift+R=reveal, Cmd+E=export, right-click=context menu');

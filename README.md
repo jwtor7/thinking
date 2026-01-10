@@ -4,7 +4,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-0.16.0-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.16.2-purple)](./CHANGELOG.md)
 
 A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
 
@@ -122,6 +122,7 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
+- **v0.16.2** (2026-01-10) — Export as Markdown: save sessions as formatted `.md` files via header button or `Cmd+E`
 - **v0.16.1** (2026-01-10) — Bug fixes: session bar overflow, Reveal in Finder CSP/CORS issues, tooltip errors
 - **v0.16.0** (2026-01-10) — Session Display Upgrade: folder names, activity-based pulsing, tooltips, context menu, status bar indicator
 - **v0.15.7** (2026-01-10) — Hooks panel enabled by default
