@@ -631,6 +631,141 @@
   margin: var(--spacing-xs) 0 0 0;
 }
 
+/* File browser section */
+.export-browser-section {
+  margin-bottom: var(--spacing-lg);
+}
+
+.export-browser-header {
+  margin-bottom: var(--spacing-sm);
+}
+
+.export-browser-path {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.export-browser-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-primary);
+}
+
+.export-browser-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default);
+}
+
+.export-browser-item:last-child {
+  border-bottom: none;
+}
+
+.export-browser-item:hover {
+  background: var(--color-bg-hover);
+}
+
+.export-browser-item:focus {
+  outline: none;
+  background: var(--color-bg-hover);
+}
+
+.export-browser-item:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: -2px;
+}
+
+.export-browser-icon {
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+  font-size: var(--font-size-md);
+}
+
+.export-browser-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.export-browser-parent {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.export-browser-folder .export-browser-name {
+  font-weight: var(--font-weight-medium);
+}
+
+.export-browser-file {
+  color: var(--color-text-secondary);
+}
+
+.export-browser-file:hover {
+  color: var(--color-accent-blue);
+}
+
+.export-browser-loading,
+.export-browser-error,
+.export-browser-empty {
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.export-browser-error {
+  color: var(--color-accent-red);
+}
+
+/* Filename input wrapper with .md extension */
+.export-filename-wrapper {
+  display: flex;
+  align-items: stretch;
+}
+
+.export-filename-wrapper .export-modal-input {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  flex: 1;
+}
+
+.export-filename-extension {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--spacing-md);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-left: none;
+  border-top-right-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-mono);
+}
+
 /* Session info / stats */
 .export-modal-session-info {
   padding: var(--spacing-md);

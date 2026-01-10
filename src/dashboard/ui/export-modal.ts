@@ -2,15 +2,11 @@
  * Export Modal Component
  *
  * Modal dialog for exporting session data as markdown.
- * Allows user to specify the export file path.
+ * Includes a file browser for selecting the export location.
  */
 
 import { state } from '../state';
-import {
-  extractSessionData,
-  formatAsMarkdown,
-  getSuggestedExportPath,
-} from '../utils/markdown-export';
+import { extractSessionData, formatAsMarkdown } from '../utils/markdown-export';
 
 /**
  * Callbacks for export modal operations.
@@ -18,6 +14,25 @@ import {
 export interface ExportModalCallbacks {
   showToast: (message: string, type: 'success' | 'error' | 'info', duration?: number) => void;
   announceStatus: (message: string) => void;
+}
+
+/**
+ * Directory entry from browse API.
+ */
+interface BrowseEntry {
+  name: string;
+  type: 'file' | 'directory';
+}
+
+/**
+ * Response from browse API.
+ */
+interface BrowseResponse {
+  success: boolean;
+  error?: string;
+  path?: string;
+  parent?: string | null;
+  entries?: BrowseEntry[];
 }
 
 /**
@@ -34,6 +49,16 @@ let modalElement: HTMLElement | null = null;
  * Track if modal is currently open.
  */
 let isOpen = false;
+
+/**
+ * Current directory being browsed.
+ */
+let currentDirectory = '';
+
+/**
+ * Parent directory path (for going up).
+ */
+let parentDirectory: string | null = null;
 
 /**
  * Initialize the export modal with callbacks.
@@ -86,22 +111,59 @@ function createModal(): HTMLElement {
   description.className = 'export-modal-description';
   description.textContent = 'Export the current session data as a formatted markdown file.';
 
-  // Path input group
+  // File browser section
+  const browserSection = document.createElement('div');
+  browserSection.className = 'export-browser-section';
+
+  // Browser header with path display
+  const browserHeader = document.createElement('div');
+  browserHeader.className = 'export-browser-header';
+
+  const pathLabel = document.createElement('label');
+  pathLabel.className = 'export-modal-label';
+  pathLabel.textContent = 'Location:';
+
+  const pathDisplay = document.createElement('div');
+  pathDisplay.className = 'export-browser-path';
+  pathDisplay.id = 'export-browser-path';
+
+  browserHeader.appendChild(pathLabel);
+  browserHeader.appendChild(pathDisplay);
+
+  // Browser listing
+  const browserList = document.createElement('div');
+  browserList.className = 'export-browser-list';
+  browserList.id = 'export-browser-list';
+
+  browserSection.appendChild(browserHeader);
+  browserSection.appendChild(browserList);
+
+  // Filename input group
   const inputGroup = document.createElement('div');
   inputGroup.className = 'export-modal-input-group';
 
   const label = document.createElement('label');
   label.className = 'export-modal-label';
-  label.htmlFor = 'export-path-input';
-  label.textContent = 'Save to:';
+  label.htmlFor = 'export-filename-input';
+  label.textContent = 'Filename:';
+
+  const inputWrapper = document.createElement('div');
+  inputWrapper.className = 'export-filename-wrapper';
 
   const input = document.createElement('input');
   input.type = 'text';
-  input.id = 'export-path-input';
+  input.id = 'export-filename-input';
   input.className = 'export-modal-input';
-  input.placeholder = '/path/to/export.md';
+  input.placeholder = 'session-export';
   input.autocomplete = 'off';
   input.spellcheck = false;
+
+  const extension = document.createElement('span');
+  extension.className = 'export-filename-extension';
+  extension.textContent = '.md';
+
+  inputWrapper.appendChild(input);
+  inputWrapper.appendChild(extension);
 
   // Handle Enter key to submit
   input.addEventListener('keydown', (e) => {
@@ -112,10 +174,10 @@ function createModal(): HTMLElement {
 
   const hint = document.createElement('p');
   hint.className = 'export-modal-hint';
-  hint.textContent = 'Path must be absolute and end with .md';
+  hint.textContent = 'Files are saved as markdown (.md)';
 
   inputGroup.appendChild(label);
-  inputGroup.appendChild(input);
+  inputGroup.appendChild(inputWrapper);
   inputGroup.appendChild(hint);
 
   // Session info
@@ -125,6 +187,7 @@ function createModal(): HTMLElement {
   // Will be populated when modal opens
 
   body.appendChild(description);
+  body.appendChild(browserSection);
   body.appendChild(inputGroup);
   body.appendChild(sessionInfo);
 
@@ -160,6 +223,120 @@ function createModal(): HTMLElement {
   });
 
   return backdrop;
+}
+
+/**
+ * Browse a directory and update the file browser UI.
+ */
+async function browseDirectory(path: string): Promise<void> {
+  const listEl = document.getElementById('export-browser-list');
+  const pathEl = document.getElementById('export-browser-path');
+
+  if (!listEl || !pathEl) return;
+
+  // Show loading state
+  listEl.innerHTML = '<div class="export-browser-loading">Loading...</div>';
+
+  try {
+    const response = await fetch(
+      `http://localhost:3355/api/browse?path=${encodeURIComponent(path)}`
+    );
+    const data: BrowseResponse = await response.json();
+
+    if (!data.success) {
+      listEl.innerHTML = `<div class="export-browser-error">${escapeHtml(data.error || 'Failed to browse directory')}</div>`;
+      return;
+    }
+
+    // Update current state
+    currentDirectory = data.path || path;
+    parentDirectory = data.parent || null;
+
+    // Update path display
+    pathEl.textContent = currentDirectory;
+    pathEl.title = currentDirectory;
+
+    // Build list HTML
+    let html = '';
+
+    // Parent directory button
+    if (parentDirectory) {
+      html += `<button class="export-browser-item export-browser-parent" data-path="${escapeAttr(parentDirectory)}" data-type="directory">
+        <span class="export-browser-icon">&#8593;</span>
+        <span class="export-browser-name">..</span>
+      </button>`;
+    }
+
+    // Directory and file entries
+    const entries = data.entries || [];
+    for (const entry of entries) {
+      const fullPath = `${currentDirectory}/${entry.name}`;
+      const icon = entry.type === 'directory' ? '&#128193;' : '&#128196;';
+      const itemClass = entry.type === 'directory' ? 'export-browser-folder' : 'export-browser-file';
+
+      html += `<button class="export-browser-item ${itemClass}" data-path="${escapeAttr(fullPath)}" data-type="${entry.type}" data-name="${escapeAttr(entry.name)}">
+        <span class="export-browser-icon">${icon}</span>
+        <span class="export-browser-name">${escapeHtml(entry.name)}</span>
+      </button>`;
+    }
+
+    if (entries.length === 0 && !parentDirectory) {
+      html += '<div class="export-browser-empty">No folders or .md files</div>';
+    } else if (entries.length === 0) {
+      html += '<div class="export-browser-empty">Empty directory</div>';
+    }
+
+    listEl.innerHTML = html;
+
+    // Add click handlers
+    const items = listEl.querySelectorAll('.export-browser-item');
+    items.forEach((item) => {
+      item.addEventListener('click', handleBrowserItemClick);
+    });
+  } catch (error) {
+    console.error('[Export] Browse error:', error);
+    listEl.innerHTML = '<div class="export-browser-error">Failed to connect to server</div>';
+  }
+}
+
+/**
+ * Handle click on a browser item (folder or file).
+ */
+function handleBrowserItemClick(event: Event): void {
+  const target = event.currentTarget as HTMLElement;
+  const path = target.dataset.path;
+  const type = target.dataset.type;
+  const name = target.dataset.name;
+
+  if (!path) return;
+
+  if (type === 'directory') {
+    // Navigate into directory
+    browseDirectory(path);
+  } else if (type === 'file' && name) {
+    // Select file - set filename (without .md extension)
+    const input = document.getElementById('export-filename-input') as HTMLInputElement;
+    if (input && name.endsWith('.md')) {
+      input.value = name.slice(0, -3);
+      input.focus();
+    }
+  }
+}
+
+/**
+ * Escape HTML special characters.
+ */
+function escapeHtml(str: string): string {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/**
+ * Escape attribute value.
+ */
+function escapeAttr(str: string): string {
+  return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 /**
@@ -204,7 +381,7 @@ function updateSessionInfo(): void {
   html += '</div>';
 
   if (session) {
-    html += `<div class="export-session-name">Session: ${session.workingDirectory || sessionId?.slice(0, 8) || 'unknown'}</div>`;
+    html += `<div class="export-session-name">Session: ${escapeHtml(session.workingDirectory || sessionId?.slice(0, 8) || 'unknown')}</div>`;
   } else if (state.selectedSession === 'all') {
     html += '<div class="export-session-name">Exporting all sessions</div>';
   }
@@ -213,38 +390,55 @@ function updateSessionInfo(): void {
 }
 
 /**
+ * Get the full export path from current directory and filename.
+ */
+function getFullExportPath(): string {
+  const input = document.getElementById('export-filename-input') as HTMLInputElement;
+  if (!input) return '';
+
+  const filename = input.value.trim();
+  if (!filename) return '';
+
+  // Ensure .md extension
+  const fullFilename = filename.endsWith('.md') ? filename : `${filename}.md`;
+
+  return `${currentDirectory}/${fullFilename}`;
+}
+
+/**
  * Handle the export action.
  */
 async function handleExport(): Promise<void> {
-  const input = document.getElementById('export-path-input') as HTMLInputElement;
+  const input = document.getElementById('export-filename-input') as HTMLInputElement;
   const submitBtn = document.getElementById('export-modal-submit') as HTMLButtonElement;
 
   if (!input || !submitBtn) return;
 
-  const path = input.value.trim();
+  const filename = input.value.trim();
 
-  // Validate path
+  // Validate filename
+  if (!filename) {
+    if (callbacks) {
+      callbacks.showToast('Please enter a filename', 'error');
+    }
+    input.focus();
+    return;
+  }
+
+  // Check for invalid characters in filename
+  if (/[/\\:*?"<>|]/.test(filename)) {
+    if (callbacks) {
+      callbacks.showToast('Filename contains invalid characters', 'error');
+    }
+    input.focus();
+    return;
+  }
+
+  const path = getFullExportPath();
   if (!path) {
     if (callbacks) {
-      callbacks.showToast('Please enter a file path', 'error');
+      callbacks.showToast('Invalid export path', 'error');
     }
-    input.focus();
-    return;
-  }
-
-  if (!path.startsWith('/')) {
-    if (callbacks) {
-      callbacks.showToast('Path must be absolute (start with /)', 'error');
-    }
-    input.focus();
-    return;
-  }
-
-  if (!path.endsWith('.md')) {
-    if (callbacks) {
-      callbacks.showToast('File must have .md extension', 'error');
-    }
-    input.focus();
     return;
   }
 
@@ -289,6 +483,39 @@ async function handleExport(): Promise<void> {
 }
 
 /**
+ * Get the initial directory for the file browser.
+ * Uses session working directory if available, otherwise home directory.
+ */
+function getInitialDirectory(): string {
+  const sessionId = state.selectedSession !== 'all' ? state.selectedSession : state.currentSessionId;
+  const session = sessionId ? state.sessions.get(sessionId) : null;
+
+  if (session?.workingDirectory) {
+    return session.workingDirectory;
+  }
+
+  // Fall back to home directory
+  return '~';
+}
+
+/**
+ * Get the suggested filename for export.
+ */
+function getSuggestedFilename(): string {
+  const sessionId = state.selectedSession !== 'all' ? state.selectedSession : state.currentSessionId;
+
+  // Generate timestamp
+  const now = new Date();
+  const timestamp = now.toISOString().split('T')[0];
+
+  if (sessionId && sessionId !== 'all') {
+    return `session-${sessionId.slice(0, 8)}-${timestamp}`;
+  }
+
+  return `thinking-export-${timestamp}`;
+}
+
+/**
  * Open the export modal.
  */
 export function openExportModal(): void {
@@ -300,34 +527,30 @@ export function openExportModal(): void {
     document.body.appendChild(modalElement);
   }
 
-  // Set suggested path
-  const input = document.getElementById('export-path-input') as HTMLInputElement;
+  // Set suggested filename
+  const input = document.getElementById('export-filename-input') as HTMLInputElement;
   if (input) {
-    // Expand ~ to home directory for display
-    let suggestedPath = getSuggestedExportPath();
-    if (suggestedPath.startsWith('~/')) {
-      // We can't expand ~ on the client, but the server will handle it
-      // For now, suggest a path based on session working directory if available
-      const sessionId = state.selectedSession !== 'all' ? state.selectedSession : state.currentSessionId;
-      const session = sessionId ? state.sessions.get(sessionId) : null;
-      if (session?.workingDirectory) {
-        suggestedPath = suggestedPath.replace('~/', session.workingDirectory + '/');
-      }
-    }
-    input.value = suggestedPath;
+    input.value = getSuggestedFilename();
   }
 
   // Update session info
   updateSessionInfo();
 
-  // Show modal
+  // Show modal first (so elements are visible)
   modalElement.classList.add('visible');
   isOpen = true;
 
+  // Browse initial directory
+  const initialDir = getInitialDirectory();
+  browseDirectory(initialDir);
+
   // Focus input for keyboard navigation
   if (input) {
-    input.focus();
-    input.select();
+    // Delay focus to after browse completes
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 100);
   }
 
   // Add escape key handler

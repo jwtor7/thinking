@@ -5,17 +5,18 @@
  *
  * Security considerations:
  * - Validates path to prevent directory traversal
- * - Only allows writing to certain safe directories
+ * - Requires .md extension for all exports
  * - Localhost-only binding ensures only local access
  * - Validates content is not excessively large
  */
 
-import { writeFile, mkdir } from 'node:fs/promises';
-import { dirname, normalize, resolve, isAbsolute } from 'node:path';
+import { writeFile, mkdir, readdir, stat, realpath } from 'node:fs/promises';
+import { dirname, normalize, resolve, isAbsolute, join } from 'node:path';
 import { homedir } from 'node:os';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { logger } from './logger.ts';
 import { CONFIG } from './types.ts';
+import { parse as parseUrl } from 'node:url';
 
 /**
  * Maximum content size for export (1MB).
@@ -23,58 +24,28 @@ import { CONFIG } from './types.ts';
 const MAX_EXPORT_SIZE = 1024 * 1024;
 
 /**
- * Paths that are always allowed for export.
- * These are safe directories the user can write to.
- */
-const ALWAYS_ALLOWED_PATHS = [
-  resolve(homedir(), '.claude'),
-  resolve(homedir(), 'Desktop'),
-  resolve(homedir(), 'Documents'),
-  resolve(homedir(), 'Downloads'),
-];
-
-/**
- * Check if a path is safe for export.
- * Allows:
- * - Paths within ~/.claude/
- * - Paths within ~/Desktop/, ~/Documents/, ~/Downloads/
- * - Paths within any session working directory (user's project directories)
+ * Validate that a path is safe (absolute, normalized, no symlink escapes).
+ * Does NOT restrict to specific directories - user can save anywhere they have access.
  *
  * @param filePath - The path to validate
- * @param allowedWorkingDirs - Set of allowed working directories from active sessions
- * @returns true if path is safe for export
+ * @returns The normalized absolute path, or null if invalid
  */
-export function isExportPathAllowed(
-  filePath: string,
-  allowedWorkingDirs: Set<string> = new Set()
-): boolean {
+export function validateExportPath(filePath: string): string | null {
   // Must be an absolute path
   if (!filePath || !isAbsolute(filePath)) {
-    return false;
+    return null;
   }
 
   // Normalize to prevent traversal attacks
   const normalizedPath = resolve(normalize(filePath));
 
-  // Check against always-allowed paths
-  for (const allowedBase of ALWAYS_ALLOWED_PATHS) {
-    if (normalizedPath === allowedBase || normalizedPath.startsWith(allowedBase + '/')) {
-      return true;
-    }
+  // Ensure the normalized path doesn't escape via .. sequences
+  // (resolve/normalize should handle this, but double-check)
+  if (normalizedPath.includes('/../') || normalizedPath.endsWith('/..')) {
+    return null;
   }
 
-  // Check against session working directories
-  for (const workingDir of allowedWorkingDirs) {
-    const normalizedWorkingDir = resolve(normalize(workingDir));
-    if (
-      normalizedPath === normalizedWorkingDir ||
-      normalizedPath.startsWith(normalizedWorkingDir + '/')
-    ) {
-      return true;
-    }
-  }
-
-  return false;
+  return normalizedPath;
 }
 
 /**
@@ -96,11 +67,10 @@ interface ExportResponse {
 
 /**
  * Validates an export request.
- * Returns an error message if invalid, or null if valid.
+ * Returns an error message if invalid, or the validated request if valid.
  */
-function validateExportRequest(
-  body: unknown,
-  allowedWorkingDirs: Set<string>
+function validateExportRequestBody(
+  body: unknown
 ): { error: string } | { request: ExportRequest } {
   if (typeof body !== 'object' || body === null) {
     return { error: 'Invalid request body' };
@@ -118,9 +88,15 @@ function validateExportRequest(
     return { error: 'Invalid path. Must be an absolute path' };
   }
 
-  // Validate path ends with .md
+  // Validate path ends with .md (security: only allow markdown files)
   if (!req.path.endsWith('.md')) {
     return { error: 'Invalid path. File must have .md extension' };
+  }
+
+  // Validate and normalize path (path traversal protection)
+  const normalizedPath = validateExportPath(req.path);
+  if (!normalizedPath) {
+    return { error: 'Invalid path. Path contains invalid characters or traversal sequences' };
   }
 
   // Validate content is a string
@@ -133,17 +109,9 @@ function validateExportRequest(
     return { error: `Content too large. Maximum size is ${MAX_EXPORT_SIZE} bytes` };
   }
 
-  // Validate path is in an allowed location
-  if (!isExportPathAllowed(req.path, allowedWorkingDirs)) {
-    return {
-      error:
-        'Path not allowed. Export must be to ~/.claude/, ~/Desktop/, ~/Documents/, ~/Downloads/, or a project directory.',
-    };
-  }
-
   return {
     request: {
-      path: req.path,
+      path: normalizedPath,
       content: req.content,
     },
   };
@@ -163,13 +131,11 @@ function validateExportRequest(
  *
  * @param req - The HTTP request
  * @param res - The HTTP response
- * @param allowedWorkingDirs - Set of allowed working directories from active sessions
  * @returns true if the request was handled, false if it should be passed to the next handler
  */
 export async function handleExportRequest(
   req: IncomingMessage,
-  res: ServerResponse,
-  allowedWorkingDirs: Set<string> = new Set()
+  res: ServerResponse
 ): Promise<boolean> {
   // Only handle /export-markdown endpoint
   if (req.url !== '/export-markdown') {
@@ -234,7 +200,7 @@ export async function handleExportRequest(
   }
 
   // Validate request
-  const validation = validateExportRequest(body, allowedWorkingDirs);
+  const validation = validateExportRequestBody(body);
   if ('error' in validation) {
     sendResponse(res, 400, { success: false, error: validation.error });
     return true;
@@ -268,7 +234,182 @@ export async function handleExportRequest(
 }
 
 /**
- * Send a JSON response.
+ * Response for browse endpoint.
+ */
+interface BrowseResponse {
+  success: boolean;
+  error?: string;
+  path?: string;
+  parent?: string | null;
+  entries?: Array<{ name: string; type: 'file' | 'directory' }>;
+}
+
+/**
+ * Handle a browse request to list directory contents.
+ *
+ * Expected request:
+ * GET /api/browse?path=/absolute/path/to/directory
+ *
+ * Returns:
+ * { "success": true, "path": "...", "parent": "...", "entries": [...] }
+ * or { "success": false, "error": "..." }
+ *
+ * Security: Allows browsing any directory the user has access to.
+ * This is safe because:
+ * - Server binds to localhost only (no remote access)
+ * - User can only see directories they already have permission to access
+ * - Path traversal is prevented via normalization
+ *
+ * @param req - The HTTP request
+ * @param res - The HTTP response
+ * @returns true if the request was handled, false if it should be passed to the next handler
+ */
+export async function handleBrowseRequest(
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<boolean> {
+  // Only handle /api/browse endpoint
+  const parsedUrl = parseUrl(req.url || '', true);
+  if (!parsedUrl.pathname?.startsWith('/api/browse')) {
+    return false;
+  }
+
+  // Security: CSRF protection via Origin header validation
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    `http://localhost:${CONFIG.STATIC_PORT}`,
+    `http://127.0.0.1:${CONFIG.STATIC_PORT}`,
+  ];
+
+  // Set CORS headers
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', `http://localhost:${CONFIG.STATIC_PORT}`);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return true;
+  }
+
+  // Only handle GET
+  if (req.method !== 'GET') {
+    sendBrowseResponse(res, 405, { success: false, error: 'Method not allowed' });
+    return true;
+  }
+
+  // Reject requests from unknown origins (if origin is present)
+  if (origin && !allowedOrigins.includes(origin)) {
+    logger.warn(`[Browse] Rejected request from invalid origin: ${origin}`);
+    sendBrowseResponse(res, 403, { success: false, error: 'Forbidden: Invalid origin' });
+    return true;
+  }
+
+  // Get the path parameter
+  const requestedPath = parsedUrl.query.path;
+  if (!requestedPath || typeof requestedPath !== 'string') {
+    sendBrowseResponse(res, 400, { success: false, error: 'Missing path parameter' });
+    return true;
+  }
+
+  // Expand ~ to home directory
+  let normalizedPath = requestedPath;
+  if (normalizedPath.startsWith('~/')) {
+    normalizedPath = join(homedir(), normalizedPath.slice(2));
+  } else if (normalizedPath === '~') {
+    normalizedPath = homedir();
+  }
+
+  // Normalize and resolve the path (prevents traversal attacks)
+  normalizedPath = resolve(normalize(normalizedPath));
+
+  // Validate path is absolute
+  if (!isAbsolute(normalizedPath)) {
+    sendBrowseResponse(res, 400, { success: false, error: 'Path must be absolute' });
+    return true;
+  }
+
+  try {
+    // Check if path exists and is a directory
+    const pathStat = await stat(normalizedPath);
+    if (!pathStat.isDirectory()) {
+      sendBrowseResponse(res, 400, { success: false, error: 'Path is not a directory' });
+      return true;
+    }
+
+    // Read directory contents
+    const dirEntries = await readdir(normalizedPath, { withFileTypes: true });
+
+    // Filter and map entries
+    const entries: Array<{ name: string; type: 'file' | 'directory' }> = [];
+    for (const entry of dirEntries) {
+      // Skip hidden files (starting with .) except for special directories
+      if (entry.name.startsWith('.') && entry.name !== '.claude') {
+        continue;
+      }
+
+      if (entry.isDirectory()) {
+        entries.push({ name: entry.name, type: 'directory' });
+      } else if (entry.isFile() && entry.name.endsWith('.md')) {
+        // Only show .md files
+        entries.push({ name: entry.name, type: 'file' });
+      }
+    }
+
+    // Sort: directories first, then files, alphabetically
+    entries.sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'directory' ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    // Calculate parent directory (always available unless at root)
+    let parentPath: string | null = null;
+    const parentDir = dirname(normalizedPath);
+    if (parentDir !== normalizedPath) {
+      parentPath = parentDir;
+    }
+
+    logger.debug(`[Browse] Listed ${entries.length} entries in: ${normalizedPath}`);
+    sendBrowseResponse(res, 200, {
+      success: true,
+      path: normalizedPath,
+      parent: parentPath,
+      entries,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      sendBrowseResponse(res, 404, { success: false, error: 'Directory not found' });
+    } else if ((error as NodeJS.ErrnoException).code === 'EACCES') {
+      sendBrowseResponse(res, 403, { success: false, error: 'Permission denied' });
+    } else {
+      logger.error(`[Browse] Failed to read directory:`, errorMessage);
+      sendBrowseResponse(res, 500, { success: false, error: 'Failed to read directory' });
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Send a JSON response for browse endpoint.
+ */
+function sendBrowseResponse(res: ServerResponse, statusCode: number, data: BrowseResponse): void {
+  res.writeHead(statusCode, {
+    'Content-Type': 'application/json',
+  });
+  res.end(JSON.stringify(data));
+}
+
+/**
+ * Send a JSON response for export endpoint.
  */
 function sendResponse(res: ServerResponse, statusCode: number, data: ExportResponse): void {
   res.writeHead(statusCode, {

@@ -1,11 +1,22 @@
 # Changelog
 
+## [0.16.3] - 2026-01-10
+
+### Added
+- **File browser in export modal** - Navigate directories, click folders to enter, click ".." to go up, click existing .md files to select
+- **Filename input** - Just type the filename, directory comes from the browser
+
+### Changed
+- **Export anywhere** - Removed directory restrictions; can now save .md files to any location you have write access to
+- **Smarter defaults** - Export modal opens to session's working directory with suggested filename based on session ID
+
+---
+
 ## [0.16.2] - 2026-01-10
 
 ### Added
 - **Export as Markdown** - New export button in header (or `Cmd+E`) opens a modal to save the current session as a formatted markdown file
 - **Export modal** - Shows session stats (thinking blocks, tools, todos) and allows specifying the save path
-- **Secure path validation** - Export only allows writing to safe directories (`~/.claude/`, `~/Desktop/`, `~/Documents/`, `~/Downloads/`, or session working directory)
 
 ---
 
