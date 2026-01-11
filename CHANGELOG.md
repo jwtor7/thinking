@@ -12,6 +12,9 @@
 - **Gear icon relocated** - Panel settings gear moved from header to view tabs row (right-aligned)
 - **Streamlined header** - Flexbox spacer pushes theme toggle to right; cleaner control layout
 
+### Fixed
+- **Cross-session agent attribution** - Fixed bug where thinking/tool entries from one session were incorrectly attributed to another session's subagents; now validates agent context belongs to current session before using it
+
 ---
 
 ## [0.17.1] - 2026-01-11
