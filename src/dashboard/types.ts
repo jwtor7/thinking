@@ -24,6 +24,8 @@ export type {
   PlanDeleteEvent,
   PlanListEvent,
   ConnectionStatusEvent,
+  SubagentMappingEvent,
+  SubagentMappingInfo,
   HookExecutionEvent,
   HookType,
   HookDecision,

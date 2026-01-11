@@ -3,7 +3,7 @@
  * Handles session, thinking, tools, and hooks filtering with count updates.
  */
 
-import { state } from '../state';
+import { state, subagentState } from '../state';
 import { elements } from './elements';
 import { filterAllHooks, updateHooksCount } from '../handlers/hooks';
 
@@ -37,11 +37,32 @@ export function filterAllBySession(): void {
 
 /**
  * Apply session filter to a single entry element.
- * Also considers text filter.
+ * Also considers text filter and subagent parent relationships.
  */
 export function applySessionFilter(entry: HTMLElement): void {
   const entrySession = entry.dataset.session || '';
-  const matchesSession = state.selectedSession === 'all' || entrySession === state.selectedSession;
+  const parentSession = entry.dataset.parentSession || '';
+
+  // Session matching: also include entries from subagents when parent session is selected
+  let matchesSession = false;
+  if (state.selectedSession === 'all') {
+    matchesSession = true;
+  } else if (entrySession === state.selectedSession) {
+    // Direct session match
+    matchesSession = true;
+  } else if (parentSession === state.selectedSession) {
+    // This entry's parent session matches the selected session
+    matchesSession = true;
+  } else {
+    // Check if this entry's agent is a subagent of the selected session
+    const agentId = entry.dataset.agent;
+    if (agentId) {
+      const subagent = subagentState.subagents.get(agentId);
+      if (subagent && subagent.parentSessionId === state.selectedSession) {
+        matchesSession = true;
+      }
+    }
+  }
 
   // Check if this is a thinking entry or tool entry
   const isThinkingEntry = entry.classList.contains('thinking-entry');
@@ -84,7 +105,28 @@ export function getShortSessionId(sessionId: string | undefined): string {
 export function applyThinkingFilter(entry: HTMLElement): void {
   const content = entry.dataset.content || '';
   const matchesText = !state.thinkingFilter || content.includes(state.thinkingFilter.toLowerCase());
-  const sessionMatches = state.selectedSession === 'all' || entry.dataset.session === state.selectedSession;
+
+  // Session matching: also include subagent thinking when parent session is selected
+  let sessionMatches = false;
+  if (state.selectedSession === 'all') {
+    sessionMatches = true;
+  } else if (entry.dataset.session === state.selectedSession) {
+    // Direct session match
+    sessionMatches = true;
+  } else if (entry.dataset.parentSession === state.selectedSession) {
+    // This is subagent thinking whose parent session is selected
+    sessionMatches = true;
+  } else {
+    // Check if this entry's agent is a subagent of the selected session
+    const agentId = entry.dataset.agent;
+    if (agentId) {
+      const subagent = subagentState.subagents.get(agentId);
+      if (subagent && subagent.parentSessionId === state.selectedSession) {
+        sessionMatches = true;
+      }
+    }
+  }
+
   entry.style.display = (matchesText && sessionMatches) ? '' : 'none';
 }
 

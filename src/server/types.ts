@@ -191,6 +191,7 @@ export function isMonitorEvent(obj: unknown): obj is MonitorEvent {
     'plan_delete',
     'plan_list',
     'hook_execution',
+    'subagent_mapping',
     'connection_status',
   ];
 

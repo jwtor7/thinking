@@ -141,6 +141,12 @@ async function main(): Promise<void> {
       });
     }
 
+    // Send current subagent mappings
+    const subagentMappingEvent = eventReceiver.createSubagentMappingEvent();
+    if (subagentMappingEvent.mappings.length > 0) {
+      sendEvent(subagentMappingEvent);
+    }
+
     // Send the list of all available plans
     const planListEvent = planWatcher.getPlanListEvent();
     if (planListEvent.plans.length > 0) {
@@ -179,6 +185,7 @@ async function main(): Promise<void> {
 
     planWatcher.stop();
     transcriptWatcher.stop();
+    eventReceiver.destroy();
     hub.close();
     await staticServer.stop();
 

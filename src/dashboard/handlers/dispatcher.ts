@@ -1,10 +1,10 @@
 import { state } from '../state';
 import { elements } from '../ui/elements';
 import type { StrictMonitorEvent, ConnectionStatusEvent } from '../types';
-import { trackSession, handleSessionStart, handleSessionStop, updateSessionActivity } from './sessions';
+import { trackSession, handleSessionStart, handleSessionStop, updateSessionActivity, updateSessionFilter } from './sessions';
 import { handleThinking } from './thinking';
 import { handleToolStart, handleToolEnd } from './tools';
-import { handleAgentStart, handleAgentStop } from './agents';
+import { handleAgentStart, handleAgentStop, handleSubagentMapping } from './agents';
 import { handlePlanList, handlePlanUpdate, handlePlanDelete } from './plans.js';
 import { handleHookExecution } from './hooks.js';
 
@@ -79,6 +79,11 @@ export function handleEvent(event: StrictMonitorEvent): void {
       if (event.sessionId) {
         updateSessionActivity(event.sessionId);
       }
+      break;
+    case 'subagent_mapping':
+      handleSubagentMapping(event);
+      // Update session filter to show subagent indicators
+      updateSessionFilter();
       break;
     default:
       console.log('[Dashboard] Unhandled event type:', event.type);

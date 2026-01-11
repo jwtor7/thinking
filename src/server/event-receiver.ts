@@ -12,9 +12,11 @@ import {
   truncatePayload,
   CONFIG,
 } from './types.ts';
+import type { SubagentMappingEvent, SubagentMappingInfo } from '../shared/types.ts';
 import { redactSecrets } from './secrets.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
 import { RateLimiter, type RateLimiterConfig } from './rate-limiter.ts';
+import { SubagentMapper } from './subagent-mapper.ts';
 import { logger } from './logger.ts';
 
 /**
@@ -36,6 +38,8 @@ export class EventReceiver {
   private toolStartTimes: Map<string, number> = new Map();
   /** Max age for pending tool starts (5 minutes) */
   private readonly TOOL_START_TTL_MS = 5 * 60 * 1000;
+  /** Subagent mapper for tracking parent-child relationships */
+  private subagentMapper: SubagentMapper;
 
   constructor(hub: WebSocketHub, rateLimitConfig?: Partial<RateLimiterConfig>) {
     this.hub = hub;
@@ -43,6 +47,7 @@ export class EventReceiver {
       ...DEFAULT_EVENT_RATE_LIMIT,
       ...rateLimitConfig,
     });
+    this.subagentMapper = new SubagentMapper();
     // Periodically clean up stale tool start times
     setInterval(() => this.cleanupStaleToolStarts(), 60000);
   }
@@ -60,10 +65,71 @@ export class EventReceiver {
   }
 
   /**
-   * Clean up resources (rate limiter timer, etc.).
+   * Clean up resources (rate limiter timer, subagent mapper, etc.).
    */
   destroy(): void {
     this.rateLimiter.destroy();
+    this.subagentMapper.destroy();
+  }
+
+  /**
+   * Get all current subagent mappings.
+   * Used by server to send initial state to new clients.
+   */
+  getSubagentMappings(): SubagentMappingInfo[] {
+    return this.subagentMapper.getAllMappings();
+  }
+
+  /**
+   * Create a subagent_mapping event with current mappings.
+   */
+  createSubagentMappingEvent(): SubagentMappingEvent {
+    return {
+      type: 'subagent_mapping',
+      timestamp: new Date().toISOString(),
+      mappings: this.subagentMapper.getAllMappings(),
+    };
+  }
+
+  /**
+   * Process agent lifecycle events and update subagent mappings.
+   * Broadcasts mapping changes to all clients.
+   */
+  private processAgentEvent(event: MonitorEvent): void {
+    if (event.type === 'agent_start') {
+      const agentId = event.agentId as string;
+      const agentName = (event.agentName as string) || agentId.slice(0, 8);
+      // The sessionId in agent_start is the parent session ID
+      const parentSessionId = event.sessionId;
+
+      if (agentId && parentSessionId) {
+        this.subagentMapper.registerSubagent(
+          agentId,
+          parentSessionId,
+          agentName,
+          event.timestamp
+        );
+        // Broadcast updated mappings to all clients
+        this.hub.broadcast(this.createSubagentMappingEvent());
+      }
+    } else if (event.type === 'agent_stop') {
+      const agentId = event.agentId as string;
+      const status = (event.status as 'success' | 'failure' | 'cancelled') || 'success';
+
+      if (agentId) {
+        this.subagentMapper.stopSubagent(agentId, status, event.timestamp);
+        // Broadcast updated mappings to all clients
+        this.hub.broadcast(this.createSubagentMappingEvent());
+      }
+    } else if (event.type === 'session_stop') {
+      // Clean up all subagents when parent session stops
+      const sessionId = event.sessionId;
+      if (sessionId) {
+        this.subagentMapper.cleanupSessionSubagents(sessionId);
+        // Broadcast updated mappings to all clients
+        this.hub.broadcast(this.createSubagentMappingEvent());
+      }
+    }
   }
 
   /**
@@ -146,6 +212,9 @@ export class EventReceiver {
 
       // Track tool timing for duration calculation
       event = this.processToolTiming(event);
+
+      // Process agent lifecycle events for subagent tracking
+      this.processAgentEvent(event);
 
       // Broadcast to connected WebSocket clients
       this.hub.broadcast(event);

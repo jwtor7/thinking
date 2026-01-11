@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.17.0] - 2026-01-11
+
+### Added
+- **Subagent thinking display** - When Claude spawns subagents (code-implementer, haiku-general-agent, etc.), their thinking is now shown in the dashboard
+- **Subagent session nesting** - Session filter shows subagents nested under their parent sessions with tree-line indicators
+- **Subagent count indicator** - Sessions with active subagents show a purple badge with the subagent count
+- **Subagent thinking badges** - Thinking entries from subagents display a purple badge with the agent name
+- **Parent session filtering** - Selecting a session automatically includes thinking from its subagents
+- **Server-side subagent mapping** - SubagentMapper tracks parent-child relationships with 5-minute cleanup grace period
+
+---
+
 ## [0.16.9] - 2026-01-11
 
 ### Added

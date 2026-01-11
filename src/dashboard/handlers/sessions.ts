@@ -5,14 +5,14 @@
  * Sessions represent individual Claude Code CLI instances connected to the monitor.
  */
 
-import { state } from '../state';
+import { state, subagentState } from '../state';
 import { elements } from '../ui/elements';
 import { escapeHtml } from '../utils/html';
-import { getSessionColorByFolder } from '../ui/colors';
+import { getSessionColorByFolder, getAgentColor } from '../ui/colors';
 import { filterAllBySession } from '../ui/filters';
 import { rebuildResizers } from '../ui/resizer';
 import { updateSessionViewTabs } from '../ui/views';
-import type { SessionStartEvent, SessionStopEvent } from '../types';
+import type { SessionStartEvent, SessionStopEvent, SubagentMappingInfo } from '../types';
 
 // ============================================
 // Activity Tracking Constants
@@ -297,7 +297,7 @@ export function updateSessionFilter(): void {
     return folderA.localeCompare(folderB);
   });
 
-  // Individual session badges
+  // Individual session badges with nested subagents
   for (const [sessionId, session] of sortedSessions) {
     const displayName = getSessionDisplayName(session.workingDirectory, sessionId);
     const isActive = state.selectedSession === sessionId ? 'active' : '';
@@ -311,8 +311,15 @@ export function updateSessionFilter(): void {
       ? `<span class="session-close-btn" data-session="${escapeHtml(sessionId)}" title="Clear session">&times;</span>`
       : '';
 
+    // Check if this session has subagents
+    const subagentIds = subagentState.sessionSubagents.get(sessionId);
+    const hasSubagents = subagentIds && subagentIds.size > 0;
+    const subagentIndicator = hasSubagents
+      ? `<span class="session-subagent-indicator" title="${subagentIds.size} subagent(s)">${subagentIds.size}</span>`
+      : '';
+
     // Build class list
-    const classes = ['session-filter-badge', isActive, isOnline, isPulsing]
+    const classes = ['session-filter-badge', isActive, isOnline, isPulsing, hasSubagents ? 'has-subagents' : '']
       .filter(Boolean)
       .join(' ') + (showClearBtn ? ' has-close' : '');
 
@@ -322,8 +329,33 @@ export function updateSessionFilter(): void {
       data-session-id="${escapeHtml(sessionId)}"
       data-session-path="${escapeHtml(session.workingDirectory || '')}">
       <span class="session-filter-dot" style="background: ${session.color}"></span>
-      ${escapeHtml(displayName)}${clearBtnHtml}
+      ${escapeHtml(displayName)}${subagentIndicator}${clearBtnHtml}
     </button>`;
+
+    // Add nested subagent badges
+    if (hasSubagents) {
+      for (const agentId of subagentIds) {
+        const subagent = subagentState.subagents.get(agentId);
+        if (!subagent) continue;
+
+        const subagentName = subagent.agentName || agentId.slice(0, 8);
+        const agentColor = getAgentColor(subagentName);
+        const subagentIsRunning = subagent.status === 'running';
+        const subagentClasses = ['session-filter-badge', 'subagent-badge', subagentIsRunning ? 'pulsing' : '']
+          .filter(Boolean)
+          .join(' ');
+
+        // Subagent badge shows tree line indicator
+        html += `<button class="${subagentClasses}"
+          data-session="${escapeHtml(sessionId)}"
+          data-agent="${escapeHtml(agentId)}"
+          title="Subagent: ${escapeHtml(subagentName)} (${escapeHtml(subagent.status)})">
+          <span class="subagent-tree-line"></span>
+          <span class="session-filter-dot" style="background: ${agentColor}"></span>
+          ${escapeHtml(subagentName)}
+        </button>`;
+      }
+    }
   }
 
   html += '</div>';

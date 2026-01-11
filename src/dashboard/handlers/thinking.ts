@@ -8,7 +8,7 @@
  */
 
 import type { ThinkingEvent } from '../types';
-import { state } from '../state';
+import { state, subagentState } from '../state';
 import { elements } from '../ui/elements';
 import { formatTime } from '../utils/formatting';
 import { escapeHtml, escapeCssValue } from '../utils/html';
@@ -98,12 +98,21 @@ export function handleThinking(event: ThinkingEvent): void {
     emptyState.remove();
   }
 
+  // Check if this is from a subagent
+  const subagentMapping = eventAgentId ? subagentState.subagents.get(eventAgentId) : undefined;
+  const isSubagentThinking = !!subagentMapping;
+  const parentSessionId = subagentMapping?.parentSessionId;
+
   // Create thinking entry (non-collapsible, always expanded)
   const entry = document.createElement('div');
-  entry.className = 'thinking-entry new';
+  entry.className = isSubagentThinking ? 'thinking-entry subagent-entry new' : 'thinking-entry new';
   entry.dataset.agent = agentId;
   entry.dataset.session = sessionId || '';
   entry.dataset.content = content.toLowerCase(); // For filtering
+  // Track parent session for subagent filtering
+  if (parentSessionId) {
+    entry.dataset.parentSession = parentSessionId;
+  }
 
   // Get folder name for folder badge
   const session = state.sessions.get(sessionId || '');
@@ -122,6 +131,11 @@ export function handleThinking(event: ThinkingEvent): void {
     ? `<span class="entry-session-badge" style="background: ${escapeCssValue(getSessionColorByHash(sessionId))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>`
     : '';
 
+  // Subagent badge - show when this thinking is from a subagent
+  const subagentBadge = isSubagentThinking
+    ? `<span class="entry-subagent-badge" title="Subagent thinking">${escapeHtml(subagentMapping.agentName)}</span>`
+    : '';
+
   // Get agent color for visual distinction
   const agentColor = getAgentColor(agentDisplayName);
 
@@ -130,6 +144,7 @@ export function handleThinking(event: ThinkingEvent): void {
       <span class="thinking-time">${escapeHtml(time)}</span>
       ${folderBadge}
       ${sessionBadge}
+      ${subagentBadge}
       <span class="thinking-agent" style="color: ${escapeCssValue(agentColor)}">${escapeHtml(agentDisplayName)}</span>
       <span class="thinking-preview">${escapeHtml(preview)}...</span>
     </div>

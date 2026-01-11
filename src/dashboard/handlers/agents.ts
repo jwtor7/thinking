@@ -1,7 +1,7 @@
-import { state, agentContextStack, agentContextTimestamps } from '../state';
+import { state, agentContextStack, agentContextTimestamps, subagentState } from '../state';
 import { elements } from '../ui/elements';
 import { MAX_AGENT_STACK_SIZE, AGENT_STACK_STALE_MS, AGENT_STACK_CLEANUP_INTERVAL_MS } from '../config';
-import type { AgentStartEvent, AgentStopEvent, AgentInfo } from '../types';
+import type { AgentStartEvent, AgentStopEvent, AgentInfo, SubagentMappingEvent, SubagentMappingInfo } from '../types';
 
 /**
  * Handles agent start events
@@ -46,6 +46,73 @@ function handleAgentStop(event: AgentStopEvent): void {
     popAgentContext(agentId);
     renderAgentTree();
   }
+}
+
+/**
+ * Handles subagent_mapping events from the server.
+ * Updates the subagent state with parent-child relationships.
+ */
+function handleSubagentMapping(event: SubagentMappingEvent): void {
+  // Clear existing mappings
+  subagentState.subagents.clear();
+  subagentState.sessionSubagents.clear();
+
+  // Populate with new mappings
+  for (const mapping of event.mappings) {
+    // Store subagent info
+    subagentState.subagents.set(mapping.agentId, mapping);
+
+    // Update session -> subagents index
+    let subagents = subagentState.sessionSubagents.get(mapping.parentSessionId);
+    if (!subagents) {
+      subagents = new Set();
+      subagentState.sessionSubagents.set(mapping.parentSessionId, subagents);
+    }
+    subagents.add(mapping.agentId);
+  }
+
+  console.log(
+    `[Dashboard] Subagent mappings updated: ${event.mappings.length} subagent(s)`
+  );
+}
+
+/**
+ * Check if an agentId is a subagent (has a parent session).
+ */
+function isSubagent(agentId: string | undefined): boolean {
+  if (!agentId) return false;
+  return subagentState.subagents.has(agentId);
+}
+
+/**
+ * Get the parent session ID for a subagent.
+ */
+function getParentSession(agentId: string): string | undefined {
+  return subagentState.subagents.get(agentId)?.parentSessionId;
+}
+
+/**
+ * Get all subagent IDs for a session.
+ */
+function getSessionSubagentIds(sessionId: string): Set<string> {
+  return subagentState.sessionSubagents.get(sessionId) || new Set();
+}
+
+/**
+ * Get all subagent mappings for a session.
+ */
+function getSessionSubagents(sessionId: string): SubagentMappingInfo[] {
+  const agentIds = subagentState.sessionSubagents.get(sessionId);
+  if (!agentIds) return [];
+
+  const result: SubagentMappingInfo[] = [];
+  for (const agentId of agentIds) {
+    const mapping = subagentState.subagents.get(agentId);
+    if (mapping) {
+      result.push(mapping);
+    }
+  }
+  return result;
 }
 
 /**
@@ -162,10 +229,15 @@ window.addEventListener('beforeunload', () => {
 export {
   handleAgentStart,
   handleAgentStop,
+  handleSubagentMapping,
   findActiveAgent,
   getCurrentAgentContext,
   pushAgentContext,
   popAgentContext,
   cleanupStaleAgentContexts,
   getAgentDisplayName,
+  isSubagent,
+  getParentSession,
+  getSessionSubagentIds,
+  getSessionSubagents,
 };

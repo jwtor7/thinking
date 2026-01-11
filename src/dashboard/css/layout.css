@@ -309,6 +309,71 @@ body.keyboard-mode .view-tab-shortcut {
 }
 
 /* ========================================
+   Subagent Badge in Session Filter
+   ======================================== */
+
+/* Subagent count indicator on parent session */
+.session-subagent-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 600;
+  background: var(--color-accent-purple, #a855f7);
+  color: white;
+}
+
+/* Subagent badge styling */
+.session-filter-badge.subagent-badge {
+  margin-left: 16px;
+  font-size: var(--font-size-xs);
+  opacity: 0.85;
+  position: relative;
+}
+
+.session-filter-badge.subagent-badge:hover {
+  opacity: 1;
+}
+
+/* Tree line indicator for nested subagents */
+.subagent-tree-line {
+  position: relative;
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 2px;
+}
+
+.subagent-tree-line::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 8px;
+  height: 1px;
+  background: var(--color-text-muted);
+}
+
+.subagent-tree-line::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -6px;
+  width: 1px;
+  height: 12px;
+  background: var(--color-text-muted);
+}
+
+/* Parent session with subagents indicator */
+.session-filter-badge.has-subagents {
+  border-color: var(--color-accent-purple, #a855f7);
+}
+
+/* ========================================
    Session Tooltip
    ======================================== */
 

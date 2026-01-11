@@ -419,3 +419,39 @@
   background: rgba(248, 81, 73, 0.2);
   color: var(--color-accent-red);
 }
+
+/* ========================================
+   Subagent Thinking Entry
+   ======================================== */
+
+.thinking-entry.subagent-entry {
+  border-left: 3px solid var(--color-accent-purple, #a855f7);
+  margin-left: 8px;
+  background: var(--color-surface-1, var(--color-bg-secondary));
+}
+
+.thinking-entry.subagent-entry:hover {
+  background: var(--color-surface-2, var(--color-bg-tertiary));
+}
+
+/* Subagent badge in entry header */
+.entry-subagent-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 4px;
+  margin-right: 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-family: var(--font-family-mono);
+  font-weight: 500;
+  background: var(--color-accent-purple, #a855f7);
+  color: white;
+  cursor: default;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.entry-subagent-badge:hover {
+  opacity: 1;
+}

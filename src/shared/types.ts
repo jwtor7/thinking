@@ -26,6 +26,8 @@ export type MonitorEventType =
   | 'plan_list'
   // Hook execution events (from PreToolUse/PostToolUse/Stop/UserPromptSubmit hooks)
   | 'hook_execution'
+  // Subagent mapping events (for parent-child relationship tracking)
+  | 'subagent_mapping'
   // Connection status (internal)
   | 'connection_status';
 
@@ -178,6 +180,29 @@ export interface ConnectionStatusEvent extends MonitorEventBase {
   clientCount: number;
 }
 
+/** Subagent mapping info for client consumption */
+export interface SubagentMappingInfo {
+  /** Unique subagent identifier */
+  agentId: string;
+  /** Session ID of the parent session that spawned this subagent */
+  parentSessionId: string;
+  /** Human-readable agent name */
+  agentName: string;
+  /** ISO 8601 timestamp when the subagent started */
+  startTime: string;
+  /** Current status of the subagent */
+  status: 'running' | 'success' | 'failure' | 'cancelled';
+  /** ISO 8601 timestamp when the subagent stopped (if stopped) */
+  endTime?: string;
+}
+
+/** Subagent mapping event - sent on connect and when mappings change */
+export interface SubagentMappingEvent extends MonitorEventBase {
+  type: 'subagent_mapping';
+  /** All current subagent mappings */
+  mappings: SubagentMappingInfo[];
+}
+
 /** Hook type identifiers */
 export type HookType =
   | 'PreToolUse'
@@ -229,6 +254,7 @@ export type StrictMonitorEvent =
   | PlanDeleteEvent
   | PlanListEvent
   | ConnectionStatusEvent
+  | SubagentMappingEvent
   | HookExecutionEvent;
 
 /**

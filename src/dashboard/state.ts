@@ -4,7 +4,27 @@
  * Centralized state for the Thinking Monitor dashboard.
  */
 
-import { AppState, AgentContextStack } from './types';
+import { AppState, AgentContextStack, SubagentMappingInfo } from './types';
+
+/**
+ * Subagent tracking state.
+ * Separate from AppState to avoid modifying the interface.
+ */
+export interface SubagentState {
+  /** agentId -> SubagentMappingInfo */
+  subagents: Map<string, SubagentMappingInfo>;
+  /** parentSessionId -> Set<agentId> */
+  sessionSubagents: Map<string, Set<string>>;
+}
+
+/**
+ * Global subagent state.
+ * Tracks parent-child relationships between sessions and subagents.
+ */
+export const subagentState: SubagentState = {
+  subagents: new Map(),
+  sessionSubagents: new Map(),
+};
 
 /**
  * Global application state.
