@@ -5,12 +5,12 @@
  * Allows users to show/hide individual panels (Thinking, Tools, Todo, Plan).
  */
 
-import { state } from '../state';
-import { PanelVisibility } from '../types';
-import { elements } from './elements';
-import { savePanelVisibility } from '../storage/persistence';
-import { rebuildResizers } from './resizer';
-import { applyViewFilter } from './views';
+import { state } from '../state.ts';
+import { PanelVisibility } from '../types.ts';
+import { elements } from './elements.ts';
+import { savePanelVisibility } from '../storage/persistence.ts';
+import { rebuildResizers } from './resizer.ts';
+import { applyViewFilter } from './views.ts';
 
 /**
  * Panel names mapped to their display labels.

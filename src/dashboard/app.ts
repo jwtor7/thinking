@@ -15,15 +15,15 @@
  * - Improved responsiveness
  */
 
-import { state, agentContextStack, agentContextTimestamps } from './state';
+import { state, agentContextStack, agentContextTimestamps } from './state.ts';
 
 import {
   MAX_ENTRIES,
   SCROLL_THRESHOLD,
   STORAGE_KEY_TODOS,
-} from './config';
+} from './config.ts';
 
-import { elements } from './ui/elements';
+import { elements } from './ui/elements.ts';
 
 import {
   restoreTodosFromStorage,
@@ -31,48 +31,48 @@ import {
   restorePanelVisibility,
   loadSessionPlanAssociations,
   loadThemePreference,
-} from './storage/persistence';
+} from './storage/persistence.ts';
 
-import { initThemeToggle } from './ui/theme-toggle';
+import { initThemeToggle } from './ui/theme-toggle.ts';
 
 import {
   initWebSocket,
   connect,
   retryNow,
-} from './connection/websocket';
+} from './connection/websocket.ts';
 
 import {
   ViewType,
   initViews,
   initViewTabs,
   updateSessionViewTabs,
-} from './ui/views';
+} from './ui/views.ts';
 import {
   initPanels,
   initPanelCollapseButtons,
-} from './ui/panels';
-import { initResizers } from './ui/resizer';
-import { initDragReorder } from './ui/drag-reorder';
+} from './ui/panels.ts';
+import { initResizers } from './ui/resizer.ts';
+import { initDragReorder } from './ui/drag-reorder.ts';
 import {
   filterAllThinking,
   filterAllTools,
-} from './ui/filters';
-import { initKeyboard } from './ui/keyboard';
+} from './ui/filters.ts';
+import { initKeyboard } from './ui/keyboard.ts';
 import {
   initPanelSelector,
   togglePanelSelector,
   applyAllPanelVisibility,
-} from './ui/panel-selector';
+} from './ui/panel-selector.ts';
 
 // Import handler modules
-import { handleEvent } from './handlers/dispatcher';
-import { initThinking } from './handlers/thinking';
-import { initTools } from './handlers/tools';
+import { handleEvent } from './handlers/dispatcher.ts';
+import { initThinking } from './handlers/thinking.ts';
+import { initTools } from './handlers/tools.ts';
 import {
   getCurrentAgentContext,
   getAgentDisplayName,
   findActiveAgent,
-} from './handlers/agents';
+} from './handlers/agents.ts';
 import {
   initSessions,
   updateSessionFilter,
@@ -80,8 +80,8 @@ import {
   updateStatusBarSession,
   hideSessionContextMenu,
   handleRevealSessionInFinder,
-} from './handlers/sessions';
-import { initTooltip } from './ui/tooltip';
+} from './handlers/sessions.ts';
+import { initTooltip } from './ui/tooltip.ts';
 import {
   initPlans,
   displayPlan,
@@ -96,7 +96,7 @@ import {
   handlePlanContextMenu,
   handleContextMenuOpen,
   handleContextMenuReveal,
-} from './handlers/plans';
+} from './handlers/plans.ts';
 import {
   initTodos,
   detectPlanAccess,
@@ -104,13 +104,13 @@ import {
   updateTodosForCurrentSession,
   clearSessionTodos,
   renderTodoPanel,
-} from './handlers/todos';
-import { initHooks } from './handlers/hooks.js';
+} from './handlers/todos.ts';
+import { initHooks } from './handlers/hooks.ts';
 import {
   initExportModal,
   updateExportButtonState,
   tryOpenExportModal,
-} from './ui/export-modal';
+} from './ui/export-modal.ts';
 
 // ============================================
 // Accessibility Helpers

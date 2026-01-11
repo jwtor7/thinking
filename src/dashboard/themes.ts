@@ -5,7 +5,7 @@
  * Themes are applied by updating CSS custom properties on document.documentElement.
  */
 
-import { resetColorCache } from './ui/colors';
+import { resetColorCache } from './ui/colors.ts';
 
 // ============================================
 // Types

@@ -6,7 +6,7 @@
  * Dynamically rebuilds resizers when panel visibility changes.
  */
 
-import { elements } from './elements';
+import { elements } from './elements.ts';
 
 interface ResizeState {
   isResizing: boolean;

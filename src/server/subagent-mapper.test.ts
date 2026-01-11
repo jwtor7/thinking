@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SubagentMapper } from './subagent-mapper';
+import { SubagentMapper } from './subagent-mapper.ts';
 
 describe('SubagentMapper', () => {
   let mapper: SubagentMapper;

@@ -29,7 +29,7 @@ export type {
   HookExecutionEvent,
   HookType,
   HookDecision,
-} from '../shared/types.js';
+} from '../shared/types.ts';
 
 // ============================================
 // Theme Types

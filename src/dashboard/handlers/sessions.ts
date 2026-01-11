@@ -5,14 +5,14 @@
  * Sessions represent individual Claude Code CLI instances connected to the monitor.
  */
 
-import { state, subagentState } from '../state';
-import { elements } from '../ui/elements';
-import { escapeHtml } from '../utils/html';
-import { getSessionColorByFolder, getAgentColor } from '../ui/colors';
-import { filterAllBySession } from '../ui/filters';
-import { rebuildResizers } from '../ui/resizer';
-import { updateSessionViewTabs } from '../ui/views';
-import type { SessionStartEvent, SessionStopEvent, SubagentMappingInfo } from '../types';
+import { state, subagentState } from '../state.ts';
+import { elements } from '../ui/elements.ts';
+import { escapeHtml } from '../utils/html.ts';
+import { getSessionColorByFolder, getAgentColor } from '../ui/colors.ts';
+import { filterAllBySession } from '../ui/filters.ts';
+import { rebuildResizers } from '../ui/resizer.ts';
+import { updateSessionViewTabs } from '../ui/views.ts';
+import type { SessionStartEvent, SessionStopEvent } from '../types.ts';
 
 // ============================================
 // Activity Tracking Constants
@@ -606,6 +606,7 @@ function findMostRecentActiveSession(): { id: string; session: typeof state.sess
 
 /**
  * Update the status bar with the most recently active session.
+ * Shows folder name as primary identifier with full session ID in tooltip.
  */
 export function updateStatusBarSession(): void {
   const indicator = elements.activeSessionIndicator;
@@ -621,14 +622,18 @@ export function updateStatusBarSession(): void {
 
   const { id, session } = mostRecent;
   const folderName = getSessionDisplayName(session.workingDirectory, id);
-  const shortId = id.slice(0, 8);
-  const displayName = session.workingDirectory ? `${folderName}-${shortId}` : shortId;
   const isActive = hasRecentActivity(id);
+
+  // Show folder name as primary identifier
+  // Full session ID is available in tooltip for technical reference
+  const tooltipText = session.workingDirectory
+    ? `${session.workingDirectory}\nSession: ${id}`
+    : `Session: ${id}`;
 
   indicator.style.display = 'flex';
   indicator.innerHTML = `
     <span class="active-session-dot${isActive ? ' pulsing' : ''}" style="background: ${session.color}"></span>
-    <span class="active-session-name">${escapeHtml(displayName)}</span>
+    <span class="active-session-name" title="${escapeHtml(tooltipText)}">${escapeHtml(folderName)}</span>
   `;
   indicator.dataset.sessionId = id;
 }

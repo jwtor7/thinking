@@ -6,16 +6,16 @@
  * and timing information.
  */
 
-import { state } from '../state';
-import { elements } from '../ui/elements';
-import { formatTime, formatDuration, getDurationClass, summarizeInput } from '../utils/formatting';
-import { escapeHtml, escapeCssValue } from '../utils/html';
-import { renderSimpleMarkdown } from '../utils/markdown';
-import { getShortSessionId } from '../ui/filters';
-import { getAgentColor, getSessionColorByFolder, getSessionColorByHash } from '../ui/colors';
-import { getSessionDisplayName } from './sessions';
-import { applyToolsFilter, updateToolsCount } from '../ui/filters';
-import type { ToolStartEvent, ToolEndEvent } from '../types';
+import { state, subagentState } from '../state.ts';
+import { elements } from '../ui/elements.ts';
+import { formatTime, formatDuration, getDurationClass, summarizeInput } from '../utils/formatting.ts';
+import { escapeHtml, escapeCssValue } from '../utils/html.ts';
+import { renderSimpleMarkdown } from '../utils/markdown.ts';
+import { getShortSessionId } from '../ui/filters.ts';
+import { getAgentColor, getSessionColorByFolder, getSessionColorByHash } from '../ui/colors.ts';
+import { getSessionDisplayName } from './sessions.ts';
+import { applyToolsFilter, updateToolsCount } from '../ui/filters.ts';
+import type { ToolStartEvent, ToolEndEvent } from '../types.ts';
 
 // ============================================
 // Utilities
@@ -90,9 +90,19 @@ export function handleToolStart(event: ToolStartEvent): void {
 
   // Determine agent context:
   // 1. Use explicit agentId from the event if provided
-  // 2. Otherwise, use the current agent context from the stack
+  // 2. Otherwise, use the current agent context from the stack (only if same session)
   const eventAgentId = event.agentId;
-  const agentId = eventAgentId || callbacks.getCurrentAgentContext();
+  let agentId = eventAgentId;
+  if (!agentId) {
+    const contextAgentId = callbacks.getCurrentAgentContext();
+    // Check if context agent belongs to this session
+    const contextAgent = subagentState.subagents.get(contextAgentId);
+    if (contextAgent && contextAgent.parentSessionId === sessionId) {
+      agentId = contextAgentId;
+    } else {
+      agentId = 'main';
+    }
+  }
 
   // Parse TodoWrite at tool_start - this is when we have the input
   // (tool_end events don't include the input, only the output)
@@ -123,12 +133,14 @@ export function handleToolStart(event: ToolStartEvent): void {
 
   // Folder badge - same color for all sessions in same folder
   // SECURITY: escapeCssValue prevents CSS injection in style attributes
+  // This is the PRIMARY identifier when available - shows project/folder name
   const folderBadge = (sessionId && folderName)
-    ? `<span class="entry-folder-badge" style="background: ${escapeCssValue(getSessionColorByFolder(folderName))}">${escapeHtml(folderName)}</span>`
+    ? `<span class="entry-folder-badge" style="background: ${escapeCssValue(getSessionColorByFolder(folderName))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(folderName)}</span>`
     : '';
 
-  // Session ID badge - unique color per session (hash of session ID, not folder)
-  const sessionBadge = sessionId
+  // Session ID badge - ONLY shown when no folder name is available
+  // When folder badge exists, it becomes the primary identifier with session ID in tooltip
+  const sessionBadge = (sessionId && !folderName)
     ? `<span class="entry-session-badge" style="background: ${escapeCssValue(getSessionColorByHash(sessionId))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>`
     : '';
 

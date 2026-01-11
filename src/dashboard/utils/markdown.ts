@@ -2,7 +2,7 @@
  * Markdown rendering utilities for the Thinking Monitor Dashboard
  */
 
-import { escapeHtml, encodeHtmlAttribute } from './html';
+import { escapeHtml, encodeHtmlAttribute } from './html.ts';
 
 /**
  * Alignment type for table columns

@@ -9,12 +9,12 @@
  * - Plan metadata display
  */
 
-import { state } from '../state';
-import { elements } from '../ui/elements';
-import { escapeHtml } from '../utils/html';
-import { renderSimpleMarkdown } from '../utils/markdown';
-import { sendMessage, getWebSocket } from '../connection/websocket';
-import type { PlanListEvent, PlanUpdateEvent, PlanDeleteEvent, PlanInfo } from '../types';
+import { state } from '../state.ts';
+import { elements } from '../ui/elements.ts';
+import { escapeHtml } from '../utils/html.ts';
+import { renderSimpleMarkdown } from '../utils/markdown.ts';
+import { sendMessage, getWebSocket } from '../connection/websocket.ts';
+import type { PlanListEvent, PlanUpdateEvent, PlanDeleteEvent, PlanInfo } from '../types.ts';
 
 // ============================================
 // Types

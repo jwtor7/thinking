@@ -12,10 +12,10 @@ import {
   WS_URL,
   RECONNECT_BASE_DELAY_MS,
   RECONNECT_MAX_DELAY_MS,
-} from '../config';
-import { state } from '../state';
-import { elements } from '../ui/elements';
-import type { StrictMonitorEvent, WebSocketMessage } from '../types';
+} from '../config.ts';
+import { state } from '../state.ts';
+import { elements } from '../ui/elements.ts';
+import type { StrictMonitorEvent, WebSocketMessage } from '../types.ts';
 
 // ============================================
 // Types

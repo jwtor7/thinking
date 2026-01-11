@@ -10,7 +10,7 @@
  * - Validates content is not excessively large
  */
 
-import { writeFile, mkdir, readdir, stat, realpath } from 'node:fs/promises';
+import { writeFile, mkdir, readdir, stat } from 'node:fs/promises';
 import { dirname, normalize, resolve, isAbsolute, join } from 'node:path';
 import { homedir } from 'node:os';
 import { exec } from 'node:child_process';

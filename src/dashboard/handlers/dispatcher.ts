@@ -1,12 +1,12 @@
-import { state } from '../state';
-import { elements } from '../ui/elements';
-import type { StrictMonitorEvent, ConnectionStatusEvent } from '../types';
-import { trackSession, handleSessionStart, handleSessionStop, updateSessionActivity, updateSessionFilter } from './sessions';
-import { handleThinking } from './thinking';
-import { handleToolStart, handleToolEnd } from './tools';
-import { handleAgentStart, handleAgentStop, handleSubagentMapping } from './agents';
-import { handlePlanList, handlePlanUpdate, handlePlanDelete } from './plans.js';
-import { handleHookExecution } from './hooks.js';
+import { state } from '../state.ts';
+import { elements } from '../ui/elements.ts';
+import type { StrictMonitorEvent, ConnectionStatusEvent } from '../types.ts';
+import { trackSession, handleSessionStart, handleSessionStop, updateSessionActivity, updateSessionFilter } from './sessions.ts';
+import { handleThinking } from './thinking.ts';
+import { handleToolStart, handleToolEnd } from './tools.ts';
+import { handleAgentStart, handleAgentStop, handleSubagentMapping } from './agents.ts';
+import { handlePlanList, handlePlanUpdate, handlePlanDelete } from './plans.ts';
+import { handleHookExecution } from './hooks.ts';
 
 /**
  * Main event dispatcher that routes incoming WebSocket events to appropriate handlers.

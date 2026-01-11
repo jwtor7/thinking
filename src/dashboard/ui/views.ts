@@ -5,9 +5,9 @@
  * and managing the UI state for view-specific filtering and display.
  */
 
-import { state } from '../state';
-import { elements } from './elements';
-import type { PanelName } from './panels';
+import { state } from '../state.ts';
+import { elements } from './elements.ts';
+import type { PanelName } from './panels.ts';
 
 /**
  * View type definition

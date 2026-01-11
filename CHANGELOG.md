@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.17.3] - 2026-01-11
+
+### Changed
+- **Folder names as primary identifiers** - Sessions now display project folder names (e.g., `thinking`) instead of session IDs (e.g., `5026645a`) throughout the UI
+- **Cleaner panel entries** - Thinking, Tool Activity, and Hooks panels show folder badge only; session ID moved to tooltip
+- **Status bar clarity** - Shows folder name as primary identifier; full path and session ID available on hover
+- **Improved session tooltips** - Folder name shown prominently at top, path below, session ID as secondary info
+
+---
+
 ## [0.17.2] - 2026-01-11
 
 ### Added

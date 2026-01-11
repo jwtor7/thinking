@@ -5,8 +5,8 @@
  * Only collapsed panels can be dragged, preserving focus on content for expanded panels.
  */
 
-import { elements } from './elements';
-import { rebuildResizers } from './resizer';
+import { elements } from './elements.ts';
+import { rebuildResizers } from './resizer.ts';
 
 interface DragState {
   isDragging: boolean;
@@ -101,7 +101,6 @@ function handleMouseMove(e: MouseEvent): void {
   // Find drop target
   const panelsContainer = elements.panels;
   const allPanels = Array.from(panelsContainer.querySelectorAll(':scope > .panel:not(.dragging)'));
-  const allResizers = Array.from(panelsContainer.querySelectorAll(':scope > .resizer-vertical'));
   const placeholder = dragState.placeholder;
 
   // Find where to insert placeholder based on mouse position

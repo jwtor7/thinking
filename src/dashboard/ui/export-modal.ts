@@ -5,9 +5,9 @@
  * Includes a file browser for selecting the export location.
  */
 
-import { state } from '../state';
-import { elements } from './elements';
-import { extractSessionData, formatAsMarkdown, ExportOptions } from '../utils/markdown-export';
+import { state } from '../state.ts';
+import { elements } from './elements.ts';
+import { extractSessionData, formatAsMarkdown, ExportOptions } from '../utils/markdown-export.ts';
 
 /**
  * Callbacks for export modal operations.

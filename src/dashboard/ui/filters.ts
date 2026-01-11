@@ -3,9 +3,9 @@
  * Handles session, thinking, tools, and hooks filtering with count updates.
  */
 
-import { state, subagentState } from '../state';
-import { elements } from './elements';
-import { filterAllHooks, updateHooksCount } from '../handlers/hooks';
+import { state, subagentState } from '../state.ts';
+import { elements } from './elements.ts';
+import { filterAllHooks, updateHooksCount } from '../handlers/hooks.ts';
 
 // ============================================
 // Session Filtering

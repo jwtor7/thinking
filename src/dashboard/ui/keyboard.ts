@@ -5,11 +5,11 @@
  * Shortcuts include panel navigation, view selection, filters, and actions.
  */
 
-import { state } from '../state';
-import { elements } from './elements';
-import { selectView } from './views';
-import { togglePanelCollapse } from './panels';
-import { filterAllThinking, filterAllTools } from './filters';
+import { state } from '../state.ts';
+import { elements } from './elements.ts';
+import { selectView } from './views.ts';
+import { togglePanelCollapse } from './panels.ts';
+import { filterAllThinking, filterAllTools } from './filters.ts';
 
 /**
  * Callbacks for keyboard actions that need to be provided by app.ts.

@@ -5,11 +5,11 @@
  * Includes parsing TodoWrite tool input and tracking session-plan associations.
  */
 
-import { state } from '../state';
-import { elements } from '../ui/elements';
-import { escapeHtml } from '../utils/html';
-import { saveTodosToStorage, saveSessionPlanAssociation } from '../storage/persistence';
-import { TodoItem } from '../types';
+import { state } from '../state.ts';
+import { elements } from '../ui/elements.ts';
+import { escapeHtml } from '../utils/html.ts';
+import { saveTodosToStorage, saveSessionPlanAssociation } from '../storage/persistence.ts';
+import { TodoItem } from '../types.ts';
 
 // ============================================
 // Callback Interface

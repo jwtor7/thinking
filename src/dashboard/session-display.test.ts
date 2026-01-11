@@ -10,7 +10,7 @@
  * - Status bar active session
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // ============================================
 // Test: getSessionDisplayName
@@ -445,7 +445,7 @@ describe('Context Menu Path Handling', () => {
   });
 
   it('should show context menu for specific session', () => {
-    const sessionId = 'session-123';
+    const sessionId: string = 'session-123';
     const shouldShowContextMenu = sessionId !== 'all';
     expect(shouldShowContextMenu).toBe(true);
   });

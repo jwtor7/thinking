@@ -5,14 +5,14 @@
  * with hook type, tool name, decision, and timing information.
  */
 
-import { state } from '../state.js';
-import { elements } from '../ui/elements.js';
-import { formatTime } from '../utils/formatting.js';
-import { escapeHtml, escapeCssValue } from '../utils/html.js';
-import { getAgentColor, getSessionColorByHash, getSessionColorByFolder } from '../ui/colors.js';
-import { getShortSessionId } from '../ui/filters.js';
-import { getSessionDisplayName } from './sessions.js';
-import type { HookExecutionEvent } from '../types.js';
+import { state } from '../state.ts';
+import { elements } from '../ui/elements.ts';
+import { formatTime } from '../utils/formatting.ts';
+import { escapeHtml, escapeCssValue } from '../utils/html.ts';
+import { getAgentColor, getSessionColorByHash, getSessionColorByFolder } from '../ui/colors.ts';
+import { getShortSessionId } from '../ui/filters.ts';
+import { getSessionDisplayName } from './sessions.ts';
+import type { HookExecutionEvent } from '../types.ts';
 
 // ============================================
 // Callback Interface
@@ -238,12 +238,14 @@ export function handleHookExecution(event: HookExecutionEvent): void {
     : null;
 
   // Folder badge - same color for all sessions in same folder
+  // This is the PRIMARY identifier when available - shows project/folder name
   const folderBadge = (sessionId && folderName)
-    ? `<span class="entry-folder-badge" style="background: ${escapeCssValue(getSessionColorByFolder(folderName))}">${escapeHtml(folderName)}</span>`
+    ? `<span class="entry-folder-badge" style="background: ${escapeCssValue(getSessionColorByFolder(folderName))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(folderName)}</span>`
     : '';
 
-  // Session ID badge - unique color per session
-  const sessionBadge = sessionId
+  // Session ID badge - ONLY shown when no folder name is available
+  // When folder badge exists, it becomes the primary identifier with session ID in tooltip
+  const sessionBadge = (sessionId && !folderName)
     ? `<span class="hook-session-badge" style="background: ${escapeCssValue(getSessionColorByHash(sessionId))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>`
     : '';
 

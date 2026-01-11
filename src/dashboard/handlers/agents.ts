@@ -1,7 +1,7 @@
-import { state, agentContextStack, agentContextTimestamps, subagentState } from '../state';
-import { elements } from '../ui/elements';
-import { MAX_AGENT_STACK_SIZE, AGENT_STACK_STALE_MS, AGENT_STACK_CLEANUP_INTERVAL_MS } from '../config';
-import type { AgentStartEvent, AgentStopEvent, AgentInfo, SubagentMappingEvent, SubagentMappingInfo } from '../types';
+import { state, agentContextStack, agentContextTimestamps, subagentState } from '../state.ts';
+import { elements } from '../ui/elements.ts';
+import { MAX_AGENT_STACK_SIZE, AGENT_STACK_STALE_MS, AGENT_STACK_CLEANUP_INTERVAL_MS } from '../config.ts';
+import type { AgentStartEvent, AgentStopEvent, AgentInfo, SubagentMappingEvent, SubagentMappingInfo } from '../types.ts';
 
 /**
  * Handles agent start events

@@ -434,9 +434,9 @@ body.keyboard-mode .view-tab-shortcut {
   visibility: visible;
 }
 
-.session-tooltip-id {
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-sm);
+.session-tooltip-folder {
+  font-size: var(--font-size-md);
+  font-weight: 600;
   color: var(--color-text-primary);
   margin-bottom: var(--spacing-xs);
 }
@@ -445,6 +445,13 @@ body.keyboard-mode .view-tab-shortcut {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   word-break: break-all;
+  margin-bottom: var(--spacing-xs);
+}
+
+.session-tooltip-id {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
 }
 
 /* ========================================

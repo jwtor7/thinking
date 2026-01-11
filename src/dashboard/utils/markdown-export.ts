@@ -5,8 +5,8 @@
  * Includes thinking blocks, tool calls, todos, and hook executions.
  */
 
-import { state } from '../state';
-import type { SessionInfo, TodoItem, AgentInfo } from '../types';
+import { state } from '../state.ts';
+import type { SessionInfo, TodoItem } from '../types.ts';
 
 /**
  * Options for what content to include in the export.

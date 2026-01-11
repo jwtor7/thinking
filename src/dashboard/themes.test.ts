@@ -130,12 +130,12 @@ import {
   themes,
   themeDisplayNames,
   ThemeId,
-} from './themes';
+} from './themes.ts';
 import {
   saveThemePreference,
   loadThemePreference,
-} from './storage/persistence';
-import { resetColorCache } from './ui/colors';
+} from './storage/persistence.ts';
+import { resetColorCache } from './ui/colors.ts';
 
 describe('Theme System', () => {
   beforeEach(() => {

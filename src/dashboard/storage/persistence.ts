@@ -9,7 +9,7 @@
  * be called after DOM is ready.
  */
 
-import { TodoItem, StoredPlanAssociation, ThemeId, PanelVisibility } from '../types';
+import { TodoItem, StoredPlanAssociation, ThemeId, PanelVisibility } from '../types.ts';
 import {
   STORAGE_KEY_TODOS,
   STORAGE_KEY_PANEL_COLLAPSE,
@@ -19,10 +19,10 @@ import {
   PLAN_ASSOCIATION_MAX_AGE_MS,
   PLAN_ASSOCIATION_MAX_ENTRIES,
   PLAN_ASSOCIATION_STORAGE_KEY,
-} from '../config';
-import { state } from '../state';
-import { getSessionColorByHash } from '../ui/colors';
-import { elements } from '../ui/elements';
+} from '../config.ts';
+import { state } from '../state.ts';
+import { getSessionColorByHash } from '../ui/colors.ts';
+import { elements } from '../ui/elements.ts';
 
 // ============================================
 // Panel Types (local to this module)

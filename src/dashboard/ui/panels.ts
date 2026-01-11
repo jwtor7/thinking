@@ -5,10 +5,10 @@
  * and persisting collapse state to localStorage.
  */
 
-import { state } from '../state';
-import { elements } from './elements';
-import { savePanelCollapseState } from '../storage/persistence';
-import { resetPanelFlex, rebuildResizers } from './resizer';
+import { state } from '../state.ts';
+import { elements } from './elements.ts';
+import { savePanelCollapseState } from '../storage/persistence.ts';
+import { resetPanelFlex, rebuildResizers } from './resizer.ts';
 
 /**
  * Panel names that can be collapsed

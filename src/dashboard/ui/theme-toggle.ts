@@ -5,10 +5,10 @@
  * Supports dark, light, solarized, solarized-dark, and system themes.
  */
 
-import { state } from '../state';
-import { ThemeId } from '../types';
-import { applyTheme, watchSystemTheme, themeDisplayNames, getSystemTheme } from '../themes';
-import { saveThemePreference } from '../storage/persistence';
+import { state } from '../state.ts';
+import { ThemeId } from '../types.ts';
+import { applyTheme, watchSystemTheme, themeDisplayNames, getSystemTheme } from '../themes.ts';
+import { saveThemePreference } from '../storage/persistence.ts';
 
 /**
  * Current system theme watcher cleanup function.

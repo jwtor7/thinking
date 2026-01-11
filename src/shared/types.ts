@@ -52,7 +52,8 @@ export interface MonitorEvent {
 }
 
 /**
- * Base interface for strict event types (no index signature).
+ * Base interface for strict event types.
+ * Includes index signature for compatibility with MonitorEvent.
  */
 export interface MonitorEventBase {
   /** Event type identifier */
@@ -63,6 +64,8 @@ export interface MonitorEventBase {
   sessionId?: string;
   /** Agent ID (main session or subagent ID) */
   agentId?: string;
+  /** Allow additional event-specific properties (for MonitorEvent compatibility) */
+  [key: string]: unknown;
 }
 
 // ============================================================================

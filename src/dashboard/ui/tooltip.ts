@@ -5,8 +5,8 @@
  * when hovering over session badges in the filter bar.
  */
 
-import { elements } from './elements';
-import { escapeHtml } from '../utils/html';
+import { elements } from './elements.ts';
+import { escapeHtml } from '../utils/html.ts';
 
 // ============================================
 // Tooltip Configuration
@@ -105,22 +105,33 @@ function handleTooltipMouseLeave(e: Event): void {
 // ============================================
 
 /**
+ * Extract folder name from a path.
+ */
+function extractFolderName(path: string): string {
+  const parts = path.replace(/\/$/, '').split('/');
+  return parts[parts.length - 1] || path;
+}
+
+/**
  * Show the tooltip below the target element.
+ * Shows folder name as primary identifier with path and session ID as secondary info.
  */
 function showTooltip(target: HTMLElement, sessionId: string, sessionPath?: string): void {
   const tooltip = elements.sessionTooltip;
   if (!tooltip) return;
 
-  // Build tooltip content
-  let content = `<div class="session-tooltip-id">${escapeHtml(sessionId)}</div>`;
+  // Build tooltip content - folder name first, then path and session ID
+  let content = '';
   if (sessionPath) {
+    const folderName = extractFolderName(sessionPath);
+    content += `<div class="session-tooltip-folder">${escapeHtml(folderName)}</div>`;
     content += `<div class="session-tooltip-path">${escapeHtml(sessionPath)}</div>`;
   }
+  content += `<div class="session-tooltip-id">Session: ${escapeHtml(sessionId)}</div>`;
   tooltip.innerHTML = content;
 
   // Position tooltip below target
   const rect = target.getBoundingClientRect();
-  const tooltipRect = tooltip.getBoundingClientRect();
 
   // Calculate position
   let left = rect.left + (rect.width / 2);

@@ -4,7 +4,7 @@
  * Centralized state for the Thinking Monitor dashboard.
  */
 
-import { AppState, AgentContextStack, SubagentMappingInfo } from './types';
+import { AppState, AgentContextStack, SubagentMappingInfo } from './types.ts';
 
 /**
  * Subagent tracking state.
