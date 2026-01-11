@@ -1,10 +1,11 @@
 /**
  * Filtering functions for dashboard entries.
- * Handles session, thinking, and tools filtering with count updates.
+ * Handles session, thinking, tools, and hooks filtering with count updates.
  */
 
 import { state } from '../state';
 import { elements } from './elements';
+import { filterAllHooks, updateHooksCount } from '../handlers/hooks';
 
 // ============================================
 // Session Filtering
@@ -25,9 +26,13 @@ export function filterAllBySession(): void {
     applySessionFilter(el);
   });
 
+  // Filter hook entries
+  filterAllHooks();
+
   // Update counts to reflect filtered entries
   updateThinkingCount();
   updateToolsCount();
+  updateHooksCount();
 }
 
 /**

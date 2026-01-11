@@ -9,7 +9,9 @@ import { state } from '../state.js';
 import { elements } from '../ui/elements.js';
 import { formatTime } from '../utils/formatting.js';
 import { escapeHtml, escapeCssValue } from '../utils/html.js';
-import { getAgentColor, getSessionColorByHash } from '../ui/colors.js';
+import { getAgentColor, getSessionColorByHash, getSessionColorByFolder } from '../ui/colors.js';
+import { getShortSessionId } from '../ui/filters.js';
+import { getSessionDisplayName } from './sessions.js';
 import type { HookExecutionEvent } from '../types.js';
 
 // ============================================
@@ -88,42 +90,49 @@ function getHookTypeClass(hookType: string): string {
 
 /**
  * Apply filter to a single hook entry.
+ * Considers both the hook type/decision filter and the session filter.
  */
 function applyHooksFilter(entry: HTMLElement): void {
   const hookType = entry.dataset.hookType || '';
   const decision = entry.dataset.decision || '';
+  const entrySession = entry.dataset.session || '';
 
-  let visible = true;
+  // Check session filter first
+  const matchesSession = state.selectedSession === 'all' || entrySession === state.selectedSession;
+
+  // Check hook type/decision filter
+  let matchesHookFilter = true;
   switch (hooksFilter) {
     case 'allow':
-      visible = decision === 'allow';
+      matchesHookFilter = decision === 'allow';
       break;
     case 'deny':
-      visible = decision === 'deny';
+      matchesHookFilter = decision === 'deny';
       break;
     case 'pre':
-      visible = hookType === 'pretooluse';
+      matchesHookFilter = hookType === 'pretooluse';
       break;
     case 'post':
-      visible = hookType === 'posttooluse';
+      matchesHookFilter = hookType === 'posttooluse';
       break;
     case 'subagent':
-      visible = hookType.startsWith('subagent');
+      matchesHookFilter = hookType.startsWith('subagent');
       break;
     case 'deny-subagent':
-      visible = decision === 'deny' || hookType.startsWith('subagent');
+      matchesHookFilter = decision === 'deny' || hookType.startsWith('subagent');
       break;
     default:
-      visible = true;
+      matchesHookFilter = true;
   }
 
-  entry.style.display = visible ? '' : 'none';
+  entry.style.display = (matchesSession && matchesHookFilter) ? '' : 'none';
 }
 
 /**
  * Apply filter to all existing hook entries.
+ * Exported so it can be called when session filter changes.
  */
-function filterAllHooks(): void {
+export function filterAllHooks(): void {
   if (!elements.hooksContent) return;
 
   const entries = elements.hooksContent.querySelectorAll('.hook-entry');
@@ -134,12 +143,14 @@ function filterAllHooks(): void {
 
 /**
  * Update the hooks count badge in the panel header.
- * Shows visible count / total count when filtered.
+ * Shows visible count / total count when filtered by hook type, decision, or session.
  */
 export function updateHooksCount(): void {
   if (!elements.hooksCount) return;
 
-  if (hooksFilter === 'all') {
+  const hasFilter = hooksFilter !== 'all' || state.selectedSession !== 'all';
+
+  if (!hasFilter) {
     elements.hooksCount.textContent = String(state.hooksCount);
   } else {
     // Count visible entries
@@ -177,6 +188,7 @@ export function handleHookExecution(event: HookExecutionEvent): void {
   const output = event.output;
   const time = formatTime(event.timestamp);
   const sessionId = event.sessionId;
+  const agentId = event.agentId;
 
   state.hooksCount++;
   updateHooksCount();
@@ -187,41 +199,65 @@ export function handleHookExecution(event: HookExecutionEvent): void {
     emptyState.remove();
   }
 
-  // Build the decision badge HTML
+  // Build the decision badge HTML (right-aligned)
   let decisionBadge = '';
   if (decision) {
     decisionBadge = `<span class="hook-decision ${getDecisionClass(decision)}">${escapeHtml(decision)}</span>`;
   } else if (hookType === 'PostToolUse') {
     // PostToolUse hooks don't make decisions, show "observed" badge
     decisionBadge = `<span class="hook-decision hook-decision-observed">observed</span>`;
-  } else if (hookType === 'SubagentStart' || hookType === 'SubagentStop') {
-    // For SubagentStart/SubagentStop, show agent name as colored badge
-    // Extract agent name from output (format: "agent-name" or "agent-name: status")
-    const agentName = output?.split(':')[0]?.trim() || 'agent';
-    const agentColor = getAgentColor(agentName);
-    decisionBadge = `<span class="hook-agent-badge" style="background: ${escapeCssValue(agentColor)}">${escapeHtml(agentName)}</span>`;
   }
+  // SubagentStart/Stop don't have decisions - agent type shown in toolInfo instead
 
-  // Build the tool name HTML
-  const toolInfo = toolName
-    ? `<span class="hook-tool">${escapeHtml(toolName)}</span>`
-    : '';
+  // Build the tool name HTML (or agent type for subagent hooks)
+  let toolInfo = '';
+  if (hookType === 'SubagentStart' || hookType === 'SubagentStop') {
+    // For subagent hooks, show agent type name in tool position
+    // Extract agent type from output (format: "agent-type" or "agent-type: status")
+    const agentType = output?.split(':')[0]?.trim() || '';
+    // Check if it looks like a real agent type name (contains letters and dashes) vs just an ID (hex)
+    const isRealAgentType = agentType && !/^[0-9a-f]{7,}$/i.test(agentType);
+    if (isRealAgentType) {
+      const agentColor = getAgentColor(agentType);
+      toolInfo = `<span class="hook-tool hook-agent-type" style="background: ${escapeCssValue(agentColor)}; color: white;">${escapeHtml(agentType)}</span>`;
+    }
+    // If it's just an ID, don't show a badge (the agent ID is already in agentBadge if relevant)
+  } else if (toolName) {
+    toolInfo = `<span class="hook-tool">${escapeHtml(toolName)}</span>`;
+  }
 
   // Build the output preview (truncated)
   const outputPreview = output
     ? `<div class="hook-output">${escapeHtml(output.length > 100 ? output.slice(0, 100) + '...' : output)}</div>`
     : '';
 
-  // Build session badge for subagent hooks
-  let sessionBadge = '';
-  if ((hookType === 'SubagentStart' || hookType === 'SubagentStop') && sessionId) {
-    const sessionColor = getSessionColorByHash(sessionId);
-    sessionBadge = `<span class="hook-session-badge" style="background: ${escapeCssValue(sessionColor)}">${escapeHtml(sessionId)}</span>`;
+  // Get folder name for folder badge
+  const session = state.sessions.get(sessionId || '');
+  const folderName = session?.workingDirectory
+    ? getSessionDisplayName(session.workingDirectory)
+    : null;
+
+  // Folder badge - same color for all sessions in same folder
+  const folderBadge = (sessionId && folderName)
+    ? `<span class="entry-folder-badge" style="background: ${escapeCssValue(getSessionColorByFolder(folderName))}">${escapeHtml(folderName)}</span>`
+    : '';
+
+  // Session ID badge - unique color per session
+  const sessionBadge = sessionId
+    ? `<span class="hook-session-badge" style="background: ${escapeCssValue(getSessionColorByHash(sessionId))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>`
+    : '';
+
+  // Build agent badge when running in a subagent (skip for SubagentStart/Stop which show agent name in decisionBadge)
+  const isSubagentHook = hookType === 'SubagentStart' || hookType === 'SubagentStop';
+  let agentBadge = '';
+  if (agentId && agentId !== sessionId && !isSubagentHook) {
+    const agentColor = getAgentColor(agentId);
+    agentBadge = `<span class="hook-agent-badge" style="background: ${escapeCssValue(agentColor)}">${escapeHtml(getShortSessionId(agentId))}</span>`;
   }
 
-  // For subagent hooks, don't render the content section
-  const isSubagentHook = hookType === 'SubagentStart' || hookType === 'SubagentStop';
-  const contentSection = isSubagentHook
+  // For subagent hooks or our own hook, don't render the content section
+  const isOurHook = hookName === 'thinking-monitor-hook';
+  const contentSection = (isSubagentHook || isOurHook)
     ? ''
     : `<div class="hook-entry-content">
         <span class="hook-name">${escapeHtml(hookName)}</span>
@@ -240,7 +276,10 @@ export function handleHookExecution(event: HookExecutionEvent): void {
       <span class="hook-time">${escapeHtml(time)}</span>
       <span class="hook-type ${getHookTypeClass(hookType)}">${escapeHtml(hookType)}</span>
       ${toolInfo}
+      ${folderBadge}
       ${sessionBadge}
+      ${agentBadge}
+      <span class="hook-header-spacer"></span>
       ${decisionBadge}
     </div>
     ${contentSection}

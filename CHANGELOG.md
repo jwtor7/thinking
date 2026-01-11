@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.16.9] - 2026-01-11
+
+### Added
+- **Hooks session filtering** - Hooks panel now filters by selected session (previously showed all sessions)
+- **Hooks folder/session badges** - Hook entries now show folder badge and session ID badge for context
+- **Hooks agent badge** - Subagent hooks show agent ID badge when running in a subagent
+- **Right-aligned decision badges** - ALLOW/OBSERVED/DENY badges now right-aligned for cleaner layout
+
+### Changed
+- **Cleaner hook entries** - Removed redundant "thinking-monitor-hook" text, entries now show badges only
+- **SubagentStart/Stop display** - Agent type now shown in tool position; SubagentStop skips badge when only ID available
+
+---
+
 ## [0.16.8] - 2026-01-11
 
 ### Added
