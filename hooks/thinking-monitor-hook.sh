@@ -224,6 +224,7 @@ case "$HOOK_TYPE" in
 
     "SubagentStop")
         SUBAGENT_ID=$(echo "$INPUT" | jq -r '.subagent_id // .agent_id // empty' 2>/dev/null || echo "")
+        SUBAGENT_NAME=$(echo "$INPUT" | jq -r '.agent_name // .agent_type // .name // empty' 2>/dev/null || echo "")
         STATUS=$(echo "$INPUT" | jq -r '.status // "success"' 2>/dev/null || echo "success")
 
         EVENT_JSON=$(jq -n \
@@ -240,8 +241,14 @@ case "$HOOK_TYPE" in
                 status: $status
             }')
 
-        # Also send hook_execution event
-        send_hook_execution "SubagentStop" "" "" "$STATUS"
+        # Also send hook_execution event with agent name for display
+        # Format: "agent-name: status" to match SubagentStart format
+        if [ -n "$SUBAGENT_NAME" ]; then
+            HOOK_OUTPUT="$SUBAGENT_NAME: $STATUS"
+        else
+            HOOK_OUTPUT="$SUBAGENT_ID: $STATUS"
+        fi
+        send_hook_execution "SubagentStop" "" "" "$HOOK_OUTPUT"
         ;;
 
     "SessionStart")

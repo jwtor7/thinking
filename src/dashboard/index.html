@@ -116,6 +116,15 @@
             </button>
             <h2 class="panel-title" id="hooks-panel-title">HOOKS</h2>
             <div class="panel-header-controls">
+              <select class="hook-filter-select" id="hooks-filter" aria-label="Filter hooks">
+                <option value="all">All</option>
+                <option value="allow">Allow</option>
+                <option value="deny">Deny</option>
+                <option value="pre">PreToolUse</option>
+                <option value="post">PostToolUse</option>
+                <option value="subagent">Subagents</option>
+                <option value="deny-subagent">Deny + Subagents</option>
+              </select>
               <span class="panel-badge" id="hooks-count">0</span>
             </div>
           </header>

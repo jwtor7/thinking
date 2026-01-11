@@ -8,7 +8,8 @@
 import { state } from '../state.js';
 import { elements } from '../ui/elements.js';
 import { formatTime } from '../utils/formatting.js';
-import { escapeHtml } from '../utils/html.js';
+import { escapeHtml, escapeCssValue } from '../utils/html.js';
+import { getAgentColor, getSessionColorByHash } from '../ui/colors.js';
 import type { HookExecutionEvent } from '../types.js';
 
 // ============================================
@@ -26,12 +27,22 @@ export interface HooksCallbacks {
 
 let callbacks: HooksCallbacks | null = null;
 
+// Current filter state
+let hooksFilter: string = 'all';
+
 /**
  * Initialize the hooks handler with required callbacks.
  * Must be called before handling any hook events.
  */
 export function initHooks(cbs: HooksCallbacks): void {
   callbacks = cbs;
+
+  // Set up filter change listener
+  elements.hooksFilter?.addEventListener('change', (e) => {
+    hooksFilter = (e.target as HTMLSelectElement).value;
+    filterAllHooks();
+    updateHooksCount();
+  });
 }
 
 // ============================================
@@ -67,17 +78,75 @@ function getHookTypeClass(hookType: string): string {
       return 'hook-type-stop';
     case 'UserPromptSubmit':
       return 'hook-type-prompt';
+    case 'SubagentStart':
+    case 'SubagentStop':
+      return 'hook-type-subagent';
     default:
       return '';
   }
 }
 
 /**
+ * Apply filter to a single hook entry.
+ */
+function applyHooksFilter(entry: HTMLElement): void {
+  const hookType = entry.dataset.hookType || '';
+  const decision = entry.dataset.decision || '';
+
+  let visible = true;
+  switch (hooksFilter) {
+    case 'allow':
+      visible = decision === 'allow';
+      break;
+    case 'deny':
+      visible = decision === 'deny';
+      break;
+    case 'pre':
+      visible = hookType === 'pretooluse';
+      break;
+    case 'post':
+      visible = hookType === 'posttooluse';
+      break;
+    case 'subagent':
+      visible = hookType.startsWith('subagent');
+      break;
+    case 'deny-subagent':
+      visible = decision === 'deny' || hookType.startsWith('subagent');
+      break;
+    default:
+      visible = true;
+  }
+
+  entry.style.display = visible ? '' : 'none';
+}
+
+/**
+ * Apply filter to all existing hook entries.
+ */
+function filterAllHooks(): void {
+  if (!elements.hooksContent) return;
+
+  const entries = elements.hooksContent.querySelectorAll('.hook-entry');
+  entries.forEach((entry) => {
+    applyHooksFilter(entry as HTMLElement);
+  });
+}
+
+/**
  * Update the hooks count badge in the panel header.
+ * Shows visible count / total count when filtered.
  */
 export function updateHooksCount(): void {
-  if (elements.hooksCount) {
+  if (!elements.hooksCount) return;
+
+  if (hooksFilter === 'all') {
     elements.hooksCount.textContent = String(state.hooksCount);
+  } else {
+    // Count visible entries
+    const visibleCount = elements.hooksContent
+      ? elements.hooksContent.querySelectorAll('.hook-entry:not([style*="display: none"])').length
+      : 0;
+    elements.hooksCount.textContent = `${visibleCount}/${state.hooksCount}`;
   }
 }
 
@@ -119,9 +188,19 @@ export function handleHookExecution(event: HookExecutionEvent): void {
   }
 
   // Build the decision badge HTML
-  const decisionBadge = decision
-    ? `<span class="hook-decision ${getDecisionClass(decision)}">${escapeHtml(decision)}</span>`
-    : '';
+  let decisionBadge = '';
+  if (decision) {
+    decisionBadge = `<span class="hook-decision ${getDecisionClass(decision)}">${escapeHtml(decision)}</span>`;
+  } else if (hookType === 'PostToolUse') {
+    // PostToolUse hooks don't make decisions, show "observed" badge
+    decisionBadge = `<span class="hook-decision hook-decision-observed">observed</span>`;
+  } else if (hookType === 'SubagentStart' || hookType === 'SubagentStop') {
+    // For SubagentStart/SubagentStop, show agent name as colored badge
+    // Extract agent name from output (format: "agent-name" or "agent-name: status")
+    const agentName = output?.split(':')[0]?.trim() || 'agent';
+    const agentColor = getAgentColor(agentName);
+    decisionBadge = `<span class="hook-agent-badge" style="background: ${escapeCssValue(agentColor)}">${escapeHtml(agentName)}</span>`;
+  }
 
   // Build the tool name HTML
   const toolInfo = toolName
@@ -133,26 +212,43 @@ export function handleHookExecution(event: HookExecutionEvent): void {
     ? `<div class="hook-output">${escapeHtml(output.length > 100 ? output.slice(0, 100) + '...' : output)}</div>`
     : '';
 
+  // Build session badge for subagent hooks
+  let sessionBadge = '';
+  if ((hookType === 'SubagentStart' || hookType === 'SubagentStop') && sessionId) {
+    const sessionColor = getSessionColorByHash(sessionId);
+    sessionBadge = `<span class="hook-session-badge" style="background: ${escapeCssValue(sessionColor)}">${escapeHtml(sessionId)}</span>`;
+  }
+
+  // For subagent hooks, don't render the content section
+  const isSubagentHook = hookType === 'SubagentStart' || hookType === 'SubagentStop';
+  const contentSection = isSubagentHook
+    ? ''
+    : `<div class="hook-entry-content">
+        <span class="hook-name">${escapeHtml(hookName)}</span>
+        ${outputPreview}
+      </div>`;
+
   // Create hook entry
   const entry = document.createElement('div');
   entry.className = 'hook-entry';
   entry.dataset.hookType = hookType.toLowerCase();
   entry.dataset.session = sessionId || '';
+  entry.dataset.decision = decision?.toLowerCase() || '';
 
   entry.innerHTML = `
     <div class="hook-entry-header">
       <span class="hook-time">${escapeHtml(time)}</span>
       <span class="hook-type ${getHookTypeClass(hookType)}">${escapeHtml(hookType)}</span>
       ${toolInfo}
+      ${sessionBadge}
       ${decisionBadge}
     </div>
-    <div class="hook-entry-content">
-      <span class="hook-name">${escapeHtml(hookName)}</span>
-      ${outputPreview}
-    </div>
+    ${contentSection}
   `;
 
   if (elements.hooksContent) {
+    // Apply filter before adding to DOM
+    applyHooksFilter(entry);
     callbacks.appendAndTrim(elements.hooksContent, entry);
     callbacks.smartScroll(elements.hooksContent);
   }

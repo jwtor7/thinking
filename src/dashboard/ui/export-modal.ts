@@ -7,7 +7,7 @@
 
 import { state } from '../state';
 import { elements } from './elements';
-import { extractSessionData, formatAsMarkdown } from '../utils/markdown-export';
+import { extractSessionData, formatAsMarkdown, ExportOptions } from '../utils/markdown-export';
 
 /**
  * Callbacks for export modal operations.
@@ -62,6 +62,16 @@ let currentDirectory = '';
 let parentDirectory: string | null = null;
 
 /**
+ * Export content options (what to include).
+ */
+const exportOptions: ExportOptions = {
+  includeThinking: true,
+  includeTools: true,
+  includeTodos: true,
+  includeHooks: true,
+};
+
+/**
  * Initialize the export modal with callbacks.
  *
  * @param cbs - Callback functions for toasts and announcements
@@ -111,6 +121,47 @@ function createModal(): HTMLElement {
   const description = document.createElement('p');
   description.className = 'export-modal-description';
   description.textContent = 'Export the current session data as a formatted markdown file.';
+
+  // Content options section
+  const optionsSection = document.createElement('div');
+  optionsSection.className = 'export-options-section';
+
+  const optionsLabel = document.createElement('label');
+  optionsLabel.className = 'export-modal-label';
+  optionsLabel.textContent = 'Include:';
+
+  const optionsGrid = document.createElement('div');
+  optionsGrid.className = 'export-options-grid';
+
+  const optionItems = [
+    { id: 'thinking', label: 'Thinking blocks', key: 'includeThinking' as const },
+    { id: 'tools', label: 'Tool calls', key: 'includeTools' as const },
+    { id: 'todos', label: 'Todos', key: 'includeTodos' as const },
+    { id: 'hooks', label: 'Hooks', key: 'includeHooks' as const },
+  ];
+
+  optionItems.forEach((opt) => {
+    const item = document.createElement('label');
+    item.className = 'export-option-item';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = `export-option-${opt.id}`;
+    checkbox.checked = exportOptions[opt.key];
+    checkbox.addEventListener('change', () => {
+      exportOptions[opt.key] = checkbox.checked;
+    });
+
+    const labelText = document.createElement('span');
+    labelText.textContent = opt.label;
+
+    item.appendChild(checkbox);
+    item.appendChild(labelText);
+    optionsGrid.appendChild(item);
+  });
+
+  optionsSection.appendChild(optionsLabel);
+  optionsSection.appendChild(optionsGrid);
 
   // File browser section
   const browserSection = document.createElement('div');
@@ -188,6 +239,7 @@ function createModal(): HTMLElement {
   // Will be populated when modal opens
 
   body.appendChild(description);
+  body.appendChild(optionsSection);
   body.appendChild(browserSection);
   body.appendChild(inputGroup);
   body.appendChild(sessionInfo);
@@ -449,7 +501,7 @@ async function handleExport(): Promise<void> {
 
   try {
     // Extract and format data
-    const data = extractSessionData();
+    const data = extractSessionData(exportOptions);
     const markdown = formatAsMarkdown(data);
 
     // Send to server

@@ -28,6 +28,7 @@ export const elements = {
   hooksPanel: document.querySelector('.panel-hooks') as HTMLElement,
   hooksContent: document.getElementById('hooks-content'),
   hooksCount: document.getElementById('hooks-count'),
+  hooksFilter: document.getElementById('hooks-filter') as HTMLSelectElement | null,
   hooksCollapseBtn: document.querySelector('.panel-hooks .panel-collapse-btn') as HTMLButtonElement,
   todoContent: document.getElementById('todo-content')!,
   todoCount: document.getElementById('todo-count')!,

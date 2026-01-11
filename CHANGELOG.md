@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.16.8] - 2026-01-11
+
+### Added
+- **Export content selection** - Checkboxes to choose what to include in export: thinking blocks, tool calls, todos, hooks
+
+### Changed
+- **Local time in exports** - Session start/end times and export date now display in local time (e.g., "Jan 11, 2026, 07:45:30 AM") instead of UTC ISO format
+
+---
+
 ## [0.16.7] - 2026-01-11
 
 ### Added

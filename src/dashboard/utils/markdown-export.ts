@@ -9,6 +9,32 @@ import { state } from '../state';
 import type { SessionInfo, TodoItem, AgentInfo } from '../types';
 
 /**
+ * Options for what content to include in the export.
+ */
+export interface ExportOptions {
+  includeThinking: boolean;
+  includeTools: boolean;
+  includeTodos: boolean;
+  includeHooks: boolean;
+}
+
+/**
+ * Format an ISO timestamp as human-readable local time.
+ */
+function formatLocalTime(isoString: string): string {
+  const date = new Date(isoString);
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
+}
+
+/**
  * Exported data structure for a session.
  */
 export interface ExportData {
@@ -53,18 +79,20 @@ interface PlanData {
 /**
  * Extract data from DOM elements for the current session.
  * The dashboard renders events to the DOM, so we scrape from there.
+ *
+ * @param options - Optional settings to filter what content is included
  */
-export function extractSessionData(): ExportData {
+export function extractSessionData(options?: ExportOptions): ExportData {
   const sessionId = state.selectedSession !== 'all' ? state.selectedSession : state.currentSessionId;
   const session = sessionId ? state.sessions.get(sessionId) || null : null;
 
   return {
     session,
     sessionId,
-    thinkingBlocks: extractThinkingBlocks(sessionId),
-    toolCalls: extractToolCalls(sessionId),
-    todos: extractTodos(),
-    hooks: extractHooks(sessionId),
+    thinkingBlocks: options?.includeThinking !== false ? extractThinkingBlocks(sessionId) : [],
+    toolCalls: options?.includeTools !== false ? extractToolCalls(sessionId) : [],
+    todos: options?.includeTodos !== false ? extractTodos() : [],
+    hooks: options?.includeHooks !== false ? extractHooks(sessionId) : [],
     plan: extractPlanData(),
   };
 }
@@ -197,7 +225,7 @@ function extractPlanData(): PlanData | null {
  */
 export function formatAsMarkdown(data: ExportData): string {
   const lines: string[] = [];
-  const exportDate = new Date().toISOString();
+  const exportDate = formatLocalTime(new Date().toISOString());
 
   // Header
   lines.push('# Thinking Monitor Export');
@@ -211,9 +239,9 @@ export function formatAsMarkdown(data: ExportData): string {
     if (data.session.workingDirectory) {
       lines.push(`- **Working Directory**: \`${data.session.workingDirectory}\``);
     }
-    lines.push(`- **Start Time**: ${data.session.startTime}`);
+    lines.push(`- **Start Time**: ${formatLocalTime(data.session.startTime)}`);
     if (data.session.endTime) {
-      lines.push(`- **End Time**: ${data.session.endTime}`);
+      lines.push(`- **End Time**: ${formatLocalTime(data.session.endTime)}`);
     }
     lines.push(`- **Status**: ${data.session.active ? 'Active' : 'Ended'}`);
   } else {
