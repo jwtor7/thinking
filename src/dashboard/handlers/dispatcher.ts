@@ -85,8 +85,11 @@ export function handleEvent(event: StrictMonitorEvent): void {
       // Update session filter to show subagent indicators
       updateSessionFilter();
       break;
-    default:
-      console.log('[Dashboard] Unhandled event type:', event.type);
+    default: {
+      // This should never happen if StrictMonitorEvent is exhaustive
+      const exhaustiveCheck: never = event;
+      console.log('[Dashboard] Unhandled event type:', (exhaustiveCheck as { type: string }).type);
+    }
   }
 }
 

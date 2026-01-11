@@ -81,7 +81,7 @@ export interface AppState {
   // Context menu state
   contextMenuFilePath: string | null;
   // Active view tab for navigation
-  activeView: 'all' | 'thinking' | 'tools' | 'todo' | 'plan';
+  activeView: 'all' | 'thinking' | 'tools' | 'todo' | 'hooks' | 'plan';
   // Todo tracking - maps session ID to todos for that session
   sessionTodos: SessionTodosMap;
   // Session-plan associations - maps session ID to the plan path that session uses

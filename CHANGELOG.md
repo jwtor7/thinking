@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.17.4] - 2026-01-11
+
+### Fixed
+- **TypeScript strict mode type checking** - Fixed ~100+ type checking errors across the codebase
+- **Module resolution** - Added .ts extensions to all relative imports for NodeNext module resolution compatibility
+- **Index signature in MonitorEventBase** - Added index signature to allow external hooks to pass additional properties
+- **Unused declarations** - Removed unused imports and declarations in dispatcher.ts, event-receiver.ts, websocket-hub.ts, thinking.ts, tools.ts, and agents.ts
+- **Type incompatibilities** - Fixed type assertion issues and incompatible Promise handling patterns throughout handlers
+
+---
+
 ## [0.17.3] - 2026-01-11
 
 ### Changed

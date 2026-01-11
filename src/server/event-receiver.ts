@@ -238,15 +238,16 @@ export class EventReceiver {
    * Process tool timing: track start times and calculate duration for end events.
    */
   private processToolTiming(event: MonitorEvent): MonitorEvent {
-    if (event.type === 'tool_start' && 'toolCallId' in event && event.toolCallId) {
+    if (event.type === 'tool_start' && 'toolCallId' in event && typeof event.toolCallId === 'string') {
       // Record start time for duration calculation
       this.toolStartTimes.set(event.toolCallId, Date.now());
-    } else if (event.type === 'tool_end' && 'toolCallId' in event && event.toolCallId) {
+    } else if (event.type === 'tool_end' && 'toolCallId' in event && typeof event.toolCallId === 'string') {
       // Calculate duration if we have a start time
-      const startTime = this.toolStartTimes.get(event.toolCallId);
+      const toolCallId = event.toolCallId;
+      const startTime = this.toolStartTimes.get(toolCallId);
       if (startTime) {
         const durationMs = Date.now() - startTime;
-        this.toolStartTimes.delete(event.toolCallId);
+        this.toolStartTimes.delete(toolCallId);
         // Add duration to event (override null/undefined from hook)
         if (!('durationMs' in event) || event.durationMs === undefined || event.durationMs === null) {
           return { ...event, durationMs };
