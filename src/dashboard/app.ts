@@ -77,6 +77,7 @@ import {
   initSessions,
   updateSessionFilter,
   initStatusBarSession,
+  updateStatusBarSession,
   hideSessionContextMenu,
   handleRevealSessionInFinder,
 } from './handlers/sessions';
@@ -241,6 +242,9 @@ function clearAllPanels(): void {
 
   // Hide session filter
   updateSessionFilter();
+
+  // Clear status bar session indicator
+  updateStatusBarSession();
 
   // Reset todos (both session-specific map and current display)
   state.sessionTodos.clear();

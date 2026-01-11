@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1] - 2026-01-11
+
+### Fixed
+- **Status bar clears on panel clear** - Pressing 'c' to clear now also resets the status bar session indicator (was still showing last session)
+
+---
+
 ## [0.17.0] - 2026-01-11
 
 ### Added
