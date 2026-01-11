@@ -1,7 +1,7 @@
 /**
  * Theme Toggle UI Component
  *
- * Dropdown selector for changing the dashboard theme.
+ * Icon button that cycles through themes on click.
  * Supports dark, light, solarized, solarized-dark, and system themes.
  */
 
@@ -17,37 +17,71 @@ import { saveThemePreference } from '../storage/persistence';
 let systemThemeCleanup: (() => void) | null = null;
 
 /**
- * Theme options in display order.
+ * Theme options in cycling order.
  */
 const THEME_OPTIONS: ThemeId[] = ['system', 'dark', 'light', 'solarized', 'solarized-dark'];
 
 /**
- * Create the theme dropdown element.
- * Returns the container element with the dropdown inside.
+ * Icons for each theme.
  */
-function createThemeDropdown(): HTMLElement {
+const THEME_ICONS: Record<ThemeId, string> = {
+  system: '◐',      // Half circle (auto)
+  dark: '☾',        // Crescent moon
+  light: '☀',       // Sun
+  solarized: '◑',   // Right half black
+  'solarized-dark': '◒', // Upper half black
+};
+
+/** Reference to the theme button for updates */
+let themeButton: HTMLButtonElement | null = null;
+
+/**
+ * Get the next theme in the cycle.
+ */
+function getNextTheme(currentTheme: ThemeId): ThemeId {
+  const currentIndex = THEME_OPTIONS.indexOf(currentTheme);
+  const nextIndex = (currentIndex + 1) % THEME_OPTIONS.length;
+  return THEME_OPTIONS[nextIndex];
+}
+
+/**
+ * Create the theme toggle button element.
+ * Returns the container element with the button inside.
+ */
+function createThemeButton(): HTMLElement {
   const container = document.createElement('div');
   container.className = 'theme-toggle';
 
-  const select = document.createElement('select');
-  select.id = 'theme-select';
-  select.className = 'theme-select';
-  select.setAttribute('aria-label', 'Select theme');
-  select.title = 'Change color theme';
+  const button = document.createElement('button');
+  button.id = 'theme-toggle-btn';
+  button.className = 'btn btn-icon';
+  button.setAttribute('aria-label', `Theme: ${themeDisplayNames[state.theme]}`);
+  button.title = `Theme: ${themeDisplayNames[state.theme]} (click to change)`;
 
-  // Add options
-  for (const themeId of THEME_OPTIONS) {
-    const option = document.createElement('option');
-    option.value = themeId;
-    option.textContent = themeDisplayNames[themeId];
-    if (themeId === state.theme) {
-      option.selected = true;
-    }
-    select.appendChild(option);
+  const iconSpan = document.createElement('span');
+  iconSpan.className = 'btn-icon-theme';
+  iconSpan.textContent = THEME_ICONS[state.theme];
+
+  button.appendChild(iconSpan);
+  container.appendChild(button);
+
+  themeButton = button;
+  return container;
+}
+
+/**
+ * Update the theme button display.
+ */
+function updateThemeButton(themeId: ThemeId): void {
+  if (!themeButton) return;
+
+  const iconSpan = themeButton.querySelector('.btn-icon-theme');
+  if (iconSpan) {
+    iconSpan.textContent = THEME_ICONS[themeId];
   }
 
-  container.appendChild(select);
-  return container;
+  themeButton.setAttribute('aria-label', `Theme: ${themeDisplayNames[themeId]}`);
+  themeButton.title = `Theme: ${themeDisplayNames[themeId]} (click to change)`;
 }
 
 /**
@@ -63,6 +97,9 @@ function handleThemeChange(themeId: ThemeId): void {
 
   // Save preference
   saveThemePreference(themeId);
+
+  // Update button display
+  updateThemeButton(themeId);
 
   // Manage system theme watcher
   if (systemThemeCleanup) {
@@ -80,8 +117,17 @@ function handleThemeChange(themeId: ThemeId): void {
 }
 
 /**
- * Initialize the theme toggle dropdown.
- * Creates the dropdown, attaches it to the header, and sets up event listeners.
+ * Cycle to the next theme.
+ */
+function cycleTheme(): void {
+  const nextTheme = getNextTheme(state.theme);
+  handleThemeChange(nextTheme);
+  console.log(`[ThemeToggle] Cycled to theme: ${nextTheme}`);
+}
+
+/**
+ * Initialize the theme toggle button.
+ * Creates the button, attaches it to the header, and sets up event listeners.
  *
  * @param initialTheme - The initial theme to select (from storage or default)
  */
@@ -95,18 +141,12 @@ export function initThemeToggle(initialTheme: ThemeId): void {
   // Set initial state
   state.theme = initialTheme;
 
-  // Create and insert dropdown
-  const dropdown = createThemeDropdown();
-  container.appendChild(dropdown);
+  // Create and insert button
+  const buttonContainer = createThemeButton();
+  container.appendChild(buttonContainer);
 
-  // Get the select element
-  const select = dropdown.querySelector('select') as HTMLSelectElement;
-
-  // Handle selection changes
-  select.addEventListener('change', () => {
-    const selectedTheme = select.value as ThemeId;
-    handleThemeChange(selectedTheme);
-  });
+  // Handle clicks to cycle themes
+  themeButton?.addEventListener('click', cycleTheme);
 
   // Apply initial theme
   applyTheme(initialTheme);
@@ -123,12 +163,9 @@ export function initThemeToggle(initialTheme: ThemeId): void {
 }
 
 /**
- * Update the theme dropdown selection programmatically.
+ * Update the theme button display programmatically.
  * Use this when the theme is changed from elsewhere (e.g., keyboard shortcut).
  */
 export function updateThemeDropdown(themeId: ThemeId): void {
-  const select = document.getElementById('theme-select') as HTMLSelectElement | null;
-  if (select && select.value !== themeId) {
-    select.value = themeId;
-  }
+  updateThemeButton(themeId);
 }

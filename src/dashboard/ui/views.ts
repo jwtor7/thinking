@@ -20,6 +20,7 @@ export type ViewType = 'all' | 'thinking' | 'tools' | 'todo' | 'hooks' | 'plan';
 export interface ViewCallbacks {
   announceStatus: (message: string) => void;
   focusActivePanel: (view: ViewType) => void;
+  togglePanelSelector: () => void;
 }
 
 let callbacks: ViewCallbacks | null = null;
@@ -63,6 +64,29 @@ export function initViewTabs(): void {
     tab.addEventListener('click', () => selectView(view.id));
     viewTabsContainer.appendChild(tab);
   });
+
+  // Add spacer to push gear icon to the right
+  const spacer = document.createElement('div');
+  spacer.className = 'view-tabs-spacer';
+  viewTabsContainer.appendChild(spacer);
+
+  // Add panel selector gear button
+  const panelSelectorBtn = document.createElement('button');
+  panelSelectorBtn.id = 'panel-selector-btn';
+  panelSelectorBtn.className = 'btn btn-icon';
+  panelSelectorBtn.title = 'Panel Settings (Shift+P)';
+  panelSelectorBtn.setAttribute('aria-label', 'Panel visibility settings');
+  panelSelectorBtn.innerHTML = '<span class="btn-icon-gear">&#9881;</span>';
+  panelSelectorBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (callbacks) {
+      callbacks.togglePanelSelector();
+    }
+  });
+  viewTabsContainer.appendChild(panelSelectorBtn);
+
+  // Update elements reference
+  elements.panelSelectorBtn = panelSelectorBtn;
 
   // Insert after the header
   const header = document.querySelector('.header');

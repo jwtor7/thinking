@@ -45,6 +45,7 @@ export interface SessionCallbacks {
   updateTodosForCurrentSession: () => void;
   showToast: (message: string, type: 'success' | 'error' | 'info', duration?: number) => void;
   updateExportButtonState: () => void;
+  clearAllPanels: () => void;
 }
 
 let callbacks: SessionCallbacks | null = null;
@@ -283,6 +284,11 @@ export function updateSessionFilter(): void {
   let html = '<span class="session-filter-label">SESSIONS:</span>';
   html += '<div class="session-filter-badges">';
 
+  // Clear all panels button
+  html += `<button class="session-filter-clear-btn" title="Clear all panels" aria-label="Clear all panels">
+    &#10005;
+  </button>`;
+
   // "All" option
   const allActive = state.selectedSession === 'all' ? 'active' : '';
   html += `<button class="session-filter-badge ${allActive}" data-session="all">
@@ -360,6 +366,16 @@ export function updateSessionFilter(): void {
 
   html += '</div>';
   filterEl.innerHTML = html;
+
+  // Clear all panels button handler
+  const clearBtn = filterEl.querySelector('.session-filter-clear-btn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      if (callbacks) {
+        callbacks.clearAllPanels();
+      }
+    });
+  }
 
   // Attach click handlers using event delegation
   filterEl.querySelectorAll('.session-filter-badge').forEach((badge: Element) => {

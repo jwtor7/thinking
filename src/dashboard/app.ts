@@ -334,9 +334,6 @@ elements.connectionOverlayRetry.addEventListener('click', retryNow);
 // Export button
 elements.exportBtn.addEventListener('click', tryOpenExportModal);
 
-// Clear button
-elements.clearBtn.addEventListener('click', clearAllPanels);
-
 // Auto-scroll checkbox
 elements.autoScrollCheckbox.addEventListener('change', () => {
   state.autoScroll = elements.autoScrollCheckbox.checked;
@@ -517,6 +514,7 @@ initSessions({
   updateTodosForCurrentSession,
   showToast,
   updateExportButtonState,
+  clearAllPanels,
 });
 
 initPlans({
@@ -539,6 +537,7 @@ initHooks({
 initViews({
   announceStatus: announceStatus,
   focusActivePanel: focusActivePanel,
+  togglePanelSelector: togglePanelSelector,
 });
 initPanels({
   announceStatus: announceStatus,
@@ -574,9 +573,6 @@ initPanelCollapseButtons();
 
 // Apply restored panel visibility to DOM
 applyAllPanelVisibility();
-
-// Panel selector button click handler
-elements.panelSelectorBtn.addEventListener('click', togglePanelSelector);
 
 // Initialize resizable panes
 initResizers();

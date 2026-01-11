@@ -9,9 +9,8 @@ export const elements = {
   connectionStatus: document.getElementById('connection-status')!,
   sessionFilter: document.getElementById('session-filter'),
   exportBtn: document.getElementById('export-btn')!,
-  clearBtn: document.getElementById('clear-btn')!,
   autoScrollCheckbox: document.getElementById('auto-scroll') as HTMLInputElement,
-  panelSelectorBtn: document.getElementById('panel-selector-btn') as HTMLButtonElement,
+  panelSelectorBtn: null as HTMLButtonElement | null, // Created dynamically in views.ts
   viewTabs: document.getElementById('view-tabs'),
   thinkingPanel: document.querySelector('.panel-thinking') as HTMLElement,
   toolsPanel: document.querySelector('.panel-tools') as HTMLElement,

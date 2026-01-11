@@ -23,19 +23,14 @@
           <span class="status-dot"></span>
           <span class="status-text">Disconnected</span>
         </span>
-        <button id="export-btn" class="btn btn-secondary" title="Export as Markdown (Cmd+E)">
-          Export
+        <button id="export-btn" class="btn btn-icon" title="Export as Markdown (Cmd+E)" aria-label="Export as Markdown">
+          <span class="btn-icon-export">&#8595;</span>
         </button>
-        <button id="clear-btn" class="btn btn-secondary" title="Clear all panels">
-          Clear
-        </button>
-        <label class="toggle">
+        <label class="toggle" title="Automatically scroll to latest content when new events arrive">
           <input type="checkbox" id="auto-scroll" checked>
           <span class="toggle-label">Auto-scroll</span>
         </label>
-        <button id="panel-selector-btn" class="btn btn-icon" title="Panel Settings (Shift+P)" aria-label="Panel visibility settings">
-          <span class="btn-icon-gear">&#9881;</span>
-        </button>
+        <div class="header-spacer"></div>
         <div id="theme-toggle-container" class="header-control"></div>
       </div>
     </header>

@@ -478,8 +478,9 @@ describe('Phase 4: Dashboard Polish', () => {
       expect(indexHtmlContent).toContain('Auto-scroll');
     });
 
-    it('should have clear button (Phase 7.23)', () => {
-      expect(indexHtmlContent).toContain('clear-btn');
+    it('should have clear functionality (Phase 7.23)', () => {
+      // Clear button is now in session filter (dynamically generated in sessions.ts)
+      expect(appTsContent).toContain('session-filter-clear-btn');
       expect(appTsContent).toContain('clearAllPanels');
     });
 

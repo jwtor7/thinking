@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.17.2] - 2026-01-11
+
+### Added
+- **Auto-scroll tooltip** - Hover shows "Automatically scroll to latest content when new events arrive"
+- **Theme cycling icon** - Single icon button replaces dropdown; click cycles through System/Dark/Light/Solarized themes
+- **Export icon button** - Download arrow icon (↓) replaces "Export" text button
+- **Clear icon in sessions row** - Compact clear button (✕) moved left of "All" in SESSIONS filter bar
+
+### Changed
+- **Gear icon relocated** - Panel settings gear moved from header to view tabs row (right-aligned)
+- **Streamlined header** - Flexbox spacer pushes theme toggle to right; cleaner control layout
+
+---
+
 ## [0.17.1] - 2026-01-11
 
 ### Fixed
