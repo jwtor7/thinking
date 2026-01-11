@@ -158,6 +158,30 @@
   opacity: 1;
 }
 
+/* ========================================
+   Entry Folder Badge
+   ======================================== */
+
+.entry-folder-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 4px;
+  margin-right: 2px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-family: var(--font-family-mono);
+  font-weight: 500;
+  color: var(--color-bg-primary);
+  cursor: default;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.entry-folder-badge:hover {
+  opacity: 1;
+}
+
 /* Subtle badge styling when there's only one session */
 .thinking-entry[data-session]:not(:empty) .entry-session-badge,
 .tool-entry[data-session]:not(:empty) .entry-session-badge {

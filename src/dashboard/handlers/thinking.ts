@@ -13,12 +13,12 @@ import { elements } from '../ui/elements';
 import { formatTime } from '../utils/formatting';
 import { escapeHtml, escapeCssValue } from '../utils/html';
 import {
-  getSessionColor,
   getShortSessionId,
   applyThinkingFilter,
   updateThinkingCount,
 } from '../ui/filters';
-import { getAgentColor } from '../ui/colors';
+import { getAgentColor, getSessionColorByFolder, getSessionColorByHash } from '../ui/colors';
+import { getSessionDisplayName } from './sessions';
 
 /**
  * Callback interface for functions that would cause circular imports.
@@ -105,10 +105,21 @@ export function handleThinking(event: ThinkingEvent): void {
   entry.dataset.session = sessionId || '';
   entry.dataset.content = content.toLowerCase(); // For filtering
 
-  // Session badge HTML if we have a session ID
+  // Get folder name for folder badge
+  const session = state.sessions.get(sessionId || '');
+  const folderName = session?.workingDirectory
+    ? getSessionDisplayName(session.workingDirectory)
+    : null;
+
+  // Folder badge - same color for all sessions in same folder
   // SECURITY: escapeCssValue prevents CSS injection in style attributes
+  const folderBadge = (sessionId && folderName)
+    ? `<span class="entry-folder-badge" style="background: ${escapeCssValue(getSessionColorByFolder(folderName))}">${escapeHtml(folderName)}</span>`
+    : '';
+
+  // Session ID badge - unique color per session (hash of session ID, not folder)
   const sessionBadge = sessionId
-    ? `<span class="entry-session-badge" style="background: ${escapeCssValue(getSessionColor(sessionId))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>`
+    ? `<span class="entry-session-badge" style="background: ${escapeCssValue(getSessionColorByHash(sessionId))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>`
     : '';
 
   // Get agent color for visual distinction
@@ -117,6 +128,7 @@ export function handleThinking(event: ThinkingEvent): void {
   entry.innerHTML = `
     <div class="thinking-entry-header">
       <span class="thinking-time">${escapeHtml(time)}</span>
+      ${folderBadge}
       ${sessionBadge}
       <span class="thinking-agent" style="color: ${escapeCssValue(agentColor)}">${escapeHtml(agentDisplayName)}</span>
       <span class="thinking-preview">${escapeHtml(preview)}...</span>

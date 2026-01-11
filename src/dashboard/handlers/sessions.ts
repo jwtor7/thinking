@@ -572,7 +572,9 @@ export function updateStatusBarSession(): void {
   }
 
   const { id, session } = mostRecent;
-  const displayName = getSessionDisplayName(session.workingDirectory, id);
+  const folderName = getSessionDisplayName(session.workingDirectory, id);
+  const shortId = id.slice(0, 8);
+  const displayName = session.workingDirectory ? `${folderName}-${shortId}` : shortId;
   const isActive = hasRecentActivity(id);
 
   indicator.style.display = 'flex';

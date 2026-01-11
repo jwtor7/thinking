@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.16.7] - 2026-01-11
+
+### Added
+- **Folder badges in thinking/tool entries** - When sessions are in the same folder, entries now show a folder badge (same color for same folder) plus session ID badge (unique color per session)
+- **Multi-session distinction** - Session ID badges now have unique colors based on session ID hash, making it easier to distinguish between sessions in the same folder
+
+### Changed
+- **Status bar format** - Now shows `folderName-shortId` (e.g., "thinking-abc123de") instead of just folder name
+
+---
+
 ## [0.16.6] - 2026-01-10
 
 ### Changed

@@ -11,8 +11,9 @@ import { elements } from '../ui/elements';
 import { formatTime, formatDuration, getDurationClass, summarizeInput } from '../utils/formatting';
 import { escapeHtml, escapeCssValue } from '../utils/html';
 import { renderSimpleMarkdown } from '../utils/markdown';
-import { getSessionColor, getShortSessionId } from '../ui/filters';
-import { getAgentColor } from '../ui/colors';
+import { getShortSessionId } from '../ui/filters';
+import { getAgentColor, getSessionColorByFolder, getSessionColorByHash } from '../ui/colors';
+import { getSessionDisplayName } from './sessions';
 import { applyToolsFilter, updateToolsCount } from '../ui/filters';
 import type { ToolStartEvent, ToolEndEvent } from '../types';
 
@@ -114,10 +115,21 @@ export function handleToolStart(event: ToolStartEvent): void {
     emptyState.remove();
   }
 
-  // Session badge HTML if we have a session ID
+  // Get folder name for folder badge
+  const session = state.sessions.get(sessionId || '');
+  const folderName = session?.workingDirectory
+    ? getSessionDisplayName(session.workingDirectory)
+    : null;
+
+  // Folder badge - same color for all sessions in same folder
   // SECURITY: escapeCssValue prevents CSS injection in style attributes
+  const folderBadge = (sessionId && folderName)
+    ? `<span class="entry-folder-badge" style="background: ${escapeCssValue(getSessionColorByFolder(folderName))}">${escapeHtml(folderName)}</span>`
+    : '';
+
+  // Session ID badge - unique color per session (hash of session ID, not folder)
   const sessionBadge = sessionId
-    ? `<span class="entry-session-badge" style="background: ${escapeCssValue(getSessionColor(sessionId))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>`
+    ? `<span class="entry-session-badge" style="background: ${escapeCssValue(getSessionColorByHash(sessionId))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>`
     : '';
 
   // Generate preview text for collapsed state
@@ -143,6 +155,7 @@ export function handleToolStart(event: ToolStartEvent): void {
       <div class="tool-header-line1">
         <span class="tool-toggle"></span>
         <span class="tool-time">${escapeHtml(time)}</span>
+        ${folderBadge}
         ${sessionBadge}
       </div>
       <div class="tool-header-line2">
