@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.7] - 2026-01-12
+
+### Security
+- **esbuild upgraded to 0.27.2** - Fixes GHSA-67mh-4wv8-2f99 (CORS vulnerability in dev server)
+
+---
+
 ## [0.18.6] - 2026-01-12
 
 ### Security
