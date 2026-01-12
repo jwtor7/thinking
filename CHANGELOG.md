@@ -8,6 +8,9 @@
 ### Added
 - **Subagent state lookup for hook events** - hooks.ts now imports subagentState to resolve agent names from tracked agent_start events
 
+### Changed
+- **Improved CLAUDE.md** - Rewrote project instructions with Commands section, Architecture overview (data flow diagram, component tables), and condensed versioning workflow
+
 ---
 
 ## [0.18.1] - 2026-01-11

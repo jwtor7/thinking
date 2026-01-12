@@ -122,7 +122,7 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
-- **v0.18.2** (2026-01-11) — SUBAGENTSTOP agent name: hook events now show which agent is stopping
+- **v0.18.2** (2026-01-11) — SUBAGENTSTOP agent name display; improved CLAUDE.md with architecture docs
 - **v0.18.1** (2026-01-11) — Badge contrast fix: consistent use of getAgentBadgeColors() for WCAG AA compliance
 - **v0.18.0** (2026-01-11) — WCAG AA badge contrast: theme-aware colors for readable badges in all themes
 - **v0.17.4** (2026-01-11) — TypeScript strict mode: fixed ~100+ type checking errors

@@ -1,120 +1,123 @@
-# Thinking Monitor - Project Instructions
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Commands
+
+```bash
+# Development (rebuild + watch mode)
+pnpm dev
+
+# Build everything (server + dashboard)
+pnpm build
+
+# Start production server (kills existing, runs foreground)
+pnpm start
+
+# Build + restart as background daemon (use after code changes)
+pnpm ship
+
+# Type checking only
+pnpm typecheck
+
+# Run all tests
+pnpm test
+
+# Run single test file
+npx vitest run src/server/secrets.test.ts
+
+# Hook management
+./scripts/setup.sh --install    # Register hooks with Claude Code
+./scripts/setup.sh --uninstall  # Remove hooks
+./scripts/setup.sh --status     # Check hook status
+```
+
+## Architecture
+
+Real-time dashboard that visualizes Claude Code's thinking, tool usage, and agent activity.
+
+### Data Flow
+
+```
+Claude Code Hooks → HTTP POST /event (3355) → EventReceiver → WebSocketHub → Dashboard
+                                                    ↓
+TranscriptWatcher (polls ~/.claude/projects/*/sessions/*/transcript.jsonl)
+                                                    ↓
+PlanWatcher (watches ~/.claude/plans/*.md) ────────→ WebSocketHub → Dashboard (3356)
+```
+
+### Server Components (src/server/)
+
+| Module | Purpose |
+|--------|---------|
+| `index.ts` | Entry point, orchestrates all components |
+| `event-receiver.ts` | HTTP endpoint for hook events |
+| `websocket-hub.ts` | WebSocket server, broadcasts to dashboard |
+| `hook-processor.ts` | Transforms hook JSON → MonitorEvent |
+| `transcript-watcher.ts` | Polls transcript files for thinking blocks |
+| `plan-watcher.ts` | Watches ~/.claude/plans/ for file changes |
+| `secrets.ts` | Redacts API keys/tokens before broadcast |
+| `static-server.ts` | Serves dashboard on port 3356 |
+
+### Dashboard Components (src/dashboard/)
+
+| Module | Purpose |
+|--------|---------|
+| `app.ts` | Main entry, initializes all modules |
+| `handlers/dispatcher.ts` | Routes events to appropriate handlers |
+| `handlers/thinking.ts` | Renders thinking blocks |
+| `handlers/tools.ts` | Renders tool calls with timing |
+| `handlers/todos.ts` | Manages TodoWrite state |
+| `handlers/plans.ts` | Plan file viewer |
+| `connection/websocket.ts` | WebSocket client, reconnection logic |
+| `state.ts` | Global state (sessions, agents, filters) |
+
+### Shared Types (src/shared/types.ts)
+
+All event types are defined here and shared between server and dashboard. Key types:
+- `MonitorEvent` - Base event interface
+- `StrictMonitorEvent` - Discriminated union for type-safe handling
+- Event-specific: `ToolStartEvent`, `ToolEndEvent`, `ThinkingEvent`, `AgentStartEvent`, etc.
 
 ## Development Workflow
 
-This project uses a two-agent workflow for code changes:
-
-### 1. code-implementer
-Use for all implementation tasks:
-- New features
-- Bug fixes
-- Refactoring
-- Code modifications
-
-### 2. code-test-evaluator
-Use after code-implementer completes work:
-- Verify implementation correctness
-- Check edge cases
-- Evaluate code quality
-- Ensure security requirements are met
-
-### Workflow Pattern
-```
-User request → code-implementer → code-test-evaluator → Done
-```
-
-## Security Requirements
-
-All code must adhere to security requirements in the PRD:
-- Localhost-only binding (127.0.0.1)
-- No secret logging (redact API keys, tokens, passwords)
-- XSS prevention (HTML-escape all rendered content)
-- Path validation (only ~/.claude/ or temp directories)
-- Input validation in hooks
-
-## Architecture Reference
-
-See `~/.claude/plans/splendid-hopping-fairy.md` for full PRD.
-
-## Tech Stack
-
-- TypeScript (strict mode)
-- Node.js >= 22
-- pnpm for package management
-- esbuild for bundling
-- ws for WebSocket server
+Uses two-agent pattern: `code-implementer` → `code-test-evaluator`
 
 ## Server Ports
 
-| Service | Port | URL |
-|---------|------|-----|
-| Dashboard | 3356 | http://127.0.0.1:3356 |
-| WebSocket + Events | 3355 | ws://127.0.0.1:3355 |
+| Service | Port |
+|---------|------|
+| Dashboard | 3356 |
+| WebSocket + Events | 3355 |
 
-**To open dashboard in Chrome:** `open -a "Google Chrome" "http://127.0.0.1:3356"`
+## Security Requirements
 
-## Versioning & Changelog (MANDATORY)
+- Localhost-only binding (127.0.0.1)
+- Secrets redacted via `secrets.ts` before broadcast
+- XSS prevention (HTML-escape all rendered content)
+- Path validation (only ~/.claude/ or temp directories)
 
-**Every code change requires version bump and documentation updates.**
+## Versioning (MANDATORY)
 
-### Release Workflow
+Every code change requires version bump:
 
 ```bash
-# 1. Bump version (updates package.json, types.ts, types.test.ts, CHANGELOG.md)
+# 1. Bump version
 ./scripts/bump-version.sh patch|minor|major
 
-# 2. Edit CHANGELOG.md - replace placeholder with actual changes
-#    Use format: Added/Changed/Fixed/Security sections
+# 2. Edit CHANGELOG.md with actual changes
 
-# 3. Update README.md Recent Changes section with new version
+# 3. Update README.md Recent Changes section
 
-# 4. Update README.md version badge if needed
-#    [![Version](https://img.shields.io/badge/version-X.X.X-purple)]
-
-# 5. Commit all changes together
+# 4. Commit
 git add -A && git commit -m "vX.X.X: Brief description"
 
-# 6. Tag and push
-git tag -a vX.X.X -m "vX.X.X: Brief description"
-git push origin main --tags
-
-# 7. Rebuild and restart local server (AUTOMATIC - Claude runs this after push)
+# 5. After push, rebuild server
 pnpm ship
 ```
 
-**IMPORTANT**: After pushing any code changes, Claude MUST run `pnpm ship` to rebuild and restart the server.
-
-### Version Bump Rules
-
-| Type | When | Example |
-|------|------|---------|
-| `patch` | Bug fixes, small improvements | 0.9.0 → 0.9.1 |
-| `minor` | New features (backward compatible) | 0.9.0 → 0.10.0 |
-| `major` | Breaking changes | 0.9.0 → 1.0.0 |
-
-### CHANGELOG Format
-
-```markdown
-## [X.X.X] - YYYY-MM-DD
-
-### Added
-- New features
-
-### Changed
-- Modifications to existing features
-
-### Fixed
-- Bug fixes
-
-### Security
-- Security improvements
-```
-
-### README Updates
-
-Always update these sections:
-1. **Version badge** in header (if major/minor)
-2. **Recent Changes** section with new version entry
-3. **Screenshot** if UI changed significantly (`docs/screenshot.png`)
-
-**Never commit code changes without completing this workflow.**
+| Type | When |
+|------|------|
+| `patch` | Bug fixes, small improvements |
+| `minor` | New features (backward compatible) |
+| `major` | Breaking changes |
