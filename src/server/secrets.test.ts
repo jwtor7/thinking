@@ -370,3 +370,138 @@ describe('redactSecretsFromObject', () => {
     expect(result).toContain('[REDACTED]');
   });
 });
+
+describe('ReDoS protection', () => {
+  it('should complete redaction within 100ms for pathological input', () => {
+    // Create pathological input that would cause backtracking in unbounded patterns
+    // Pattern: api_key="aaa...aaa" followed by non-matching suffix
+    const attack = 'api_key="' + 'a'.repeat(200) + '"' + ' '.repeat(1000);
+    const start = performance.now();
+    redactSecrets(attack);
+    const elapsed = performance.now() - start;
+    expect(elapsed).toBeLessThan(100); // Should complete fast with bounded quantifiers
+  });
+
+  it('should complete redaction within 100ms for password-like pathological input', () => {
+    // Pathological password pattern input
+    const attack = 'password=' + 'x'.repeat(300) + ' ' + 'y'.repeat(500);
+    const start = performance.now();
+    redactSecrets(attack);
+    const elapsed = performance.now() - start;
+    expect(elapsed).toBeLessThan(100);
+  });
+
+  it('should complete redaction within 100ms for database URL pathological input', () => {
+    // Pathological database URL pattern
+    const attack = 'postgres://user:' + 'p'.repeat(200) + 'invalid' + '@'.repeat(100);
+    const start = performance.now();
+    redactSecrets(attack);
+    const elapsed = performance.now() - start;
+    expect(elapsed).toBeLessThan(100);
+  });
+
+  it('should complete redaction within 100ms for Bearer token pathological input', () => {
+    // Pathological Bearer token input
+    const attack = 'Bearer ' + 'a'.repeat(300) + ' '.repeat(500);
+    const start = performance.now();
+    redactSecrets(attack);
+    const elapsed = performance.now() - start;
+    expect(elapsed).toBeLessThan(100);
+  });
+
+  it('should truncate very large input to prevent ReDoS', () => {
+    // Input larger than MAX_REDACTION_LENGTH (50KB)
+    const largeInput = 'api_key=valid123456789012345 ' + 'x'.repeat(60000);
+    const result = redactSecrets(largeInput);
+    expect(result).toContain('[... content truncated for security scanning ...]');
+  });
+});
+
+describe('Legitimate secrets still detected with bounded quantifiers', () => {
+  it('should detect 32-character API key', () => {
+    const input = 'api_key=abcdefghijklmnopqrstuvwxyz123456';
+    const result = redactSecrets(input);
+    expect(result).toBe('api_key=[REDACTED]');
+    expect(result).not.toContain('abcdefghijklmnopqrstuvwxyz123456');
+  });
+
+  it('should detect 64-character API key', () => {
+    const input = 'api_key=abcdefghijklmnopqrstuvwxyz123456abcdefghijklmnopqrstuvwxyz12';
+    const result = redactSecrets(input);
+    expect(result).toBe('api_key=[REDACTED]');
+  });
+
+  it('should detect 80-character API key (upper bound)', () => {
+    const input = 'api_key=' + 'a'.repeat(80);
+    const result = redactSecrets(input);
+    expect(result).toBe('api_key=[REDACTED]');
+  });
+
+  it('should detect 20-character Bearer token', () => {
+    const input = 'Authorization: Bearer abcdefghij1234567890';
+    const result = redactSecrets(input);
+    expect(result).toBe('Authorization: Bearer [REDACTED]');
+  });
+
+  it('should detect 256-character Bearer token (upper bound)', () => {
+    const input = 'Bearer ' + 'x'.repeat(256);
+    const result = redactSecrets(input);
+    expect(result).toBe('Bearer [REDACTED]');
+  });
+
+  it('should detect database URL with password', () => {
+    const input = 'postgres://admin:mysupersecretpassword@db.example.com:5432/mydb';
+    const result = redactSecrets(input);
+    expect(result).toContain('[REDACTED]');
+    expect(result).not.toContain('mysupersecretpassword');
+    expect(result).toContain('postgres://admin:');
+    expect(result).toContain('@db.example.com:5432/mydb');
+  });
+
+  it('should detect database URL with 80-character password (upper bound)', () => {
+    const password = 'p'.repeat(80);
+    const input = `mysql://user:${password}@host/db`;
+    const result = redactSecrets(input);
+    expect(result).not.toContain(password);
+    expect(result).toContain('[REDACTED]');
+  });
+});
+
+describe('Boundary behavior with bounded quantifiers', () => {
+  it('should redact first 80 chars of API key when longer than 80 characters', () => {
+    // With bounded quantifiers, regex matches up to the bound
+    // API key pattern doesn't require trailing anchor, so partial match occurs
+    const longKey = 'a'.repeat(81);
+    const input = `api_key=${longKey}`;
+    const result = redactSecrets(input);
+    // Greedy match: first 80 chars are redacted, 81st char remains
+    expect(result).toBe('api_key=[REDACTED]a');
+  });
+
+  it('should NOT redact database password longer than 80 characters', () => {
+    // Database URL pattern requires @ immediately after password
+    // With {1,80} bound, patterns over 80 chars don't match at all
+    const longPassword = 'p'.repeat(81);
+    const input = `postgres://user:${longPassword}@host/db`;
+    const result = redactSecrets(input);
+    // Pattern fails to match - @ is at position 81, not within bound
+    expect(result).toBe(input);
+  });
+
+  it('should detect Bearer token up to 256 characters', () => {
+    const token = 'x'.repeat(256);
+    const input = `Bearer ${token}`;
+    const result = redactSecrets(input);
+    expect(result).toBe('Bearer [REDACTED]');
+  });
+
+  it('should NOT redact Bearer token over 256 characters', () => {
+    // Bearer pattern uses word boundary \b after token
+    // With {20,256} bound, patterns over 256 chars don't match at all
+    const longToken = 'x'.repeat(257);
+    const input = `Bearer ${longToken}`;
+    const result = redactSecrets(input);
+    // Pattern fails to match entirely
+    expect(result).toBe(input);
+  });
+});

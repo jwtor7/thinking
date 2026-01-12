@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.18.5] - 2026-01-12
+
+### Security
+- **ReDoS protection in secret redaction** - Tightened regex quantifier bounds from `{16,256}` to `{16,80}` and added upper bounds to unbounded patterns; mitigates CWE-1333 backtracking attacks
+
+### Added
+- 16 new tests for ReDoS protection including performance benchmarks and boundary behavior
+
+---
+
 ## [0.18.4] - 2026-01-12
 
 ### Security

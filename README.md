@@ -4,7 +4,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-0.18.4-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.18.5-purple)](./CHANGELOG.md)
 
 A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
 
@@ -122,10 +122,10 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
+- **v0.18.5** (2026-01-12) — Security: ReDoS protection in secret redaction (CWE-1333); 16 new tests
 - **v0.18.4** (2026-01-12) — Security: XSS table CSS injection defense (CWE-79); 45 new security tests
 - **v0.18.3** (2026-01-12) — Security: CORS origin validation bypass fixed (CWE-942); 18 new security tests
 - **v0.18.2** (2026-01-11) — SUBAGENTSTOP agent name display; improved CLAUDE.md with architecture docs
 - **v0.18.1** (2026-01-11) — Badge contrast fix: consistent use of getAgentBadgeColors() for WCAG AA compliance
-- **v0.18.0** (2026-01-11) — WCAG AA badge contrast: theme-aware colors for readable badges in all themes
 
 *[Full changelog →](./CHANGELOG.md)*
