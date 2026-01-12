@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.18.3] - 2026-01-12
+
+### Security
+- **CORS origin validation bypass fixed** - Invalid origins now rejected with 403 BEFORE any CORS headers are set; fixes CWE-942 vulnerability in file-actions.ts and export-handler.ts
+
+### Added
+- 18 new CORS security tests covering all endpoint handlers (handleFileActionRequest, handleExportRequest, handleBrowseRequest, handleRevealFileRequest)
+
+---
+
 ## [0.18.2] - 2026-01-11
 
 ### Fixed

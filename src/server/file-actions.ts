@@ -154,7 +154,7 @@ function validateRequest(body: unknown): string | null {
  * Get the platform-specific command for opening files.
  * Returns the command and flags needed to reveal a file in the file manager.
  */
-function getOpenCommand(): { cmd: string; revealFlag: string[] } {
+export function getOpenCommand(): { cmd: string; revealFlag: string[] } {
   switch (process.platform) {
     case 'darwin':
       return { cmd: 'open', revealFlag: ['-R'] };
@@ -229,12 +229,18 @@ export async function handleFileActionRequest(
     `http://127.0.0.1:${CONFIG.STATIC_PORT}`,
   ];
 
-  // Set CORS headers dynamically based on request origin
-  // Must match the exact origin for CORS to work
-  if (origin && allowedOrigins.includes(origin)) {
+  // Validate origin FIRST - reject invalid origins with 403 before setting any headers
+  if (origin && !allowedOrigins.includes(origin)) {
+    logger.warn(`[FileActions] Rejected request from invalid origin: ${origin}`);
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: false, error: 'Forbidden: Invalid origin' }));
+    return true;
+  }
+
+  // Only set CORS for valid origins (no origin = CLI tools like curl, allow those)
+  if (origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', `http://localhost:${CONFIG.STATIC_PORT}`);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -249,13 +255,6 @@ export async function handleFileActionRequest(
   // Only handle POST
   if (req.method !== 'POST') {
     sendResponse(res, 405, { success: false, error: 'Method not allowed' });
-    return true;
-  }
-
-  // Reject requests from unknown origins
-  if (origin && !allowedOrigins.includes(origin)) {
-    logger.warn(`[FileActions] Rejected request from invalid origin: ${origin}`);
-    sendResponse(res, 403, { success: false, error: 'Forbidden: Invalid origin' });
     return true;
   }
 

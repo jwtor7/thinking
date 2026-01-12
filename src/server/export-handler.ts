@@ -13,11 +13,12 @@
 import { writeFile, mkdir, readdir, stat } from 'node:fs/promises';
 import { dirname, normalize, resolve, isAbsolute, join } from 'node:path';
 import { homedir } from 'node:os';
-import { exec } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { logger } from './logger.ts';
 import { CONFIG } from './types.ts';
 import { parse as parseUrl } from 'node:url';
+import { getOpenCommand } from './file-actions.ts';
 
 /**
  * Maximum content size for export (1MB).
@@ -150,11 +151,18 @@ export async function handleExportRequest(
     `http://127.0.0.1:${CONFIG.STATIC_PORT}`,
   ];
 
-  // Set CORS headers
-  if (origin && allowedOrigins.includes(origin)) {
+  // Validate origin FIRST - reject invalid origins with 403 before setting any headers
+  if (origin && !allowedOrigins.includes(origin)) {
+    logger.warn(`[Export] Rejected request from invalid origin: ${origin}`);
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: false, error: 'Forbidden: Invalid origin' }));
+    return true;
+  }
+
+  // Only set CORS for valid origins (no origin = CLI tools like curl, allow those)
+  if (origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', `http://localhost:${CONFIG.STATIC_PORT}`);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -169,13 +177,6 @@ export async function handleExportRequest(
   // Only handle POST
   if (req.method !== 'POST') {
     sendResponse(res, 405, { success: false, error: 'Method not allowed' });
-    return true;
-  }
-
-  // Reject requests from unknown origins
-  if (origin && !allowedOrigins.includes(origin)) {
-    logger.warn(`[Export] Rejected request from invalid origin: ${origin}`);
-    sendResponse(res, 403, { success: false, error: 'Forbidden: Invalid origin' });
     return true;
   }
 
@@ -282,11 +283,18 @@ export async function handleBrowseRequest(
     `http://127.0.0.1:${CONFIG.STATIC_PORT}`,
   ];
 
-  // Set CORS headers
-  if (origin && allowedOrigins.includes(origin)) {
+  // Validate origin FIRST - reject invalid origins with 403 before setting any headers
+  if (origin && !allowedOrigins.includes(origin)) {
+    logger.warn(`[Browse] Rejected request from invalid origin: ${origin}`);
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: false, error: 'Forbidden: Invalid origin' }));
+    return true;
+  }
+
+  // Only set CORS for valid origins (no origin = CLI tools like curl, allow those)
+  if (origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', `http://localhost:${CONFIG.STATIC_PORT}`);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -301,13 +309,6 @@ export async function handleBrowseRequest(
   // Only handle GET
   if (req.method !== 'GET') {
     sendBrowseResponse(res, 405, { success: false, error: 'Method not allowed' });
-    return true;
-  }
-
-  // Reject requests from unknown origins (if origin is present)
-  if (origin && !allowedOrigins.includes(origin)) {
-    logger.warn(`[Browse] Rejected request from invalid origin: ${origin}`);
-    sendBrowseResponse(res, 403, { success: false, error: 'Forbidden: Invalid origin' });
     return true;
   }
 
@@ -474,11 +475,18 @@ export async function handleRevealFileRequest(
     `http://127.0.0.1:${CONFIG.STATIC_PORT}`,
   ];
 
-  // Set CORS headers
-  if (origin && allowedOrigins.includes(origin)) {
+  // Validate origin FIRST - reject invalid origins with 403 before setting any headers
+  if (origin && !allowedOrigins.includes(origin)) {
+    logger.warn(`[RevealFile] Rejected request from invalid origin: ${origin}`);
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: false, error: 'Forbidden: Invalid origin' }));
+    return true;
+  }
+
+  // Only set CORS for valid origins (no origin = CLI tools like curl, allow those)
+  if (origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', `http://localhost:${CONFIG.STATIC_PORT}`);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -493,13 +501,6 @@ export async function handleRevealFileRequest(
   // Only handle POST
   if (req.method !== 'POST') {
     sendRevealFileResponse(res, 405, { success: false, error: 'Method not allowed' });
-    return true;
-  }
-
-  // Reject requests from unknown origins
-  if (origin && !allowedOrigins.includes(origin)) {
-    logger.warn(`[RevealFile] Rejected request from invalid origin: ${origin}`);
-    sendRevealFileResponse(res, 403, { success: false, error: 'Forbidden: Invalid origin' });
     return true;
   }
 
@@ -556,22 +557,28 @@ export async function handleRevealFileRequest(
     return true;
   }
 
-  // Reveal the file in Finder (macOS)
+  // Reveal the file in file manager (cross-platform)
   try {
     await new Promise<void>((resolvePromise, reject) => {
-      // Use double quotes and escape any quotes in the path
-      // -R flag reveals the file in Finder instead of opening it
-      const escapedPath = normalizedPath.replace(/"/g, '\\"');
-      exec(`open -R "${escapedPath}"`, (error) => {
-        if (error) {
-          reject(error);
-        } else {
+      const { cmd, revealFlag } = getOpenCommand();
+      const args = revealFlag.length > 0 ? [...revealFlag, normalizedPath] : [normalizedPath];
+      const proc = spawn(cmd, args, { stdio: 'ignore' });
+
+      proc.on('error', (error) => {
+        logger.error('[RevealFile] Failed to reveal file:', error);
+        reject(error);
+      });
+
+      proc.on('close', (code) => {
+        if (code === 0) {
           resolvePromise();
+        } else {
+          reject(new Error(`Command exited with code ${code}`));
         }
       });
     });
 
-    logger.info(`[RevealFile] Revealed file in Finder: ${normalizedPath}`);
+    logger.info(`[RevealFile] Revealed file in file manager: ${normalizedPath}`);
     sendRevealFileResponse(res, 200, { success: true });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

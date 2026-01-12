@@ -35,7 +35,8 @@ import { handleFileActionRequest, isAllowedPath } from './file-actions.ts';
 function createMockRequest(
   method: string,
   url: string,
-  body?: Record<string, unknown>
+  body?: Record<string, unknown>,
+  headers?: Record<string, string>
 ): IncomingMessage {
   const readable = new Readable();
   readable._read = () => {};
@@ -43,7 +44,7 @@ function createMockRequest(
   const req = readable as unknown as IncomingMessage;
   req.method = method;
   req.url = url;
-  req.headers = {};
+  req.headers = headers || {};
 
   // Push body if provided
   if (body) {
@@ -147,7 +148,7 @@ describe('File Actions Handler', () => {
       const req = createMockRequest('POST', '/file-action', {
         action: 'open',
         path: validPlanPath,
-      });
+      }, { origin: 'http://localhost:3356' });
       const res = createMockResponse();
 
       await handleFileActionRequest(req, res);
@@ -158,13 +159,44 @@ describe('File Actions Handler', () => {
     });
 
     it('should handle OPTIONS preflight requests', async () => {
-      const req = createMockRequest('OPTIONS', '/file-action');
+      const req = createMockRequest('OPTIONS', '/file-action', undefined, { origin: 'http://localhost:3356' });
       const res = createMockResponse();
 
       const handled = await handleFileActionRequest(req, res);
 
       expect(handled).toBe(true);
       expect(res._statusCode).toBe(204);
+    });
+
+    it('should reject requests from invalid origins with 403', async () => {
+      const req = createMockRequest('POST', '/file-action', {
+        action: 'open',
+        path: validPlanPath,
+      }, { origin: 'http://evil.com' });
+      const res = createMockResponse();
+
+      await handleFileActionRequest(req, res);
+
+      expect(res._statusCode).toBe(403);
+      expect(res._headers['Access-Control-Allow-Origin']).toBeUndefined();
+      const body = JSON.parse(res._body);
+      expect(body.success).toBe(false);
+      expect(body.error).toBe('Forbidden: Invalid origin');
+    });
+
+    it('should allow requests without origin header (CLI tools like curl)', async () => {
+      const req = createMockRequest('POST', '/file-action', {
+        action: 'open',
+        path: validPlanPath,
+      });
+      const res = createMockResponse();
+
+      await handleFileActionRequest(req, res);
+
+      // No CORS headers for requests without Origin
+      expect(res._headers['Access-Control-Allow-Origin']).toBeUndefined();
+      // But request should still succeed
+      expect(res._statusCode).toBe(200);
     });
   });
 
