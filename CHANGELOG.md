@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.18.4] - 2026-01-12
+
+### Security
+- **XSS table CSS injection defense** - Table alignment values now sanitized with `escapeCssValue()` before insertion into style attributes; defense-in-depth against CWE-79
+
+### Added
+- 45 new security tests for html.ts (26 tests) and markdown.ts (19 tests) covering CSS injection prevention
+
+---
+
 ## [0.18.3] - 2026-01-12
 
 ### Security

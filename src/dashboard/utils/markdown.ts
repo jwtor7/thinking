@@ -2,7 +2,7 @@
  * Markdown rendering utilities for the Thinking Monitor Dashboard
  */
 
-import { escapeHtml, encodeHtmlAttribute } from './html.ts';
+import { escapeHtml, encodeHtmlAttribute, escapeCssValue } from './html.ts';
 
 /**
  * Alignment type for table columns
@@ -62,7 +62,7 @@ function renderTable(lines: string[]): string {
   tableHtml += '<thead><tr>';
   headerCells.forEach((cell, i) => {
     const align = alignments[i] || 'left';
-    tableHtml += `<th style="text-align: ${align}">${cell}</th>`;
+    tableHtml += `<th style="text-align: ${escapeCssValue(align)}">${cell}</th>`;
   });
   tableHtml += '</tr></thead>';
 
@@ -80,7 +80,7 @@ function renderTable(lines: string[]): string {
       for (let j = 0; j < headerCells.length; j++) {
         const cell = rowCells[j] || '';
         const align = alignments[j] || 'left';
-        tableHtml += `<td style="text-align: ${align}">${cell}</td>`;
+        tableHtml += `<td style="text-align: ${escapeCssValue(align)}">${cell}</td>`;
       }
       tableHtml += '</tr>';
     }
