@@ -135,4 +135,22 @@
   --color-hover-overlay: rgba(255, 255, 255, 0.05);
   --color-active-overlay: rgba(255, 255, 255, 0.1);
   --color-disabled-opacity: 0.5;
+
+  /* Badge Colors (WCAG AA compliant - theme-aware) */
+  --color-badge-green-bg: #238636;
+  --color-badge-green-text: #ffffff;
+  --color-badge-yellow-bg: #9e6a03;
+  --color-badge-yellow-text: #ffffff;
+  --color-badge-orange-bg: #9e6a03;
+  --color-badge-orange-text: #ffffff;
+  --color-badge-blue-bg: #1f6feb;
+  --color-badge-blue-text: #ffffff;
+  --color-badge-purple-bg: #8957e5;
+  --color-badge-purple-text: #ffffff;
+  --color-badge-cyan-bg: #0d7d87;
+  --color-badge-cyan-text: #ffffff;
+  --color-badge-red-bg: #cf222e;
+  --color-badge-red-text: #ffffff;
+  --color-badge-gray-bg: #6e7681;
+  --color-badge-gray-text: #ffffff;
 }

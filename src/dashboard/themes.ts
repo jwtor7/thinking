@@ -64,6 +64,24 @@ interface ThemeColors {
   focusRing: string;
   hoverOverlay: string;
   activeOverlay: string;
+
+  // Badge colors (background + text pairs for WCAG AA compliance)
+  badgeGreenBg: string;
+  badgeGreenText: string;
+  badgeYellowBg: string;
+  badgeYellowText: string;
+  badgeOrangeBg: string;
+  badgeOrangeText: string;
+  badgeBlueBg: string;
+  badgeBlueText: string;
+  badgePurpleBg: string;
+  badgePurpleText: string;
+  badgeCyanBg: string;
+  badgeCyanText: string;
+  badgeRedBg: string;
+  badgeRedText: string;
+  badgeGrayBg: string;
+  badgeGrayText: string;
 }
 
 // ============================================
@@ -113,6 +131,24 @@ const darkTheme: ThemeColors = {
   focusRing: 'rgba(88, 166, 255, 0.4)',
   hoverOverlay: 'rgba(255, 255, 255, 0.05)',
   activeOverlay: 'rgba(255, 255, 255, 0.1)',
+
+  // Badge colors - darker backgrounds with white text for dark theme
+  badgeGreenBg: '#238636',
+  badgeGreenText: '#ffffff',
+  badgeYellowBg: '#9e6a03',
+  badgeYellowText: '#ffffff',
+  badgeOrangeBg: '#9e6a03',
+  badgeOrangeText: '#ffffff',
+  badgeBlueBg: '#1f6feb',
+  badgeBlueText: '#ffffff',
+  badgePurpleBg: '#8957e5',
+  badgePurpleText: '#ffffff',
+  badgeCyanBg: '#0d7d87',
+  badgeCyanText: '#ffffff',
+  badgeRedBg: '#cf222e',
+  badgeRedText: '#ffffff',
+  badgeGrayBg: '#6e7681',
+  badgeGrayText: '#ffffff',
 };
 
 /**
@@ -158,6 +194,24 @@ const lightTheme: ThemeColors = {
   focusRing: 'rgba(9, 105, 218, 0.4)',
   hoverOverlay: 'rgba(0, 0, 0, 0.04)',
   activeOverlay: 'rgba(0, 0, 0, 0.08)',
+
+  // Badge colors - pastel backgrounds with dark text for light theme
+  badgeGreenBg: 'rgba(26, 127, 55, 0.12)',
+  badgeGreenText: '#116329',
+  badgeYellowBg: 'rgba(154, 103, 0, 0.12)',
+  badgeYellowText: '#7a5200',
+  badgeOrangeBg: 'rgba(188, 76, 0, 0.12)',
+  badgeOrangeText: '#953800',
+  badgeBlueBg: 'rgba(9, 105, 218, 0.12)',
+  badgeBlueText: '#0550ae',
+  badgePurpleBg: 'rgba(130, 80, 223, 0.12)',
+  badgePurpleText: '#6639ba',
+  badgeCyanBg: 'rgba(5, 152, 188, 0.12)',
+  badgeCyanText: '#046d8b',
+  badgeRedBg: 'rgba(207, 34, 46, 0.12)',
+  badgeRedText: '#a40e26',
+  badgeGrayBg: 'rgba(110, 119, 129, 0.12)',
+  badgeGrayText: '#57606a',
 };
 
 /**
@@ -205,6 +259,24 @@ const solarizedTheme: ThemeColors = {
   focusRing: 'rgba(38, 139, 210, 0.4)',
   hoverOverlay: 'rgba(0, 0, 0, 0.04)',
   activeOverlay: 'rgba(0, 0, 0, 0.08)',
+
+  // Badge colors - warm pastel backgrounds with dark text for solarized light
+  badgeGreenBg: 'rgba(133, 153, 0, 0.15)',
+  badgeGreenText: '#5b6a00',
+  badgeYellowBg: 'rgba(181, 137, 0, 0.15)',
+  badgeYellowText: '#8a6800',
+  badgeOrangeBg: 'rgba(203, 75, 22, 0.15)',
+  badgeOrangeText: '#a33d0f',
+  badgeBlueBg: 'rgba(38, 139, 210, 0.15)',
+  badgeBlueText: '#1a6091',
+  badgePurpleBg: 'rgba(108, 113, 196, 0.15)',
+  badgePurpleText: '#494d8a',
+  badgeCyanBg: 'rgba(42, 161, 152, 0.15)',
+  badgeCyanText: '#1a6b65',
+  badgeRedBg: 'rgba(220, 50, 47, 0.15)',
+  badgeRedText: '#a81f1c',
+  badgeGrayBg: 'rgba(101, 123, 131, 0.15)',
+  badgeGrayText: '#586e75',
 };
 
 /**
@@ -252,6 +324,24 @@ const solarizedDarkTheme: ThemeColors = {
   focusRing: 'rgba(38, 139, 210, 0.4)',
   hoverOverlay: 'rgba(255, 255, 255, 0.05)',
   activeOverlay: 'rgba(255, 255, 255, 0.1)',
+
+  // Badge colors - muted solarized backgrounds with light text for dark theme
+  badgeGreenBg: '#5b6a00',
+  badgeGreenText: '#eee8d5',
+  badgeYellowBg: '#8a6800',
+  badgeYellowText: '#eee8d5',
+  badgeOrangeBg: '#a33d0f',
+  badgeOrangeText: '#eee8d5',
+  badgeBlueBg: '#1a6091',
+  badgeBlueText: '#eee8d5',
+  badgePurpleBg: '#5458a0',
+  badgePurpleText: '#eee8d5',
+  badgeCyanBg: '#1a7a73',
+  badgeCyanText: '#eee8d5',
+  badgeRedBg: '#a81f1c',
+  badgeRedText: '#eee8d5',
+  badgeGrayBg: '#586e75',
+  badgeGrayText: '#eee8d5',
 };
 
 /**
@@ -387,6 +477,24 @@ export function applyTheme(themeId: ThemeId): void {
   root.style.setProperty('--color-focus-ring', colors.focusRing);
   root.style.setProperty('--color-hover-overlay', colors.hoverOverlay);
   root.style.setProperty('--color-active-overlay', colors.activeOverlay);
+
+  // Apply badge colors (WCAG AA compliant)
+  root.style.setProperty('--color-badge-green-bg', colors.badgeGreenBg);
+  root.style.setProperty('--color-badge-green-text', colors.badgeGreenText);
+  root.style.setProperty('--color-badge-yellow-bg', colors.badgeYellowBg);
+  root.style.setProperty('--color-badge-yellow-text', colors.badgeYellowText);
+  root.style.setProperty('--color-badge-orange-bg', colors.badgeOrangeBg);
+  root.style.setProperty('--color-badge-orange-text', colors.badgeOrangeText);
+  root.style.setProperty('--color-badge-blue-bg', colors.badgeBlueBg);
+  root.style.setProperty('--color-badge-blue-text', colors.badgeBlueText);
+  root.style.setProperty('--color-badge-purple-bg', colors.badgePurpleBg);
+  root.style.setProperty('--color-badge-purple-text', colors.badgePurpleText);
+  root.style.setProperty('--color-badge-cyan-bg', colors.badgeCyanBg);
+  root.style.setProperty('--color-badge-cyan-text', colors.badgeCyanText);
+  root.style.setProperty('--color-badge-red-bg', colors.badgeRedBg);
+  root.style.setProperty('--color-badge-red-text', colors.badgeRedText);
+  root.style.setProperty('--color-badge-gray-bg', colors.badgeGrayBg);
+  root.style.setProperty('--color-badge-gray-text', colors.badgeGrayText);
 
   // Set a data attribute for CSS selectors that might need it
   root.dataset.theme = resolvedThemeId;

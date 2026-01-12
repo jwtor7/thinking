@@ -138,15 +138,130 @@ export function getAgentColor(agentName: string): string {
 }
 
 /**
+ * Badge color pair (background and text).
+ */
+export interface BadgeColors {
+  bg: string;
+  text: string;
+}
+
+/**
+ * Lazily initialized badge color values.
+ * Maps color type (green, orange, etc.) to badge colors.
+ */
+let badgeColorsInitialized = false;
+let BADGE_COLORS: Record<string, BadgeColors> = {};
+
+/**
+ * Initialize badge color values from CSS variables.
+ * Called once when badge colors are first needed.
+ */
+function initBadgeColors(): void {
+  if (badgeColorsInitialized) return;
+
+  BADGE_COLORS = {
+    green: {
+      bg: getCssVar('--color-badge-green-bg'),
+      text: getCssVar('--color-badge-green-text'),
+    },
+    yellow: {
+      bg: getCssVar('--color-badge-yellow-bg'),
+      text: getCssVar('--color-badge-yellow-text'),
+    },
+    orange: {
+      bg: getCssVar('--color-badge-orange-bg'),
+      text: getCssVar('--color-badge-orange-text'),
+    },
+    blue: {
+      bg: getCssVar('--color-badge-blue-bg'),
+      text: getCssVar('--color-badge-blue-text'),
+    },
+    purple: {
+      bg: getCssVar('--color-badge-purple-bg'),
+      text: getCssVar('--color-badge-purple-text'),
+    },
+    cyan: {
+      bg: getCssVar('--color-badge-cyan-bg'),
+      text: getCssVar('--color-badge-cyan-text'),
+    },
+    red: {
+      bg: getCssVar('--color-badge-red-bg'),
+      text: getCssVar('--color-badge-red-text'),
+    },
+    gray: {
+      bg: getCssVar('--color-badge-gray-bg'),
+      text: getCssVar('--color-badge-gray-text'),
+    },
+  };
+
+  badgeColorsInitialized = true;
+}
+
+/**
+ * Map of known agent names to their badge color type.
+ * This maps agent names to color categories (green, orange, etc.)
+ */
+const AGENT_BADGE_COLOR_MAP: Record<string, string> = {
+  // Core agents
+  'main': 'gray',
+  'code-implementer': 'green',
+  'code-test-evaluator': 'cyan',
+  'haiku-general-agent': 'orange',
+  'opus-general-purpose': 'yellow',
+  'general-purpose': 'blue',
+  // Subagent types (from Task tool)
+  'Explore': 'orange',
+  'Plan': 'green',
+  'Bash': 'purple',
+  'Discover': 'cyan',
+  'Research': 'blue',
+};
+
+/**
+ * Fallback badge color types for unknown agents.
+ * Cycles through these based on name hash.
+ */
+const FALLBACK_BADGE_TYPES = ['red', 'purple', 'orange', 'green', 'blue', 'cyan'];
+
+/**
+ * Get badge colors (background + text) for an agent.
+ * Returns WCAG AA compliant color pairs for themed badges.
+ *
+ * @param agentName - The agent name or type
+ * @returns Badge colors with bg and text properties
+ */
+export function getAgentBadgeColors(agentName: string): BadgeColors {
+  // Ensure badge colors are initialized
+  initBadgeColors();
+
+  // Check for predefined color mapping
+  const colorType = AGENT_BADGE_COLOR_MAP[agentName];
+  if (colorType && BADGE_COLORS[colorType]) {
+    return BADGE_COLORS[colorType];
+  }
+
+  // For unknown agents, generate a consistent color based on name hash
+  let hash = 0;
+  for (let i = 0; i < agentName.length; i++) {
+    hash = ((hash << 5) - hash) + agentName.charCodeAt(i);
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  const fallbackType = FALLBACK_BADGE_TYPES[Math.abs(hash) % FALLBACK_BADGE_TYPES.length];
+  return BADGE_COLORS[fallbackType] || BADGE_COLORS.gray;
+}
+
+/**
  * Reset the color cache so colors are re-read from CSS variables.
  * Call this when the theme changes to ensure session/agent colors
  * pick up the new theme's accent colors.
  */
 export function resetColorCache(): void {
   cssVarsInitialized = false;
+  badgeColorsInitialized = false;
   SESSION_COLORS = [];
   AGENT_COLORS = {};
   AGENT_FALLBACK_COLORS = [];
+  BADGE_COLORS = {};
   console.log('[Colors] Color cache reset - will re-read CSS variables on next access');
 }
 

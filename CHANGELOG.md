@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.18.0] - 2026-01-11
+
+### Added
+- **WCAG AA compliant badge colors** - Agent type badges (Explore, Plan, etc.) now have theme-aware colors with proper contrast ratios for readability across all themes
+- **Theme-specific badge styling** - Dark themes use solid backgrounds with white text; light themes use pastel backgrounds with dark text
+- **Badge color API** - New `getAgentBadgeColors()` function in colors.ts returns bg/text pairs for any agent
+
+### Changed
+- **Improved light theme readability** - Badge contrast ratio improved from ~2.7:1 to 5.5:1+ (WCAG AA compliant)
+- **Extended theme system** - Added 16 new badge color CSS variables per theme (bg + text for 8 color types)
+
+---
+
 ## [0.17.4] - 2026-01-11
 
 ### Fixed

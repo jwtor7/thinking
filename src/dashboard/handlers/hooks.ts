@@ -9,7 +9,7 @@ import { state } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { formatTime } from '../utils/formatting.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
-import { getAgentColor, getSessionColorByHash, getSessionColorByFolder } from '../ui/colors.ts';
+import { getAgentColor, getAgentBadgeColors, getSessionColorByHash, getSessionColorByFolder } from '../ui/colors.ts';
 import { getShortSessionId } from '../ui/filters.ts';
 import { getSessionDisplayName } from './sessions.ts';
 import type { HookExecutionEvent } from '../types.ts';
@@ -218,8 +218,8 @@ export function handleHookExecution(event: HookExecutionEvent): void {
     // Check if it looks like a real agent type name (contains letters and dashes) vs just an ID (hex)
     const isRealAgentType = agentType && !/^[0-9a-f]{7,}$/i.test(agentType);
     if (isRealAgentType) {
-      const agentColor = getAgentColor(agentType);
-      toolInfo = `<span class="hook-tool hook-agent-type" style="background: ${escapeCssValue(agentColor)}; color: white;">${escapeHtml(agentType)}</span>`;
+      const badgeColors = getAgentBadgeColors(agentType);
+      toolInfo = `<span class="hook-tool hook-agent-type" style="background: ${escapeCssValue(badgeColors.bg)}; color: ${escapeCssValue(badgeColors.text)};">${escapeHtml(agentType)}</span>`;
     }
     // If it's just an ID, don't show a badge (the agent ID is already in agentBadge if relevant)
   } else if (toolName) {

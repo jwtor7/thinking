@@ -172,6 +172,48 @@ describe('Theme System', () => {
     it('should not have system theme in registry (it resolves to dark/light)', () => {
       expect((themes as Record<string, unknown>)['system']).toBeUndefined();
     });
+
+    it('should have badge colors defined for all themes', () => {
+      const themeKeys: Array<keyof typeof themes> = ['dark', 'light', 'solarized', 'solarized-dark'];
+      const badgeColorKeys = [
+        'badgeGreenBg', 'badgeGreenText',
+        'badgeYellowBg', 'badgeYellowText',
+        'badgeOrangeBg', 'badgeOrangeText',
+        'badgeBlueBg', 'badgeBlueText',
+        'badgePurpleBg', 'badgePurpleText',
+        'badgeCyanBg', 'badgeCyanText',
+        'badgeRedBg', 'badgeRedText',
+        'badgeGrayBg', 'badgeGrayText',
+      ];
+
+      themeKeys.forEach((themeKey) => {
+        const theme = themes[themeKey] as Record<string, string>;
+        badgeColorKeys.forEach((colorKey) => {
+          expect(theme[colorKey]).toBeDefined();
+          expect(typeof theme[colorKey]).toBe('string');
+          expect(theme[colorKey].length).toBeGreaterThan(0);
+        });
+      });
+    });
+
+    it('should have dark theme badge colors with white text', () => {
+      expect(themes.dark.badgeGreenText).toBe('#ffffff');
+      expect(themes.dark.badgeOrangeText).toBe('#ffffff');
+      expect(themes.dark.badgeBlueText).toBe('#ffffff');
+    });
+
+    it('should have light theme badge colors with dark text', () => {
+      expect(themes.light.badgeGreenText).toBe('#116329');
+      expect(themes.light.badgeOrangeText).toBe('#953800');
+      expect(themes.light.badgeBlueText).toBe('#0550ae');
+    });
+
+    it('should have light theme badge colors with pastel backgrounds', () => {
+      // Light theme uses rgba for pastel backgrounds
+      expect(themes.light.badgeGreenBg).toMatch(/^rgba\(/);
+      expect(themes.light.badgeOrangeBg).toMatch(/^rgba\(/);
+      expect(themes.light.badgeBlueBg).toMatch(/^rgba\(/);
+    });
   });
 
   describe('themeDisplayNames', () => {
@@ -392,6 +434,23 @@ describe('Theme System', () => {
         '--color-focus-ring',
         '--color-hover-overlay',
         '--color-active-overlay',
+        // Badge colors (WCAG AA compliant)
+        '--color-badge-green-bg',
+        '--color-badge-green-text',
+        '--color-badge-yellow-bg',
+        '--color-badge-yellow-text',
+        '--color-badge-orange-bg',
+        '--color-badge-orange-text',
+        '--color-badge-blue-bg',
+        '--color-badge-blue-text',
+        '--color-badge-purple-bg',
+        '--color-badge-purple-text',
+        '--color-badge-cyan-bg',
+        '--color-badge-cyan-text',
+        '--color-badge-red-bg',
+        '--color-badge-red-text',
+        '--color-badge-gray-bg',
+        '--color-badge-gray-text',
       ];
 
       expectedVariables.forEach((varName) => {
