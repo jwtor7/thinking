@@ -253,8 +253,8 @@ export function handleHookExecution(event: HookExecutionEvent): void {
   const isSubagentHook = hookType === 'SubagentStart' || hookType === 'SubagentStop';
   let agentBadge = '';
   if (agentId && agentId !== sessionId && !isSubagentHook) {
-    const agentColor = getAgentColor(agentId);
-    agentBadge = `<span class="hook-agent-badge" style="background: ${escapeCssValue(agentColor)}">${escapeHtml(getShortSessionId(agentId))}</span>`;
+    const agentBadgeColors = getAgentBadgeColors(agentId);
+    agentBadge = `<span class="hook-agent-badge" style="background: ${escapeCssValue(agentBadgeColors.bg)}; color: ${escapeCssValue(agentBadgeColors.text)}">${escapeHtml(getShortSessionId(agentId))}</span>`;
   }
 
   // For subagent hooks or our own hook, don't render the content section

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.1] - 2026-01-11
+
+### Fixed
+- **Badge contrast implementation** - Fixed badge color usage in tools.ts, thinking.ts, and hooks.ts to consistently use `getAgentBadgeColors()` function instead of mixing with hardcoded text colors, ensuring WCAG AA compliance across all agent badge types
+
+---
+
 ## [0.18.0] - 2026-01-11
 
 ### Added

@@ -12,7 +12,7 @@ import { formatTime, formatDuration, getDurationClass, summarizeInput } from '..
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { renderSimpleMarkdown } from '../utils/markdown.ts';
 import { getShortSessionId } from '../ui/filters.ts';
-import { getAgentColor, getSessionColorByFolder, getSessionColorByHash } from '../ui/colors.ts';
+import { getAgentColor, getAgentBadgeColors, getSessionColorByFolder, getSessionColorByHash } from '../ui/colors.ts';
 import { getSessionDisplayName } from './sessions.ts';
 import { applyToolsFilter, updateToolsCount } from '../ui/filters.ts';
 import type { ToolStartEvent, ToolEndEvent } from '../types.ts';
@@ -150,8 +150,8 @@ export function handleToolStart(event: ToolStartEvent): void {
   // Get the display name for this agent
   const agentDisplayName = callbacks.getAgentDisplayName(agentId);
 
-  // Get agent color for visual distinction
-  const agentColor = getAgentColor(agentDisplayName);
+  // Get agent badge colors for visual distinction (WCAG AA compliant)
+  const agentBadgeColors = getAgentBadgeColors(agentDisplayName);
 
   // Create tool entry with collapsible structure (collapsed by default)
   const entry = document.createElement('div');
@@ -171,7 +171,7 @@ export function handleToolStart(event: ToolStartEvent): void {
         ${sessionBadge}
       </div>
       <div class="tool-header-line2">
-        <span class="tool-agent" style="color: ${escapeCssValue(agentColor)}">${escapeHtml(agentDisplayName)}</span>
+        <span class="tool-agent" style="background: ${escapeCssValue(agentBadgeColors.bg)}; color: ${escapeCssValue(agentBadgeColors.text)}">${escapeHtml(agentDisplayName)}</span>
         <span class="tool-name">${escapeHtml(toolName)}</span>
         <span class="tool-preview">${escapeHtml(preview)}</span>
       </div>

@@ -17,7 +17,7 @@ import {
   applyThinkingFilter,
   updateThinkingCount,
 } from '../ui/filters.ts';
-import { getAgentColor, getSessionColorByFolder, getSessionColorByHash } from '../ui/colors.ts';
+import { getAgentColor, getAgentBadgeColors, getSessionColorByFolder, getSessionColorByHash } from '../ui/colors.ts';
 import { getSessionDisplayName } from './sessions.ts';
 
 /**
@@ -150,8 +150,8 @@ export function handleThinking(event: ThinkingEvent): void {
     ? `<span class="entry-subagent-badge" title="Subagent thinking">${escapeHtml(subagentMapping.agentName)}</span>`
     : '';
 
-  // Get agent color for visual distinction
-  const agentColor = getAgentColor(agentDisplayName);
+  // Get agent badge colors for visual distinction (WCAG AA compliant)
+  const agentBadgeColors = getAgentBadgeColors(agentDisplayName);
 
   entry.innerHTML = `
     <div class="thinking-entry-header">
@@ -159,7 +159,7 @@ export function handleThinking(event: ThinkingEvent): void {
       ${folderBadge}
       ${sessionBadge}
       ${subagentBadge}
-      <span class="thinking-agent" style="color: ${escapeCssValue(agentColor)}">${escapeHtml(agentDisplayName)}</span>
+      <span class="thinking-agent" style="background: ${escapeCssValue(agentBadgeColors.bg)}; color: ${escapeCssValue(agentBadgeColors.text)}">${escapeHtml(agentDisplayName)}</span>
       <span class="thinking-preview">${escapeHtml(preview)}...</span>
     </div>
     <div class="thinking-text">${escapeHtml(content)}</div>

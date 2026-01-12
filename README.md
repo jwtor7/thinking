@@ -4,7 +4,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-0.18.0-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.18.1-purple)](./CHANGELOG.md)
 
 A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
 
@@ -122,6 +122,7 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
+- **v0.18.1** (2026-01-11) — Badge contrast fix: consistent use of getAgentBadgeColors() for WCAG AA compliance
 - **v0.18.0** (2026-01-11) — WCAG AA badge contrast: theme-aware colors for readable badges in all themes
 - **v0.17.4** (2026-01-11) — TypeScript strict mode: fixed ~100+ type checking errors
 - **v0.17.3** (2026-01-11) — Folder names as primary identifiers: sessions now show project names instead of IDs
