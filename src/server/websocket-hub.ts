@@ -24,6 +24,8 @@ interface ConnectedClient {
   ws: WebSocket;
   connectedAt: Date;
   id: string;
+  /** Counter for invalid messages received from this client */
+  invalidMessageCount: number;
 }
 
 /**
@@ -116,6 +118,7 @@ export class WebSocketHub {
       ws,
       connectedAt: new Date(),
       id: clientId,
+      invalidMessageCount: 0,
     };
 
     this.clients.set(clientId, client);
@@ -155,9 +158,27 @@ export class WebSocketHub {
         logger.warn(
           `[WebSocketHub] Rejected oversized message from ${client.id}: ${messageStr.length} bytes`
         );
+        ws.close(1009, 'Message too large');
         return;
       }
-      this.handleClientMessage(client, messageStr);
+
+      // Early JSON validation before processing
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(messageStr);
+      } catch {
+        logger.warn(`[WebSocketHub] Invalid JSON from ${client.id}`);
+        client.invalidMessageCount++;
+        if (client.invalidMessageCount > 5) {
+          logger.warn(
+            `[WebSocketHub] Closing connection for ${client.id}: too many invalid messages`
+          );
+          ws.close(1003, 'Too many invalid messages');
+        }
+        return;
+      }
+
+      this.handleClientMessage(client, parsed);
     });
   }
 
@@ -221,34 +242,26 @@ export class WebSocketHub {
 
   /**
    * Handle an incoming message from a client.
+   * Expects already-parsed JSON data (validation done in message handler).
    */
-  private handleClientMessage(client: ConnectedClient, data: string): void {
-    try {
-      const parsed = JSON.parse(data);
+  private handleClientMessage(client: ConnectedClient, data: unknown): void {
+    if (isClientRequest(data)) {
+      logger.debug(`[WebSocketHub] Received ${data.type} from ${client.id}`);
 
-      if (isClientRequest(parsed)) {
-        logger.debug(`[WebSocketHub] Received ${parsed.type} from ${client.id}`);
-
-        if (this.clientRequestHandler) {
-          this.clientRequestHandler(parsed, (event) => this.sendToClient(client, event))
-            .catch((error) => {
-              logger.error(
-                `[WebSocketHub] Error handling client request:`,
-                error instanceof Error ? error.message : 'Unknown error'
-              );
-            });
-        } else {
-          logger.warn(`[WebSocketHub] No handler registered for client requests`);
-        }
+      if (this.clientRequestHandler) {
+        this.clientRequestHandler(data, (event) => this.sendToClient(client, event))
+          .catch((error) => {
+            logger.error(
+              `[WebSocketHub] Error handling client request:`,
+              error instanceof Error ? error.message : 'Unknown error'
+            );
+          });
       } else {
-        // Log only message length, not content (could contain secrets)
-        logger.debug(`[WebSocketHub] Unrecognized message from ${client.id}, length=${data.length}`);
+        logger.warn(`[WebSocketHub] No handler registered for client requests`);
       }
-    } catch (error) {
-      logger.error(
-        `[WebSocketHub] Failed to parse message from ${client.id}:`,
-        error instanceof Error ? error.message : 'Unknown error'
-      );
+    } else {
+      // Log unrecognized message (content already validated as JSON)
+      logger.debug(`[WebSocketHub] Unrecognized message from ${client.id}`);
     }
   }
 

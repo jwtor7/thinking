@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.18.6] - 2026-01-12
+
+### Security
+- **WebSocket message validation** - Early JSON validation before processing; connection closes with code 1009 on oversized messages, code 1003 after 6+ invalid JSON messages; mitigates CWE-20
+
+### Added
+- 11 new WebSocket security tests covering size limits, JSON validation, and per-client rate limiting
+
+---
+
 ## [0.18.5] - 2026-01-12
 
 ### Security
