@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.18.2] - 2026-01-11
+
+### Fixed
+- **SUBAGENTSTOP agent name display** - SUBAGENTSTOP hook events now show the agent name badge (e.g., "gemini-researcher") matching SUBAGENTSTART; looks up agent name from subagentState before falling back to output parsing
+
+### Added
+- **Subagent state lookup for hook events** - hooks.ts now imports subagentState to resolve agent names from tracked agent_start events
+
+---
+
 ## [0.18.1] - 2026-01-11
 
 ### Fixed

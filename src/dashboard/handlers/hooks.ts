@@ -5,7 +5,7 @@
  * with hook type, tool name, decision, and timing information.
  */
 
-import { state } from '../state.ts';
+import { state, subagentState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { formatTime } from '../utils/formatting.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
@@ -213,8 +213,22 @@ export function handleHookExecution(event: HookExecutionEvent): void {
   let toolInfo = '';
   if (hookType === 'SubagentStart' || hookType === 'SubagentStop') {
     // For subagent hooks, show agent type name in tool position
-    // Extract agent type from output (format: "agent-type" or "agent-type: status")
-    const agentType = output?.split(':')[0]?.trim() || '';
+    // First, try to look up the agent name from subagent state using the event's agentId
+    // This is more reliable than parsing output, especially for SubagentStop
+    let agentType = '';
+
+    if (agentId) {
+      const subagentMapping = subagentState.subagents.get(agentId);
+      if (subagentMapping?.agentName) {
+        agentType = subagentMapping.agentName;
+      }
+    }
+
+    // Fall back to extracting from output (format: "agent-type" or "agent-type: status")
+    if (!agentType && output) {
+      agentType = output.split(':')[0]?.trim() || '';
+    }
+
     // Check if it looks like a real agent type name (contains letters and dashes) vs just an ID (hex)
     const isRealAgentType = agentType && !/^[0-9a-f]{7,}$/i.test(agentType);
     if (isRealAgentType) {
