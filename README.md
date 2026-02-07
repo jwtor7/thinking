@@ -4,7 +4,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-0.22.0-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.22.4-purple)](./CHANGELOG.md)
 
 A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
 
@@ -130,10 +130,10 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
-- **v0.22.0** (2026-02-07) — Dashboard UX: Timeline view, hook PRE+POST grouping, session dropdown, tab count badges, cross-panel linking, agent tree in Team panel
-- **v0.20.0** (2026-02-06) — Multi-agent team visibility: Team panel, Task board, agent tree, per-agent filtering, SendMessage detection, enhanced hooks
-- **v0.18.8** (2026-02-06) — Docs: CLAUDE.md architecture refresh (build targets, dashboard patterns, hook system, testing)
-- **v0.18.7** (2026-01-12) — Security: esbuild upgraded to 0.27.2 (GHSA-67mh-4wv8-2f99)
-- **v0.18.6** (2026-01-12) — Security: WebSocket message validation (CWE-20); 11 new tests
+- **v0.22.4** (2026-02-07) — Dispatcher event routing tests (+95 tests, 1020 total)
+- **v0.22.3** (2026-02-07) — Security: ID validation, CSS escape allowlist; team/formatting/logger tests (+194 tests)
+- **v0.22.2** (2026-02-07) — Timeline filter input, endpoint test fix
+- **v0.22.1** (2026-02-07) — Session duration, tool color coding, WebSocket heartbeat, health endpoint
+- **v0.22.0** (2026-02-07) — Dashboard UX: Timeline, hook grouping, session dropdown, tab badges, cross-panel linking
 
 *[Full changelog →](./CHANGELOG.md)*
