@@ -1,5 +1,6 @@
 import { state, agentContextStack, agentContextTimestamps, subagentState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
+import { debug } from '../utils/debug.ts';
 import { MAX_AGENT_STACK_SIZE, AGENT_STACK_STALE_MS, AGENT_STACK_CLEANUP_INTERVAL_MS } from '../config.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { getAgentBadgeColors } from '../ui/colors.ts';
@@ -85,7 +86,7 @@ function handleSubagentMapping(event: SubagentMappingEvent): void {
     }
   }
 
-  console.log(
+  debug(
     `[Dashboard] Subagent mappings updated: ${event.mappings.length} subagent(s), ${subagentState.agentChildren.size} parent(s) with children`
   );
 
@@ -168,7 +169,7 @@ function pushAgentContext(agentId: string): void {
 
     agentContextStack.push(agentId);
     agentContextTimestamps.set(agentId, Date.now());
-    console.log(`[Dashboard] Agent context pushed: ${agentId}, stack depth: ${agentContextStack.length}`);
+    debug(`[Dashboard] Agent context pushed: ${agentId}, stack depth: ${agentContextStack.length}`);
   }
 }
 
@@ -181,7 +182,7 @@ function popAgentContext(agentId: string): void {
     if (index > 0) {
       agentContextStack.splice(index, 1);
       agentContextTimestamps.delete(agentId);
-      console.log(`[Dashboard] Agent context popped: ${agentId}, stack depth: ${agentContextStack.length}`);
+      debug(`[Dashboard] Agent context popped: ${agentId}, stack depth: ${agentContextStack.length}`);
     }
   }
 }
@@ -206,7 +207,7 @@ function cleanupStaleAgentContexts(): void {
   }
 
   if (removedCount > 0) {
-    console.log(`[Dashboard] Cleaned up ${removedCount} stale agent context(s), stack depth: ${agentContextStack.length}`);
+    debug(`[Dashboard] Cleaned up ${removedCount} stale agent context(s), stack depth: ${agentContextStack.length}`);
   }
 }
 

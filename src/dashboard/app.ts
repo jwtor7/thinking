@@ -16,6 +16,7 @@
  */
 
 import { state, agentContextStack, agentContextTimestamps, teamState, activityTracker } from './state.ts';
+import { debug } from './utils/debug.ts';
 
 import {
   MAX_ENTRIES,
@@ -263,7 +264,7 @@ function clearAllPanels(): void {
   // Clear persisted todos from localStorage
   try {
     localStorage.removeItem(STORAGE_KEY_TODOS);
-    console.log('[Dashboard] Cleared todos from localStorage');
+    debug('[Dashboard] Cleared todos from localStorage');
   } catch (error) {
     console.warn('[Dashboard] Failed to clear todos from localStorage:', error);
   }
@@ -704,6 +705,6 @@ setInterval(() => {
   }
 }, ACTIVITY_UPDATE_INTERVAL_MS);
 
-console.log('[Dashboard] Thinking Monitor initialized');
-console.log('[Dashboard] Keyboard shortcuts: a/t/o/d/p=views, Shift+t/o/d=collapse, Shift+p=panel settings, c=clear, s=scroll, /=search, Esc=clear filters');
-console.log('[Dashboard] Plan shortcuts: Cmd+O=open, Cmd+Shift+R=reveal, Cmd+E=export, right-click=context menu');
+debug('[Dashboard] Thinking Monitor initialized');
+debug('[Dashboard] Keyboard shortcuts: a/t/o/d/p=views, Shift+t/o/d=collapse, Shift+p=panel settings, c=clear, s=scroll, /=search, Esc=clear filters');
+debug('[Dashboard] Plan shortcuts: Cmd+O=open, Cmd+Shift+R=reveal, Cmd+E=export, right-click=context menu');

@@ -1,3 +1,5 @@
+import { debug } from '../utils/debug.ts';
+
 // ============================================
 // CSS Variable Helpers
 // ============================================
@@ -262,7 +264,7 @@ export function resetColorCache(): void {
   AGENT_COLORS = {};
   AGENT_FALLBACK_COLORS = [];
   BADGE_COLORS = {};
-  console.log('[Colors] Color cache reset - will re-read CSS variables on next access');
+  debug('[Colors] Color cache reset - will re-read CSS variables on next access');
 }
 
 // Export public functions

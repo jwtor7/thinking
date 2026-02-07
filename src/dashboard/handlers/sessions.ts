@@ -7,6 +7,7 @@
 
 import { state, subagentState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
+import { debug } from '../utils/debug.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { formatElapsed } from '../utils/formatting.ts';
 import { getSessionColorByFolder, getAgentColor } from '../ui/colors.ts';
@@ -199,7 +200,7 @@ export function trackSession(sessionId: string, timestamp: string): void {
       color: getSessionColorByFolder('', sessionId),
       lastActivityTime: Date.now(),
     });
-    console.log(`[Dashboard] New session tracked: ${sessionId}`);
+    debug(`[Dashboard] New session tracked: ${sessionId}`);
     updateSessionFilter();
   }
 
@@ -208,7 +209,7 @@ export function trackSession(sessionId: string, timestamp: string): void {
 
   // When switching to a different session, update the todo panel
   if (isSessionSwitch || isNewSession) {
-    console.log(`[Dashboard] Session switch detected, updating todos for: ${sessionId}`);
+    debug(`[Dashboard] Session switch detected, updating todos for: ${sessionId}`);
     if (callbacks) {
       callbacks.updateTodosForCurrentSession();
     }
@@ -228,7 +229,7 @@ export function handleSessionStart(event: SessionStartEvent): void {
   const workingDirectory = event.workingDirectory;
   const folderName = getSessionFolderName(workingDirectory);
 
-  console.log(`[Dashboard] Session started: ${sessionId}`, { workingDirectory, folderName });
+  debug(`[Dashboard] Session started: ${sessionId}`, { workingDirectory, folderName });
 
   state.sessions.set(sessionId, {
     id: sessionId,
@@ -251,7 +252,7 @@ export function handleSessionStop(event: SessionStopEvent): void {
   const sessionId = event.sessionId;
   const session = state.sessions.get(sessionId);
 
-  console.log(`[Dashboard] Session stopped: ${sessionId}`);
+  debug(`[Dashboard] Session stopped: ${sessionId}`);
 
   if (session) {
     session.active = false;
@@ -486,7 +487,7 @@ export function selectSession(sessionId: string): void {
 export function selectAgentFilter(agentId: string | null): void {
   state.selectedAgentId = agentId;
   filterAllBySession(); // Re-applies all filters including agent
-  console.log(`[Dashboard] Agent filter: ${agentId || 'all'}`);
+  debug(`[Dashboard] Agent filter: ${agentId || 'all'}`);
 }
 
 // ============================================
@@ -523,7 +524,7 @@ export function handleRevealSessionInFinder(): void {
   // Create a temporary link and trigger download to open in Finder
   // This is a workaround since window.open('file://') doesn't work in browsers
   // Instead, we'll use the server endpoint if available
-  console.log(`[Dashboard] Reveal in Finder: ${path}`);
+  debug(`[Dashboard] Reveal in Finder: ${path}`);
 
   // Try to use the server API to reveal in Finder
   // Note: API is on port 3355, dashboard is on port 3356
@@ -541,7 +542,7 @@ export function handleRevealSessionInFinder(): void {
           callbacks.showToast(`Path: ${path}`, 'info', 5000);
         }
       } else {
-        console.log('[Dashboard] Reveal in Finder succeeded');
+        debug('[Dashboard] Reveal in Finder succeeded');
       }
     })
     .catch(err => {

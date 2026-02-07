@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-02-07 — v1.0.3
+
+### Changed
+- **Debug logging system** — Replaced 47 `console.log` calls across 12 dashboard modules with conditional `debug()` logger; silent by default, enable via `localStorage.setItem('debug', 'true')` in DevTools
+- **Export modal focus trap** — Added focus trapping, focus restoration, and keyboard handling to the export modal (matching panel selector and search overlay)
+
+---
+
 ## 2026-02-07 — v1.0.2
 
 ### Fixed

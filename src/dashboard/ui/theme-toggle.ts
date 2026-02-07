@@ -7,6 +7,7 @@
 
 import { state } from '../state.ts';
 import { ThemeId } from '../types.ts';
+import { debug } from '../utils/debug.ts';
 import { applyTheme, watchSystemTheme, themeDisplayNames, getSystemTheme } from '../themes.ts';
 import { saveThemePreference } from '../storage/persistence.ts';
 
@@ -110,7 +111,7 @@ function handleThemeChange(themeId: ThemeId): void {
   if (themeId === 'system') {
     // Start watching for system theme changes
     systemThemeCleanup = watchSystemTheme((systemTheme: 'dark' | 'light') => {
-      console.log(`[Theme] System theme changed to: ${systemTheme}`);
+      debug(`[Theme] System theme changed to: ${systemTheme}`);
       applyTheme('system'); // Re-apply to pick up new system preference
     });
   }
@@ -122,7 +123,7 @@ function handleThemeChange(themeId: ThemeId): void {
 function cycleTheme(): void {
   const nextTheme = getNextTheme(state.theme);
   handleThemeChange(nextTheme);
-  console.log(`[ThemeToggle] Cycled to theme: ${nextTheme}`);
+  debug(`[ThemeToggle] Cycled to theme: ${nextTheme}`);
 }
 
 /**
@@ -154,12 +155,12 @@ export function initThemeToggle(initialTheme: ThemeId): void {
   // Set up system watcher if using system theme
   if (initialTheme === 'system') {
     systemThemeCleanup = watchSystemTheme((systemTheme: 'dark' | 'light') => {
-      console.log(`[Theme] System theme changed to: ${systemTheme}`);
+      debug(`[Theme] System theme changed to: ${systemTheme}`);
       applyTheme('system');
     });
   }
 
-  console.log(`[ThemeToggle] Initialized with theme: ${initialTheme}${initialTheme === 'system' ? ` (resolved to ${getSystemTheme()})` : ''}`);
+  debug(`[ThemeToggle] Initialized with theme: ${initialTheme}${initialTheme === 'system' ? ` (resolved to ${getSystemTheme()})` : ''}`);
 }
 
 /**

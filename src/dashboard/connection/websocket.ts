@@ -15,6 +15,7 @@ import {
 } from '../config.ts';
 import { state } from '../state.ts';
 import { elements } from '../ui/elements.ts';
+import { debug } from '../utils/debug.ts';
 import type { StrictMonitorEvent, WebSocketMessage } from '../types.ts';
 
 // ============================================
@@ -89,7 +90,7 @@ export function connect(): void {
   ws = new WebSocket(WS_URL);
 
   ws.onopen = () => {
-    console.log('[Dashboard] Connected to monitor server');
+    debug('[Dashboard] Connected to monitor server');
     state.connected = true;
     state.reconnectAttempt = 0;
     updateConnectionStatus('connected');
@@ -107,7 +108,7 @@ export function connect(): void {
   };
 
   ws.onclose = () => {
-    console.log('[Dashboard] Disconnected from monitor server');
+    debug('[Dashboard] Disconnected from monitor server');
     state.connected = false;
     updateConnectionStatus('disconnected');
     callbacks?.showToast('Connection lost', 'error');
@@ -193,7 +194,7 @@ function scheduleReconnect(): void {
 
   reconnectTimeout = window.setTimeout(() => {
     reconnectTimeout = null;
-    console.log('[Dashboard] Attempting to reconnect...');
+    debug('[Dashboard] Attempting to reconnect...');
     connect();
   }, delay);
 }

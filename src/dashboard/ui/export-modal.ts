@@ -52,6 +52,11 @@ let modalElement: HTMLElement | null = null;
 let isOpen = false;
 
 /**
+ * Previously focused element, restored on close.
+ */
+let previouslyFocused: HTMLElement | null = null;
+
+/**
  * Current directory being browsed.
  */
 let currentDirectory = '';
@@ -607,6 +612,9 @@ export function openExportModal(): void {
   updateSessionInfo();
 
   // Show modal first (so elements are visible)
+  // Save currently focused element for restoration on close
+  previouslyFocused = document.activeElement as HTMLElement | null;
+
   modalElement.classList.add('visible');
   isOpen = true;
 
@@ -623,10 +631,8 @@ export function openExportModal(): void {
     }, 100);
   }
 
-  // Add escape key handler
-  document.addEventListener('keydown', handleEscapeKey);
-
-  console.log('[Export] Modal opened');
+  // Add keyboard handler (escape + focus trap)
+  document.addEventListener('keydown', handleModalKeydown);
 }
 
 /**
@@ -638,10 +644,14 @@ export function closeExportModal(): void {
   modalElement.classList.remove('visible');
   isOpen = false;
 
-  // Remove escape key handler
-  document.removeEventListener('keydown', handleEscapeKey);
+  // Remove keyboard handler
+  document.removeEventListener('keydown', handleModalKeydown);
 
-  console.log('[Export] Modal closed');
+  // Restore focus to the element that opened the modal
+  if (previouslyFocused && previouslyFocused.focus) {
+    previouslyFocused.focus();
+    previouslyFocused = null;
+  }
 }
 
 /**
@@ -663,11 +673,35 @@ export function isExportModalOpen(): boolean {
 }
 
 /**
- * Handle Escape key to close modal.
+ * Handle keyboard events for the modal: Escape to close, Tab to trap focus.
  */
-function handleEscapeKey(event: KeyboardEvent): void {
+function handleModalKeydown(event: KeyboardEvent): void {
   if (event.key === 'Escape') {
     closeExportModal();
+    return;
+  }
+
+  // Focus trap: keep Tab cycling within the modal
+  if (event.key === 'Tab' && modalElement) {
+    const focusable = modalElement.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey) {
+      if (document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
   }
 }
 

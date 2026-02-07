@@ -1,5 +1,6 @@
 import { state } from '../state.ts';
 import { elements } from '../ui/elements.ts';
+import { debug } from '../utils/debug.ts';
 import type { StrictMonitorEvent, ConnectionStatusEvent } from '../types.ts';
 import { trackSession, handleSessionStart, handleSessionStop, updateSessionActivity, updateSessionFilter } from './sessions.ts';
 import { handleThinking } from './thinking.ts';
@@ -26,7 +27,7 @@ export function handleEvent(event: StrictMonitorEvent): void {
   // Update stats bar
   updateStats(event);
 
-  console.log(`[Dashboard] Event received:`, {
+  debug(`[Dashboard] Event received:`, {
     type: event.type,
     sessionId: event.sessionId,
     agentId: event.agentId,
@@ -113,7 +114,7 @@ export function handleEvent(event: StrictMonitorEvent): void {
     default: {
       // This should never happen if StrictMonitorEvent is exhaustive
       const exhaustiveCheck: never = event;
-      console.log('[Dashboard] Unhandled event type:', (exhaustiveCheck as { type: string }).type);
+      debug('[Dashboard] Unhandled event type:', (exhaustiveCheck as { type: string }).type);
     }
   }
 }

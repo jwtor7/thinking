@@ -6,6 +6,7 @@
  */
 
 import { resetColorCache } from './ui/colors.ts';
+import { debug } from './utils/debug.ts';
 
 // ============================================
 // Types
@@ -502,5 +503,5 @@ export function applyTheme(themeId: ThemeId): void {
   // Reset color cache so session/agent colors are re-read from updated CSS variables
   resetColorCache();
 
-  console.log(`[Themes] Applied theme: ${themeId}${themeId === 'system' ? ` (resolved to ${resolvedThemeId})` : ''}`);
+  debug(`[Themes] Applied theme: ${themeId}${themeId === 'system' ? ` (resolved to ${resolvedThemeId})` : ''}`);
 }

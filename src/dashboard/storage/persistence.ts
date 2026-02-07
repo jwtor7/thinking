@@ -10,6 +10,7 @@
  */
 
 import { TodoItem, StoredPlanAssociation, ThemeId, PanelVisibility } from '../types.ts';
+import { debug } from '../utils/debug.ts';
 import {
   STORAGE_KEY_TODOS,
   STORAGE_KEY_PANEL_COLLAPSE,
@@ -60,7 +61,7 @@ export function saveTodosToStorage(): void {
     // Convert Map to array of [sessionId, todos] entries for JSON serialization
     const entries: Array<[string, TodoItem[]]> = Array.from(state.sessionTodos.entries());
     localStorage.setItem(STORAGE_KEY_TODOS, JSON.stringify(entries));
-    console.log(`[Dashboard] Saved ${entries.length} session(s) of todos to localStorage`);
+    debug(`[Dashboard] Saved ${entries.length} session(s) of todos to localStorage`);
   } catch (error) {
     console.warn('[Dashboard] Failed to save todos to localStorage:', error);
   }
@@ -77,7 +78,7 @@ export function restoreTodosFromStorage(): void {
   try {
     const stored = localStorage.getItem(STORAGE_KEY_TODOS);
     if (!stored) {
-      console.log('[Dashboard] No stored todos found in localStorage');
+      debug('[Dashboard] No stored todos found in localStorage');
       return;
     }
 
@@ -90,7 +91,7 @@ export function restoreTodosFromStorage(): void {
 
     // Reconstruct the sessionTodos map
     state.sessionTodos = new Map(entries);
-    console.log(`[Dashboard] Restored ${state.sessionTodos.size} session(s) of todos from localStorage`);
+    debug(`[Dashboard] Restored ${state.sessionTodos.size} session(s) of todos from localStorage`);
 
     // If there's exactly one session, auto-select it to display its todos
     if (state.sessionTodos.size === 1) {
@@ -177,7 +178,7 @@ export function restorePanelCollapseState(): void {
       }
     }
 
-    console.log('[Dashboard] Restored panel collapse state from localStorage');
+    debug('[Dashboard] Restored panel collapse state from localStorage');
   } catch (error) {
     console.warn('[Dashboard] Failed to restore panel collapse state:', error);
   }
@@ -224,7 +225,7 @@ export function loadSessionPlanAssociations(): void {
   try {
     const stored = localStorage.getItem(PLAN_ASSOCIATION_STORAGE_KEY);
     if (!stored) {
-      console.log('[Dashboard] No stored plan associations found in localStorage');
+      debug('[Dashboard] No stored plan associations found in localStorage');
       return;
     }
 
@@ -242,7 +243,7 @@ export function loadSessionPlanAssociations(): void {
     const originalCount = Object.keys(parsed).length;
     const prunedCount = Object.keys(pruned).length;
     if (prunedCount < originalCount) {
-      console.log(`[Dashboard] Pruned ${originalCount - prunedCount} stale plan associations`);
+      debug(`[Dashboard] Pruned ${originalCount - prunedCount} stale plan associations`);
       // Save the pruned state back to localStorage
       localStorage.setItem(PLAN_ASSOCIATION_STORAGE_KEY, JSON.stringify(pruned));
     }
@@ -253,7 +254,7 @@ export function loadSessionPlanAssociations(): void {
       state.sessionPlanMap.set(sessionId, assoc.planPath);
     }
 
-    console.log(`[Dashboard] Restored ${state.sessionPlanMap.size} plan associations from localStorage`);
+    debug(`[Dashboard] Restored ${state.sessionPlanMap.size} plan associations from localStorage`);
   } catch (error) {
     console.warn('[Dashboard] Failed to restore plan associations from localStorage:', error);
   }
@@ -291,7 +292,7 @@ export function saveSessionPlanAssociation(sessionId: string, planPath: string):
 
     // Save back to localStorage
     localStorage.setItem(PLAN_ASSOCIATION_STORAGE_KEY, JSON.stringify(associations));
-    console.log(`[Dashboard] Saved plan association: ${sessionId.slice(0, 8)} -> ${planPath.split('/').pop()}`);
+    debug(`[Dashboard] Saved plan association: ${sessionId.slice(0, 8)} -> ${planPath.split('/').pop()}`);
   } catch (error) {
     console.warn('[Dashboard] Failed to save plan association to localStorage:', error);
   }
@@ -321,7 +322,7 @@ function isValidThemeId(value: unknown): value is ThemeId {
 export function saveThemePreference(theme: ThemeId): void {
   try {
     localStorage.setItem(STORAGE_KEY_THEME, theme);
-    console.log(`[Dashboard] Saved theme preference: ${theme}`);
+    debug(`[Dashboard] Saved theme preference: ${theme}`);
   } catch (error) {
     console.warn('[Dashboard] Failed to save theme preference to localStorage:', error);
   }
@@ -337,10 +338,10 @@ export function loadThemePreference(): ThemeId {
   try {
     const stored = localStorage.getItem(STORAGE_KEY_THEME);
     if (stored && isValidThemeId(stored)) {
-      console.log(`[Dashboard] Loaded theme preference: ${stored}`);
+      debug(`[Dashboard] Loaded theme preference: ${stored}`);
       return stored;
     }
-    console.log(`[Dashboard] No valid theme preference found, using default: ${DEFAULT_THEME}`);
+    debug(`[Dashboard] No valid theme preference found, using default: ${DEFAULT_THEME}`);
     return DEFAULT_THEME as ThemeId;
   } catch (error) {
     console.warn('[Dashboard] Failed to load theme preference from localStorage:', error);
@@ -384,7 +385,7 @@ function isValidPanelName(value: unknown): value is keyof PanelVisibility {
 export function savePanelVisibility(): void {
   try {
     localStorage.setItem(STORAGE_KEY_PANEL_VISIBILITY, JSON.stringify(state.panelVisibility));
-    console.log('[Dashboard] Saved panel visibility settings');
+    debug('[Dashboard] Saved panel visibility settings');
   } catch (error) {
     console.warn('[Dashboard] Failed to save panel visibility to localStorage:', error);
   }
@@ -400,7 +401,7 @@ export function loadPanelVisibility(): PanelVisibility {
   try {
     const stored = localStorage.getItem(STORAGE_KEY_PANEL_VISIBILITY);
     if (!stored) {
-      console.log('[Dashboard] No panel visibility settings found, using defaults');
+      debug('[Dashboard] No panel visibility settings found, using defaults');
       return { ...DEFAULT_PANEL_VISIBILITY };
     }
 
@@ -419,7 +420,7 @@ export function loadPanelVisibility(): PanelVisibility {
       }
     }
 
-    console.log('[Dashboard] Loaded panel visibility settings from localStorage');
+    debug('[Dashboard] Loaded panel visibility settings from localStorage');
     return result;
   } catch (error) {
     console.warn('[Dashboard] Failed to load panel visibility from localStorage:', error);
@@ -434,5 +435,5 @@ export function loadPanelVisibility(): PanelVisibility {
 export function restorePanelVisibility(): void {
   const visibility = loadPanelVisibility();
   state.panelVisibility = visibility;
-  console.log('[Dashboard] Restored panel visibility state');
+  debug('[Dashboard] Restored panel visibility state');
 }

@@ -11,6 +11,7 @@
 
 import { state } from '../state.ts';
 import { elements } from '../ui/elements.ts';
+import { debug } from '../utils/debug.ts';
 import { escapeHtml } from '../utils/html.ts';
 import { renderSimpleMarkdown } from '../utils/markdown.ts';
 import { sendMessage, getWebSocket } from '../connection/websocket.ts';
@@ -74,7 +75,7 @@ export function handlePlanList(event: PlanListEvent): void {
     lastModified: p.lastModified,
   }));
 
-  console.log(`[Dashboard] Received plan list with ${state.planList.length} plans`);
+  debug(`[Dashboard] Received plan list with ${state.planList.length} plans`);
 
   // Update the plan selector dropdown
   renderPlanSelector();
@@ -447,7 +448,7 @@ export function requestPlanContent(planPath: string): void {
     console.error('[Dashboard] Failed to request plan content: WebSocket not connected');
     return;
   }
-  console.log(`[Dashboard] Requested plan content: ${planPath}`);
+  debug(`[Dashboard] Requested plan content: ${planPath}`);
 }
 
 /**

@@ -7,6 +7,7 @@
 
 import { state } from '../state.ts';
 import { elements } from '../ui/elements.ts';
+import { debug } from '../utils/debug.ts';
 import { escapeHtml } from '../utils/html.ts';
 import { saveTodosToStorage, saveSessionPlanAssociation } from '../storage/persistence.ts';
 import { TodoItem } from '../types.ts';
@@ -54,7 +55,7 @@ export function detectPlanAccess(input: string, sessionId: string): void {
     if (planPathMatch) {
       state.sessionPlanMap.set(sessionId, filePath);
       saveSessionPlanAssociation(sessionId, filePath);
-      console.log(`[Dashboard] Session ${sessionId.slice(0, 8)} associated with plan: ${planPathMatch[1]}`);
+      debug(`[Dashboard] Session ${sessionId.slice(0, 8)} associated with plan: ${planPathMatch[1]}`);
     }
   } catch {
     // If not valid JSON, try regex on the raw string
@@ -62,7 +63,7 @@ export function detectPlanAccess(input: string, sessionId: string): void {
     if (planPathMatch) {
       state.sessionPlanMap.set(sessionId, planPathMatch[0]);
       saveSessionPlanAssociation(sessionId, planPathMatch[0]);
-      console.log(`[Dashboard] Session ${sessionId.slice(0, 8)} associated with plan (regex): ${planPathMatch[0]}`);
+      debug(`[Dashboard] Session ${sessionId.slice(0, 8)} associated with plan (regex): ${planPathMatch[0]}`);
     }
   }
 }
@@ -145,7 +146,7 @@ export function updateTodosForCurrentSession(): void {
  * @param sessionId - The session ID to clear todos for
  */
 export function clearSessionTodos(sessionId: string): void {
-  console.log(`[Dashboard] Clearing todos for session: ${sessionId}`);
+  debug(`[Dashboard] Clearing todos for session: ${sessionId}`);
   state.sessionTodos.delete(sessionId);
 
   // Update display if this is the current/selected session

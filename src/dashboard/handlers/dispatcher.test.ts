@@ -308,8 +308,8 @@ describe('Event Dispatcher - Static Analysis', () => {
   });
 
   describe('Logging', () => {
-    it('should log event details to console', () => {
-      expect(dispatcherContent).toContain("console.log(`[Dashboard] Event received:`");
+    it('should log event details via debug()', () => {
+      expect(dispatcherContent).toContain("debug(`[Dashboard] Event received:`");
     });
 
     it('should log event type in console output', () => {
@@ -343,7 +343,7 @@ describe('Event Dispatcher - Static Analysis', () => {
     });
 
     it('should log unhandled event types', () => {
-      expect(dispatcherContent).toContain("console.log('[Dashboard] Unhandled event type:'");
+      expect(dispatcherContent).toContain("debug('[Dashboard] Unhandled event type:'");
     });
 
     it('should extract type from exhaustive check assertion', () => {
@@ -438,7 +438,7 @@ describe('Event Dispatcher - Static Analysis', () => {
     it('should add timeline before dispatch', () => {
       const beforeSwitch = dispatcherContent.split('switch (event.type)')[0];
       expect(beforeSwitch).toContain('addTimelineEntry(event)');
-      expect(beforeSwitch).toContain('console.log');
+      expect(beforeSwitch).toContain('debug(');
     });
   });
 
@@ -450,7 +450,7 @@ describe('Event Dispatcher - Static Analysis', () => {
       // Extract indices for key operations
       const countIdx = handlerBody.indexOf('state.eventCount++');
       const timelineIdx = handlerBody.indexOf('addTimelineEntry');
-      const logIdx = handlerBody.indexOf('console.log');
+      const logIdx = handlerBody.indexOf('debug(');
       const sessionTrackIdx = handlerBody.indexOf('trackSession');
       const switchIdx = handlerBody.indexOf('switch');
 

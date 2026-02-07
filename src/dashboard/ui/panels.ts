@@ -7,6 +7,7 @@
 
 import { state } from '../state.ts';
 import { elements } from './elements.ts';
+import { debug } from '../utils/debug.ts';
 import { savePanelCollapseState } from '../storage/persistence.ts';
 import { resetPanelFlex, rebuildResizers } from './resizer.ts';
 
@@ -123,7 +124,7 @@ export function togglePanelCollapse(panelName: PanelName): void {
     callbacks.announceStatus(`${panelName} panel ${isCollapsed ? 'collapsed' : 'expanded'}`);
   }
 
-  console.log(`[Dashboard] Panel ${panelName} ${isCollapsed ? 'collapsed' : 'expanded'}`);
+  debug(`[Dashboard] Panel ${panelName} ${isCollapsed ? 'collapsed' : 'expanded'}`);
 }
 
 /**
