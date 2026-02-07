@@ -77,6 +77,7 @@ export const state: AppState = {
   pendingTools: new Map(),
   thinkingFilter: '',
   toolsFilter: '',
+  timelineFilter: '',
   reconnectAttempt: 0,
   reconnectCountdown: 0,
   keyboardMode: false,

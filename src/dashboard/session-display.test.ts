@@ -477,17 +477,11 @@ describe('Context Menu Path Handling', () => {
 
 describe('Reveal in Finder API', () => {
   it('should use correct endpoint path', () => {
-    // The client code uses /api/reveal but server uses /file-action
-    // This is a BUG that needs to be fixed
-    const clientEndpoint = '/api/reveal';
+    // Client (sessions.ts) uses /file-action, which matches the server endpoint
+    const clientEndpoint = '/file-action';
     const serverEndpoint = '/file-action';
 
-    // Document the mismatch - this test will fail to highlight the bug
-    // After fix, this should pass with matching endpoints
-    console.warn('BUG: Client uses /api/reveal but server expects /file-action');
-
-    // For now, test that the intended pattern is clear
-    expect(clientEndpoint).not.toBe(serverEndpoint);
+    expect(clientEndpoint).toBe(serverEndpoint);
   });
 
   it('should encode path in URL correctly', () => {

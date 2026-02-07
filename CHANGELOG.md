@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-02-07 — v0.22.2
+
+### Added
+- **Timeline filter input** — search/filter timeline entries by event type, summary, or agent name with filtered/total count badge
+
+### Fixed
+- **Reveal in Finder endpoint** — corrected test assertion documenting a false endpoint mismatch bug (client already used `/file-action` correctly)
+
+---
+
 ## 2026-02-07 — v0.22.1
 
 ### Added

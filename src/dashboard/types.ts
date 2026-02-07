@@ -68,6 +68,7 @@ export interface AppState {
   pendingTools: Map<string, ToolInfo>;
   thinkingFilter: string;
   toolsFilter: string;
+  timelineFilter: string;
   reconnectAttempt: number;
   reconnectCountdown: number;
   keyboardMode: boolean;

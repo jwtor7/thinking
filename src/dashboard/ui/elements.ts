@@ -80,6 +80,8 @@ export const elements = {
   timelinePanel: document.querySelector('.panel-timeline') as HTMLElement,
   timelineEntries: document.getElementById('timeline-entries'),
   timelineCount: document.getElementById('timeline-count'),
+  timelineFilter: document.getElementById('timeline-filter') as HTMLInputElement | null,
+  timelineFilterClear: document.getElementById('timeline-filter-clear'),
   timelineCollapseBtn: document.querySelector('.panel-timeline .panel-collapse-btn') as HTMLButtonElement,
   // Activity pulse indicator
   activityPulse: document.getElementById('activity-pulse'),

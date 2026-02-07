@@ -17,6 +17,7 @@ import type { StrictMonitorEvent } from '../../shared/types.ts';
 
 const MAX_TIMELINE_ENTRIES = 500;
 
+
 /** Type icons mapping */
 const TYPE_ICONS: Record<string, string> = {
   thinking: '&#129504;',      // brain
@@ -56,6 +57,79 @@ let timelineCount = 0;
  */
 export function initTimeline(cbs: TimelineCallbacks): void {
   callbacks = cbs;
+  initTimelineFilter();
+}
+
+/**
+ * Set up the timeline filter input event listeners.
+ */
+function initTimelineFilter(): void {
+  const filterInput = elements.timelineFilter;
+  const clearBtn = elements.timelineFilterClear;
+
+  if (filterInput) {
+    filterInput.addEventListener('input', () => {
+      state.timelineFilter = filterInput.value.toLowerCase();
+      applyTimelineFilter();
+      if (clearBtn) {
+        clearBtn.classList.toggle('panel-filter-hidden', !filterInput.value);
+      }
+    });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      if (filterInput) {
+        filterInput.value = '';
+        state.timelineFilter = '';
+        applyTimelineFilter();
+        clearBtn.classList.add('panel-filter-hidden');
+      }
+    });
+  }
+}
+
+/**
+ * Apply the current timeline filter to all entries.
+ * Updates visibility and the badge count.
+ */
+export function applyTimelineFilter(): void {
+  const container = elements.timelineEntries;
+  if (!container) return;
+
+  const filter = state.timelineFilter;
+  let visible = 0;
+
+  for (const child of Array.from(container.children)) {
+    const el = child as HTMLElement;
+    if (!el.dataset.filterText) continue;
+
+    const isSessionHidden = el.style.display === 'none' && !filter;
+    if (isSessionHidden) {
+      visible++; // Don't count session-filtered items
+      continue;
+    }
+
+    if (!filter || el.dataset.filterText.includes(filter)) {
+      // Check session filter
+      if (state.selectedSession !== 'all' && el.dataset.session && el.dataset.session !== state.selectedSession) {
+        el.style.display = 'none';
+      } else {
+        el.style.display = '';
+      }
+      visible++;
+    } else {
+      el.style.display = 'none';
+    }
+  }
+
+  if (elements.timelineCount) {
+    if (filter) {
+      elements.timelineCount.textContent = `${visible}/${timelineCount}`;
+    } else {
+      elements.timelineCount.textContent = String(timelineCount);
+    }
+  }
 }
 
 /**
@@ -148,22 +222,32 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
   // Type class for color coding
   const typeClass = event.type.replace(/_/g, '-');
 
+  // Build filter text for search (lowercase for case-insensitive matching)
+  const typeLabel = event.type.replace(/_/g, ' ');
+  const filterText = `${typeLabel} ${summary} ${agentLabel}`.toLowerCase();
+
   const entry = document.createElement('div');
   entry.className = `timeline-entry timeline-${typeClass} new`;
   entry.dataset.timestamp = String(Date.now());
   entry.dataset.type = event.type;
   entry.dataset.session = event.sessionId || '';
+  entry.dataset.filterText = filterText;
 
   entry.innerHTML = `
     <span class="timeline-icon">${icon}</span>
     <span class="timeline-time">${escapeHtml(time)}</span>
-    <span class="timeline-type">${escapeHtml(event.type.replace(/_/g, ' '))}</span>
+    <span class="timeline-type">${escapeHtml(typeLabel)}</span>
     <span class="timeline-summary">${escapeHtml(summary)}</span>
     <span class="timeline-agent" style="background: ${escapeCssValue(agentBadgeColors.bg)}; color: ${escapeCssValue(agentBadgeColors.text)}">${escapeHtml(agentLabel)}</span>
   `;
 
   // Apply session filter
   if (state.selectedSession !== 'all' && event.sessionId && event.sessionId !== state.selectedSession) {
+    entry.style.display = 'none';
+  }
+
+  // Apply text filter
+  if (state.timelineFilter && !filterText.includes(state.timelineFilter)) {
     entry.style.display = 'none';
   }
 
