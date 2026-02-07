@@ -28,6 +28,10 @@ tmp/
 temp/
 *.tmp
 
+# Sensitive docs
 SecurityReport*.md
 REFACTOR-PLAN*.md
 TEST_EVALUATION_REPORT*.md
+
+# Personal session logs
+.claude/logs/

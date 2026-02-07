@@ -21,7 +21,7 @@
 - **Simplified path validation** — Removed redundant `..` check after `resolve()` in plan watcher
 
 ### Removed
-- **PII scrubbed** — All hardcoded `/Users/<REDACTED>/` paths replaced with generic or relative paths
+- **PII scrubbed** — All hardcoded `/Users/true/` paths replaced with generic or relative paths
 - **Sensitive files** — Removed SecurityReport, REFACTOR-PLAN, and TEST_EVALUATION_REPORT from tracked files
 
 ### Changed
