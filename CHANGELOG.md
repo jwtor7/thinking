@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-02-07 — v1.1.3
+
+### Fixed
+- **Team events rendered for wrong session** — `handleTeamUpdate`, `handleTeammateIdle`, and `handleMessageSent` now check the event's session against the selected session before rendering. Previously, team events from any session would overwrite the panel regardless of which session was selected, causing stale team data (like old team names and members) to appear.
+- **Team-session mapping uses event sessionId** — `resolveTeamSession` now uses the event's `sessionId` directly instead of relying solely on fragile subagent name matching. This ensures teams are correctly mapped to their source session.
+
+---
+
 ## 2026-02-07 — v1.1.2
 
 ### Fixed

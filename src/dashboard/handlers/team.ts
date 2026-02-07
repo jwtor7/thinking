@@ -127,10 +127,21 @@ export function handleTeamUpdate(event: TeamUpdateEvent): void {
   const teamName = event.teamName;
   teamState.teams.set(teamName, event.members);
 
-  // Resolve team's session by matching member agentIds against subagent mappings
-  resolveTeamSession(teamName, event.members);
+  // Map team to session: prefer event.sessionId, fall back to subagent name matching
+  resolveTeamSession(teamName, event.sessionId, event.members);
 
-  // Show team panel on first team event
+  // Only render if this team belongs to the currently selected session
+  const teamSession = teamState.teamSessionMap.get(teamName);
+  if (state.selectedSession === 'all') {
+    // Team panel is hidden for "All Sessions" — skip rendering
+    return;
+  }
+  if (teamSession && teamSession !== state.selectedSession) {
+    // Team belongs to a different session — don't overwrite the panel
+    return;
+  }
+
+  // Show team panel on first team event for this session
   callbacks.showTeamPanel();
 
   updateTeamHeader(teamName);
@@ -142,16 +153,25 @@ export function handleTeamUpdate(event: TeamUpdateEvent): void {
 }
 
 /**
- * Resolve which session a team belongs to by checking member agentIds
- * against known subagent mappings.
+ * Resolve which session a team belongs to.
+ * Uses event sessionId directly when available, falls back to matching
+ * member names against known subagent mappings.
  */
-function resolveTeamSession(teamName: string, members: TeamUpdateEvent['members']): void {
-  for (const member of members) {
-    // Check if any member name matches a known subagent
-    for (const [, mapping] of subagentState.subagents) {
-      if (mapping.agentName === member.name) {
-        teamState.teamSessionMap.set(teamName, mapping.parentSessionId);
-        return;
+function resolveTeamSession(teamName: string, sessionId?: string, members?: TeamUpdateEvent['members']): void {
+  // Direct session mapping from event (most reliable)
+  if (sessionId) {
+    teamState.teamSessionMap.set(teamName, sessionId);
+    return;
+  }
+
+  // Fallback: match member names against known subagents
+  if (members) {
+    for (const member of members) {
+      for (const [, mapping] of subagentState.subagents) {
+        if (mapping.agentName === member.name) {
+          teamState.teamSessionMap.set(teamName, mapping.parentSessionId);
+          return;
+        }
       }
     }
   }
@@ -208,17 +228,23 @@ export function handleTeammateIdle(event: TeammateIdleEvent): void {
   const teamName = event.teamName;
   if (!teamName) return;
 
-  // Update member status
+  // Update member status in state (always, even if not rendering)
   const members = teamState.teams.get(teamName);
   if (members) {
     const member = members.find(m => m.name === event.teammateName);
     if (member) {
       member.status = 'idle';
-      renderMemberGrid(teamName);
     }
   }
 
-  // Show team panel
+  // Only render if this team belongs to the currently selected session
+  const teamSession = teamState.teamSessionMap.get(teamName);
+  if (state.selectedSession === 'all') return;
+  if (teamSession && teamSession !== state.selectedSession) return;
+
+  if (members) {
+    renderMemberGrid(teamName);
+  }
   callbacks.showTeamPanel();
 }
 
@@ -228,11 +254,15 @@ export function handleTeammateIdle(event: TeammateIdleEvent): void {
 export function handleMessageSent(event: MessageSentEvent): void {
   if (!callbacks) return;
 
-  // Store in state
+  // Store in state (always, regardless of which session is selected)
   teamState.teamMessages.push(event);
   if (teamState.teamMessages.length > MAX_MESSAGES) {
     teamState.teamMessages.shift();
   }
+
+  // Only render if the event's session matches the currently selected session
+  if (state.selectedSession === 'all') return;
+  if (event.sessionId && event.sessionId !== state.selectedSession) return;
 
   // Show team panel
   callbacks.showTeamPanel();
