@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-02-06
+
+### Changed
+- **CLAUDE.md architecture documentation refresh**
+  - Removed exhaustive file-by-file component tables (easily discoverable in source)
+  - Added "Three Codebases in One Repo" section explaining dual esbuild build targets (server, dashboard, shared)
+  - Added "Dashboard Architecture" section documenting init*() dependency injection pattern and state management
+  - Added "Hook System" section explaining full pipeline from ~/.claude/settings.json → HTTP → EventProcessor → WebSocketHub → Dashboard
+  - Expanded "Security Requirements" with CSP headers and CORS origin validation details
+  - Clarified versioning workflow (bump script updates package.json, src/server/types.ts, CHANGELOG.md)
+  - Added "Testing" section documenting co-located test convention (*.test.ts)
+
+---
+
 ## [0.18.7] - 2026-01-12
 
 ### Security

@@ -5,17 +5,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Development (rebuild + watch mode)
+# Development (rebuild dashboard + watch server with --experimental-transform-types)
 pnpm dev
 
 # Build everything (server + dashboard)
 pnpm build
 
-# Start production server (kills existing, runs foreground)
-pnpm start
-
 # Build + restart as background daemon (use after code changes)
 pnpm ship
+
+# Start production server (kills existing, runs foreground)
+pnpm start
 
 # Type checking only
 pnpm typecheck
@@ -46,60 +46,66 @@ TranscriptWatcher (polls ~/.claude/projects/*/sessions/*/transcript.jsonl)
 PlanWatcher (watches ~/.claude/plans/*.md) ────────→ WebSocketHub → Dashboard (3356)
 ```
 
-### Server Components (src/server/)
+### Three Codebases in One Repo
 
-| Module | Purpose |
-|--------|---------|
-| `index.ts` | Entry point, orchestrates all components |
-| `event-receiver.ts` | HTTP endpoint for hook events |
-| `websocket-hub.ts` | WebSocket server, broadcasts to dashboard |
-| `hook-processor.ts` | Transforms hook JSON → MonitorEvent |
-| `transcript-watcher.ts` | Polls transcript files for thinking blocks |
-| `plan-watcher.ts` | Watches ~/.claude/plans/ for file changes |
-| `secrets.ts` | Redacts API keys/tokens before broadcast |
-| `static-server.ts` | Serves dashboard on port 3356 |
+The project has three distinct build targets sharing one `tsconfig.json`:
 
-### Dashboard Components (src/dashboard/)
+| Target | Entry Point | Build Tool | Output | Runtime |
+|--------|-------------|------------|--------|---------|
+| **Server** | `src/server/index.ts` | esbuild (Node platform, ESM) | `dist/server/index.js` | Node.js ≥22 |
+| **Dashboard** | `src/dashboard/app.ts` | esbuild (browser, IIFE) | `src/dashboard/app.js` | Browser |
+| **Shared** | `src/shared/types.ts` | Imported by both | N/A | Both |
 
-| Module | Purpose |
-|--------|---------|
-| `app.ts` | Main entry, initializes all modules |
-| `handlers/dispatcher.ts` | Routes events to appropriate handlers |
-| `handlers/thinking.ts` | Renders thinking blocks |
-| `handlers/tools.ts` | Renders tool calls with timing |
-| `handlers/todos.ts` | Manages TodoWrite state |
-| `handlers/plans.ts` | Plan file viewer |
-| `connection/websocket.ts` | WebSocket client, reconnection logic |
-| `state.ts` | Global state (sessions, agents, filters) |
+The server build injects `__PACKAGE_VERSION__` at build time via esbuild `define`. In dev mode (`pnpm dev`), the server runs with `--experimental-transform-types` and reads version from `package.json` at runtime instead.
 
-### Shared Types (src/shared/types.ts)
+### Dashboard Architecture
 
-All event types are defined here and shared between server and dashboard. Key types:
-- `MonitorEvent` - Base event interface
-- `StrictMonitorEvent` - Discriminated union for type-safe handling
-- Event-specific: `ToolStartEvent`, `ToolEndEvent`, `ThinkingEvent`, `AgentStartEvent`, etc.
+The dashboard uses a dependency injection pattern — `app.ts` initializes each handler/UI module by calling `init*()` functions with callback objects. Handlers don't import each other directly; they communicate through callbacks passed at init time. This avoids circular dependencies between handlers.
+
+Key patterns:
+- `state.ts` holds all mutable global state (sessions, agents, filters, todos)
+- `handlers/dispatcher.ts` routes incoming WebSocket events by `event.type`
+- UI modules in `ui/` manage DOM interactions (panels, keyboard, drag-reorder, etc.)
+- `storage/persistence.ts` handles localStorage save/restore
+
+### Shared Types
+
+All event types live in `src/shared/types.ts` and are shared between server and dashboard:
+- `MonitorEvent` — Base event interface (loose, allows extra properties)
+- `StrictMonitorEvent` — Discriminated union for type-safe `switch` on `event.type`
+- Server re-exports these from `src/server/types.ts` which also defines `CONFIG`
+
+### Hook System
+
+Claude Code hooks (configured in `~/.claude/settings.json`) POST JSON to `http://127.0.0.1:3355/event`. The `EventReceiver` validates origin, parses the payload, and passes it through `HookProcessor` which transforms raw hook JSON into typed `MonitorEvent` objects. Events are then broadcast via `WebSocketHub` to all connected dashboard clients.
 
 ## Development Workflow
 
-Uses two-agent pattern: `code-implementer` → `code-test-evaluator`
+Uses two-agent pattern: `code-implementer` (writes code) → `code-test-evaluator` (tests and reviews). Both agents are defined in `.claude/agents/`.
 
 ## Server Ports
 
 | Service | Port |
 |---------|------|
-| Dashboard | 3356 |
 | WebSocket + Events | 3355 |
+| Dashboard (static) | 3356 |
+
+## Testing
+
+Tests are co-located with source files (`*.test.ts` next to the module they test). Uses vitest. No setup/teardown files — tests are self-contained.
 
 ## Security Requirements
 
 - Localhost-only binding (127.0.0.1)
-- Secrets redacted via `secrets.ts` before broadcast
+- Secrets redacted via `secrets.ts` before broadcast (pattern-based, with ReDoS protection)
 - XSS prevention (HTML-escape all rendered content)
+- CSP headers on static server
+- CORS origin validation on event endpoint
 - Path validation (only ~/.claude/ or temp directories)
 
 ## Versioning (MANDATORY)
 
-Every code change requires version bump:
+Every code change requires version bump. The bump script updates `package.json`, `src/server/types.ts`, and `CHANGELOG.md`:
 
 ```bash
 # 1. Bump version
