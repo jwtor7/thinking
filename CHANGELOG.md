@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-02-07 — v0.22.4
+
+### Added
+- **Dispatcher tests** — 95 static analysis tests validating event routing for all 17 event types, handler imports, session tracking, timeline integration, and exhaustive switch coverage
+
+---
+
 ## 2026-02-07 — v0.22.3
 
 ### Added
