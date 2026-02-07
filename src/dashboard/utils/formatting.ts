@@ -84,9 +84,18 @@ export function summarizeInput(input: string | undefined, toolName?: string): st
 
   // Tool-specific smart preview
   if (toolName) {
+    // Normalize MCP tool names: mcp__server__action → action
+    const shortName = shortenToolName(toolName);
+
     try {
       const parsed = JSON.parse(input);
-      switch (toolName) {
+      const KNOWN_TOOLS = new Set([
+        'Read', 'Write', 'Edit', 'Bash', 'Grep', 'Glob', 'Task',
+        'WebFetch', 'WebSearch', 'computer', 'navigate', 'find', 'form_input',
+      ]);
+      const isKnownTool = KNOWN_TOOLS.has(shortName);
+
+      switch (shortName) {
         case 'Read':
         case 'Write':
         case 'Edit':
@@ -126,6 +135,37 @@ export function summarizeInput(input: string | undefined, toolName?: string): st
         case 'WebSearch':
           if (parsed.query) return parsed.query;
           break;
+        // MCP browser tools
+        case 'computer': {
+          const parts: string[] = [];
+          if (parsed.action) parts.push(parsed.action);
+          if (parsed.coordinate) parts.push(`(${parsed.coordinate})`);
+          if (parsed.text) parts.push(`"${parsed.text.length > 30 ? parsed.text.slice(0, 30) + '...' : parsed.text}"`);
+          if (parsed.ref) parts.push(parsed.ref);
+          if (parts.length > 0) return parts.join(' ');
+          break;
+        }
+        case 'navigate':
+          if (parsed.url) return parsed.url.length > 80 ? parsed.url.slice(0, 80) + '...' : parsed.url;
+          break;
+        case 'find':
+          if (parsed.query) return parsed.query;
+          break;
+        case 'form_input':
+          if (parsed.ref && parsed.value != null) return `${parsed.ref} = ${String(parsed.value).slice(0, 40)}`;
+          break;
+      }
+
+      // Generic JSON fallback: compact key:value summary (only for unknown tools)
+      if (!isKnownTool && typeof parsed === 'object' && parsed !== null) {
+        const pairs = Object.entries(parsed)
+          .filter(([, v]) => typeof v !== 'object' && String(v).length < 40)
+          .slice(0, 4)
+          .map(([k, v]) => `${k}:${v}`);
+        if (pairs.length > 0) {
+          const result = pairs.join(', ');
+          return result.length > 80 ? result.slice(0, 80) + '...' : result;
+        }
       }
     } catch {
       // Input is not JSON, fall through to generic handling

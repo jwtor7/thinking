@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-02-07 — v1.0.8
+
+### Changed
+- **Smart tool input previews** — MCP browser tools (`computer`, `navigate`, `find`, `form_input`) now show human-readable previews (e.g. `screenshot`, `left_click (33,67)`, `key "o"`) instead of raw JSON; unknown tools show compact `key:value` summaries; added 10 new tests (1034 total)
+
+---
+
 ## 2026-02-07 — v1.0.7
 
 ### Added

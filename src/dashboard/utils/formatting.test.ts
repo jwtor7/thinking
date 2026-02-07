@@ -817,4 +817,60 @@ describe('summarizeInput', () => {
       expect(result).toBe('//example.com/path');
     });
   });
+
+  describe('MCP browser tools', () => {
+    it('should summarize computer screenshot', () => {
+      const input = JSON.stringify({ action: 'screenshot', tabId: 706679369 });
+      expect(summarizeInput(input, 'mcp__claude-in-chrome__computer')).toBe('screenshot');
+    });
+
+    it('should summarize computer click with coordinates', () => {
+      const input = JSON.stringify({ action: 'left_click', coordinate: [33, 67], tabId: 706679369 });
+      expect(summarizeInput(input, 'mcp__claude-in-chrome__computer')).toBe('left_click (33,67)');
+    });
+
+    it('should summarize computer type with text', () => {
+      const input = JSON.stringify({ action: 'type', text: 'hello world', tabId: 706679369 });
+      expect(summarizeInput(input, 'mcp__claude-in-chrome__computer')).toBe('type "hello world"');
+    });
+
+    it('should summarize computer key with ref', () => {
+      const input = JSON.stringify({ action: 'left_click', ref: 'ref_11', tabId: 706679369 });
+      expect(summarizeInput(input, 'mcp__claude-in-chrome__computer')).toBe('left_click ref_11');
+    });
+
+    it('should summarize navigate with URL', () => {
+      const input = JSON.stringify({ url: 'http://localhost:3356/', tabId: 706679369 });
+      expect(summarizeInput(input, 'mcp__claude-in-chrome__navigate')).toBe('http://localhost:3356/');
+    });
+
+    it('should summarize find with query', () => {
+      const input = JSON.stringify({ query: 'theme toggle button', tabId: 706679369 });
+      expect(summarizeInput(input, 'mcp__claude-in-chrome__find')).toBe('theme toggle button');
+    });
+
+    it('should summarize form_input with ref and value', () => {
+      const input = JSON.stringify({ ref: 'ref_5', value: 'test@email.com', tabId: 706679369 });
+      expect(summarizeInput(input, 'mcp__claude-in-chrome__form_input')).toBe('ref_5 = test@email.com');
+    });
+  });
+
+  describe('generic JSON fallback', () => {
+    it('should show compact key:value pairs for unhandled JSON tools', () => {
+      const input = JSON.stringify({ action: 'start_recording', tabId: 123 });
+      const result = summarizeInput(input, 'mcp__claude-in-chrome__gif_creator');
+      expect(result).toBe('action:start_recording, tabId:123');
+    });
+
+    it('should skip object values in generic fallback', () => {
+      const input = JSON.stringify({ action: 'test', options: { nested: true }, tabId: 5 });
+      expect(summarizeInput(input, 'mcp__unknown__tool')).toBe('action:test, tabId:5');
+    });
+
+    it('should limit to 4 key:value pairs', () => {
+      const input = JSON.stringify({ a: 1, b: 2, c: 3, d: 4, e: 5 });
+      const result = summarizeInput(input, 'SomeUnknownTool');
+      expect(result).toBe('a:1, b:2, c:3, d:4');
+    });
+  });
 });
