@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-02-07 — v1.0.0
+
+### Added
+- **Platform support documentation** — README now includes compatibility matrix (macOS, Linux fully supported; Windows partial via WSL/Git Bash)
+
+### Changed
+- **First public release** — Repository visibility set to public on GitHub
+
+---
+
 ## 2026-02-07 — v0.24.0
 
 ### Added

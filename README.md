@@ -5,7 +5,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-0.24.0-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.0.0-purple)](./CHANGELOG.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 [![GitHub Stars](https://img.shields.io/github/stars/jwtor7/thinking?style=social)](https://github.com/jwtor7/thinking)
 
@@ -142,6 +142,16 @@ See [SECURITY.md](./SECURITY.md) for vulnerability reporting.
 - pnpm
 - Claude Code CLI
 
+### Platform Support
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| **macOS** | Fully supported | Primary development platform |
+| **Linux** | Fully supported | All features work natively |
+| **Windows** | Partial | Server and dashboard work via Node.js. Shell scripts (`setup.sh`, `mock-data.sh`) require WSL or Git Bash. File-open actions use `explorer /select,` natively. |
+
+The core server uses cross-platform Node.js APIs (`path.join`, `os.homedir`) throughout. Windows users can run the dashboard and server without issues — the main gap is that hook installation and utility scripts are bash-only.
+
 ---
 
 ## Contributing
@@ -164,10 +174,10 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
-- **v0.24.0** (2026-02-07) — Public release: MIT license, security hardening, stats bar tooltips, README revamp, mock data script
+- **v1.0.0** (2026-02-07) — First public release: platform support docs, repo made public
+- **v0.24.0** (2026-02-07) — Public release prep: MIT license, security hardening, stats bar tooltips, README revamp, mock data script
 - **v0.23.0** (2026-02-07) — Dashboard upgrades: duration histogram, timeline filter chips, stats bar, global search (Cmd+K), enhanced empty states
 - **v0.22.4** (2026-02-07) — Dispatcher event routing tests (+95 tests, 1020 total)
 - **v0.22.3** (2026-02-07) — Security: ID validation, CSS escape allowlist; team/formatting/logger tests (+194 tests)
-- **v0.22.2** (2026-02-07) — Timeline filter input, endpoint test fix
 
 *[Full changelog →](./CHANGELOG.md)*
