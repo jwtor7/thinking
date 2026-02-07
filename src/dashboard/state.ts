@@ -90,7 +90,7 @@ export const state: AppState = {
   planList: [],
   planSelectorOpen: false,
   contextMenuFilePath: null,
-  activeView: 'all',
+  activeView: 'thinking',
   selectedAgentId: null,
   sessionTodos: new Map(),
   sessionPlanMap: new Map(),

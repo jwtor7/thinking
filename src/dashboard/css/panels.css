@@ -499,11 +499,6 @@ body.dragging-panel * {
     display: none;
   }
 
-  /* When in "all" view on mobile, stack vertically with limited height */
-  .panels[data-view="all"] .panel {
-    max-height: 40vh;
-  }
-
   /* Hide resizers on mobile */
   .resizer-vertical {
     display: none;

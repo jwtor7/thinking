@@ -1,7 +1,7 @@
 /**
  * View Navigation Management
  *
- * Handles switching between different dashboard views (all, thinking, tools, todo, plan)
+ * Handles switching between different dashboard views (thinking, tools, todo, plan, etc.)
  * and managing the UI state for view-specific filtering and display.
  */
 
@@ -12,7 +12,7 @@ import type { PanelName } from './panels.ts';
 /**
  * View type definition
  */
-export type ViewType = 'all' | 'thinking' | 'tools' | 'todo' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline';
+export type ViewType = 'thinking' | 'tools' | 'todo' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline';
 
 /**
  * Callbacks for view navigation events
@@ -48,7 +48,6 @@ export function initViewTabs(): void {
   viewTabsContainer.className = 'view-tabs';
 
   const views: { id: ViewType; label: string; shortcut: string }[] = [
-    { id: 'all', label: 'All', shortcut: 'a' },
     { id: 'thinking', label: 'Thinking', shortcut: 't' },
     { id: 'tools', label: 'Tools', shortcut: 'o' },
     { id: 'hooks', label: 'Hooks', shortcut: 'h' },
@@ -146,7 +145,7 @@ export function updateSessionViewTabs(isAllSessions: boolean): void {
 
     // If currently on Todo or Plan view, switch to All view
     if (state.activeView === 'todo' || state.activeView === 'plan') {
-      selectView('all');
+      selectView('thinking');
     }
   } else {
     // Show Todo and Plan tabs
@@ -166,7 +165,7 @@ export function applyViewFilter(): void {
   if (!panels) return;
 
   // Remove any existing view-specific classes
-  panels.classList.remove('view-all', 'view-thinking', 'view-tools', 'view-todo', 'view-hooks', 'view-plan', 'view-team', 'view-tasks', 'view-timeline');
+  panels.classList.remove('view-thinking', 'view-tools', 'view-todo', 'view-hooks', 'view-plan', 'view-team', 'view-tasks', 'view-timeline');
 
   // Add the current view class
   panels.classList.add(`view-${state.activeView}`);
@@ -175,9 +174,8 @@ export function applyViewFilter(): void {
   panels.dataset.view = state.activeView;
 
   // Show/hide panels based on active view AND panel visibility settings
-  // "All" view shows only Thinking and Tool Activity panels
+  // Each view shows only its corresponding panel
   // Panels hidden via Panel Selector stay hidden regardless of view
-  const showAll = state.activeView === 'all';
   const pv = state.panelVisibility;
 
   // Helper to apply visibility - manages both panel-hidden class and display style
@@ -192,45 +190,35 @@ export function applyViewFilter(): void {
     }
   };
 
-  applyVisibility(elements.thinkingPanel, pv.thinking && (showAll || state.activeView === 'thinking'));
-  applyVisibility(elements.toolsPanel, pv.tools && (showAll || state.activeView === 'tools'));
-  // Todo and Plan are only shown when explicitly selected; Hooks shows in All view too
+  applyVisibility(elements.thinkingPanel, pv.thinking && state.activeView === 'thinking');
+  applyVisibility(elements.toolsPanel, pv.tools && state.activeView === 'tools');
   applyVisibility(elements.todoPanel, pv.todo && state.activeView === 'todo');
-  applyVisibility(elements.hooksPanel, pv.hooks && (showAll || state.activeView === 'hooks'));
+  applyVisibility(elements.hooksPanel, pv.hooks && state.activeView === 'hooks');
   applyVisibility(elements.planPanel, pv.plan && state.activeView === 'plan');
-  // Team, Tasks, and Timeline panels only shown when explicitly selected
   applyVisibility(elements.teamPanel, pv.team && state.activeView === 'team');
   applyVisibility(elements.tasksPanel, pv.tasks && state.activeView === 'tasks');
   applyVisibility(elements.timelinePanel, pv.timeline && state.activeView === 'timeline');
 
-  // Adjust layout for single-panel view
-  if (!showAll) {
-    panels.classList.add('single-view');
+  // Always single-view — ensure the active panel is expanded
+  panels.classList.add('single-view');
+  const panelName = state.activeView as PanelName;
+  if (state.panelCollapseState[panelName]) {
+    state.panelCollapseState[panelName] = false;
 
-    // In single-panel view, ensure the active panel is expanded
-    // (collapsing doesn't make sense when viewing only one panel)
-    const panelName = state.activeView as PanelName;
-    if (state.panelCollapseState[panelName]) {
-      state.panelCollapseState[panelName] = false;
-
-      // Get the panel element and remove collapsed class
-      const panelElements: Record<PanelName, HTMLElement | null> = {
-        thinking: elements.thinkingPanel,
-        tools: elements.toolsPanel,
-        todo: elements.todoPanel,
-        hooks: elements.hooksPanel,
-        plan: elements.planPanel,
-        team: elements.teamPanel,
-        tasks: elements.tasksPanel,
-        timeline: elements.timelinePanel,
-      };
-      const panel = panelElements[panelName];
-      if (panel) {
-        panel.classList.remove('collapsed');
-      }
+    const panelElements: Record<PanelName, HTMLElement | null> = {
+      thinking: elements.thinkingPanel,
+      tools: elements.toolsPanel,
+      todo: elements.todoPanel,
+      hooks: elements.hooksPanel,
+      plan: elements.planPanel,
+      team: elements.teamPanel,
+      tasks: elements.tasksPanel,
+      timeline: elements.timelinePanel,
+    };
+    const panel = panelElements[panelName];
+    if (panel) {
+      panel.classList.remove('collapsed');
     }
-  } else {
-    panels.classList.remove('single-view');
   }
 
   // Announce view change for screen readers

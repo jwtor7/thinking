@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-02-07 — v1.0.10
+
+### Removed
+- **"All" view** — Removed the multi-panel "All" view and `a` keyboard shortcut; default view is now Thinking. Every view is now single-panel, simplifying the view system by removing `showAll` branching, `view-all` CSS class, and mobile-specific multi-panel rules. Timeline already provides a unified chronological feed.
+
+---
+
 ## 2026-02-07 — v1.0.9
 
 ### Changed

@@ -12,7 +12,6 @@ const SHORTCUT_GROUPS = [
   {
     title: 'Navigation',
     shortcuts: [
-      { keys: ['a'], desc: 'All view' },
       { keys: ['t'], desc: 'Thinking view' },
       { keys: ['o'], desc: 'Tools view' },
       { keys: ['h'], desc: 'Hooks view' },

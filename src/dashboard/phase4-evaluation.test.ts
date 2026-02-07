@@ -341,14 +341,12 @@ describe('Phase 4: Dashboard Polish', () => {
       expect(appTsContent).toContain('handleKeydown');
     });
 
-    it('should support a/t/o/d/p for view switching', () => {
-      // Agent tabs were replaced with view tabs (All/Thinking/Tools/Todo/Plan)
-      expect(appTsContent).toContain("case 'a':");
+    it('should support t/o/d/p for view switching', () => {
+      // View tabs: Thinking/Tools/Todo/Plan/etc.
       expect(appTsContent).toContain("case 't':");
       expect(appTsContent).toContain("case 'o':");
       expect(appTsContent).toContain("case 'd':");
       expect(appTsContent).toContain("case 'p':");
-      expect(appTsContent).toContain("selectView('all')");
       expect(appTsContent).toContain("selectView('thinking')");
       expect(appTsContent).toContain("selectView('tools')");
     });

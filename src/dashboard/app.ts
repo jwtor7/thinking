@@ -145,13 +145,11 @@ function announceStatus(message: string): void {
  * Sets tabindex to make the panel focusable, then focuses it.
  */
 function focusActivePanel(view: ViewType): void {
-  // Only focus on single-panel views (not 'all')
-  if (view === 'all') return;
-
   const panelMap: Record<string, string> = {
     thinking: 'thinking-content',
     tools: 'tools-content',
     todo: 'todo-content',
+    hooks: 'hooks-content',
     plan: 'plan-content',
     team: 'team-content',
     tasks: 'tasks-content',
@@ -706,5 +704,5 @@ setInterval(() => {
 }, ACTIVITY_UPDATE_INTERVAL_MS);
 
 debug('[Dashboard] Thinking Monitor initialized');
-debug('[Dashboard] Keyboard shortcuts: a/t/o/d/p=views, Shift+t/o/d=collapse, Shift+p=panel settings, c=clear, s=scroll, /=search, Esc=clear filters');
+debug('[Dashboard] Keyboard shortcuts: t/o/d/h/p=views, Shift+t/o/d=collapse, Shift+p=panel settings, c=clear, s=scroll, /=search, Esc=clear filters');
 debug('[Dashboard] Plan shortcuts: Cmd+O=open, Cmd+Shift+R=reveal, Cmd+E=export, right-click=context menu');

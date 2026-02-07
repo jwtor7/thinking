@@ -5,7 +5,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.0.9-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.0.10-purple)](./CHANGELOG.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 [![GitHub Stars](https://img.shields.io/github/stars/jwtor7/thinking?style=social)](https://github.com/jwtor7/thinking)
 
@@ -109,7 +109,7 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 | Key | Action |
 |-----|--------|
-| `a` `t` `o` `d` `p` `m` `k` `l` | Switch view (All, Thinking, Tools, Todo, Plan, Team, Tasks, Timeline) |
+| `t` `o` `d` `p` `m` `k` `l` `h` | Switch view (Thinking, Tools, Todo, Plan, Team, Tasks, Timeline, Hooks) |
 | `Shift` + `t` `o` `d` `p` `m` `k` `l` | Collapse/expand panel |
 | `c` | Clear all entries |
 | `s` | Toggle auto-scroll |
@@ -174,8 +174,8 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
+- **v1.0.10** (2026-02-07 13:37) — Removed "All" multi-panel view; default is now Thinking. Simplified view system, removed `a` shortcut.
 - **v1.0.9** (2026-02-07 13:10) — Smart tool previews in timeline, concise type badges, search keyboard navigation, MCP tool name shortening, keyboard help modal, debug logging system, focus trapping (8 patch releases, 1034 tests)
-- **v1.0.1** (2026-02-07) — Bug fixes: timeline chip toggle, plan panel empty icon, hooks filter empty state
 - **v1.0.0** (2026-02-07) — First public release: platform support docs, repo made public
 
 *[Full changelog →](./CHANGELOG.md)*

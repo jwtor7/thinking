@@ -57,7 +57,7 @@ export function initKeyboard(cbs: KeyboardCallbacks): void {
  * - 'Escape' - Clear filters and blur
  * - Shift+T/O/D/H - Toggle panel collapse (Thinking/Tools/Todo/Hooks)
  * - Shift+P - Open panel selector modal
- * - A/T/O/D/H/P (without shift) - Select view (All/Thinking/Tools/Todo/Hooks/Plan)
+ * - T/O/D/H/P (without shift) - Select view (Thinking/Tools/Todo/Hooks/Plan)
  * - Cmd/Ctrl+E - Export as Markdown
  * - Cmd/Ctrl+O - Open plan in default app
  * - Cmd/Ctrl+Shift+R - Reveal plan in Finder
@@ -179,9 +179,6 @@ export function handleKeydown(event: KeyboardEvent): void {
   // View navigation shortcuts (without Shift)
   if (!event.ctrlKey && !event.metaKey && !event.shiftKey) {
     switch (event.key.toLowerCase()) {
-      case 'a':
-        selectView('all');
-        return;
       case 't':
         selectView('thinking');
         return;
