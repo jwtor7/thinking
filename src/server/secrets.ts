@@ -122,10 +122,10 @@ const SECRET_PATTERNS: SecretPattern[] = [
   },
 
   // Password patterns
-  // Max quantifier {8,80} prevents ReDoS on long password-like strings
+  // Max quantifier {8,40} prevents ReDoS on long password-like strings
   {
     name: 'Password field',
-    pattern: /\b((?:pass(?:word)?|pwd|passwd)\s*[=:]\s*)["']?([^\s"',;]{8,80})["']?/gi,
+    pattern: /\b((?:pass(?:word)?|pwd|passwd)\s*[=:]\s*)["']?([^\s"',;]{8,40})["']?/gi,
   },
 
   // Private keys (PEM format)

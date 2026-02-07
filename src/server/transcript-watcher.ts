@@ -55,12 +55,12 @@ interface TrackedFile {
 /**
  * Extracts the working directory from a transcript file path.
  * Transcript files are stored in directories like:
- *   ~/.claude/projects/-Users-true-dev-thinking/session-xxx.jsonl
+ *   ~/.claude/projects/-Users-dev-myproject/session-xxx.jsonl
  * This converts the directory name back to a path:
- *   -Users-true-dev-thinking -> /Users/<REDACTED>/dev/thinking
+ *   -Users-dev-myproject -> /Users/dev/myproject
  */
 export function extractWorkingDirectory(filePath: string): string | undefined {
-  // Get the parent directory name (e.g., "-Users-true-dev-thinking")
+  // Get the parent directory name (e.g., "-Users-dev-myproject")
   const parentDir = dirname(filePath);
   const dirName = parentDir.split('/').pop();
 
@@ -68,7 +68,7 @@ export function extractWorkingDirectory(filePath: string): string | undefined {
     return undefined;
   }
 
-  // Convert dashes back to slashes: -Users-true-dev-thinking -> /Users/<REDACTED>/dev/thinking
+  // Convert dashes back to slashes: -Users-dev-myproject -> /Users/dev/myproject
   const workingDir = dirName.replace(/-/g, '/');
 
   // Validate it looks like a reasonable path

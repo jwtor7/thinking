@@ -80,7 +80,15 @@ export class WebSocketHub {
     const origin = info.req.headers.origin;
 
     // Allow connections without origin (e.g., CLI tools, testing)
+    // Still verify connection comes from loopback
     if (!origin) {
+      const remoteAddr = info.req.socket.remoteAddress || '';
+      const isLoopback = remoteAddr === '127.0.0.1' || remoteAddr === '::1' || remoteAddr === '::ffff:127.0.0.1';
+      if (!isLoopback) {
+        logger.warn(`[WebSocketHub] Rejected origin-less connection from non-loopback: ${remoteAddr}`);
+        callback(false, 403, 'Forbidden: Non-loopback connection');
+        return;
+      }
       callback(true);
       return;
     }
@@ -166,15 +174,16 @@ export class WebSocketHub {
     ws.on('message', (data) => {
       // Security: Reject oversized messages to prevent DoS
       const MAX_MESSAGE_SIZE = 100 * 1024; // 100KB
-      // Convert RawData to string first, then check length
-      const messageStr = data.toString();
-      if (messageStr.length > MAX_MESSAGE_SIZE) {
+      // Check raw buffer size BEFORE string conversion to prevent memory spike
+      const rawLength = Buffer.isBuffer(data) ? data.length : Buffer.byteLength(data.toString());
+      if (rawLength > MAX_MESSAGE_SIZE) {
         logger.warn(
-          `[WebSocketHub] Rejected oversized message from ${client.id}: ${messageStr.length} bytes`
+          `[WebSocketHub] Rejected oversized message from ${client.id}: ${rawLength} bytes`
         );
         ws.close(1009, 'Message too large');
         return;
       }
+      const messageStr = data.toString();
 
       // Early JSON validation before processing
       let parsed: unknown;

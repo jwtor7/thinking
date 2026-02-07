@@ -38,6 +38,8 @@ export class EventReceiver {
   private toolStartTimes: Map<string, number> = new Map();
   /** Max age for pending tool starts (5 minutes) */
   private readonly TOOL_START_TTL_MS = 5 * 60 * 1000;
+  /** Maximum number of pending tool starts to track */
+  private readonly MAX_PENDING_TOOLS = 10_000;
   /** Subagent mapper for tracking parent-child relationships */
   private subagentMapper: SubagentMapper;
   /** Server start time for uptime calculation */
@@ -191,6 +193,7 @@ export class EventReceiver {
   private sendRateLimited(res: ServerResponse, retryAfterSeconds: number): void {
     res.writeHead(429, {
       'Content-Type': 'application/json',
+      'X-Content-Type-Options': 'nosniff',
       'Retry-After': String(retryAfterSeconds),
     });
     res.end(
@@ -232,7 +235,7 @@ export class EventReceiver {
       this.hub.broadcast(event);
 
       // Respond with success
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.writeHead(200, { 'Content-Type': 'application/json', 'X-Content-Type-Options': 'nosniff' });
       res.end(JSON.stringify({ success: true, type: event.type }));
 
       logger.debug(`[EventReceiver] Received and broadcast: ${event.type}`);
@@ -251,6 +254,12 @@ export class EventReceiver {
    */
   private processToolTiming(event: MonitorEvent): MonitorEvent {
     if (event.type === 'tool_start' && 'toolCallId' in event && typeof event.toolCallId === 'string') {
+      // Cap pending tools to prevent unbounded memory growth
+      if (this.toolStartTimes.size >= this.MAX_PENDING_TOOLS) {
+        // Evict oldest entry
+        const oldestKey = this.toolStartTimes.keys().next().value;
+        if (oldestKey) this.toolStartTimes.delete(oldestKey);
+      }
       // Record start time for duration calculation
       this.toolStartTimes.set(event.toolCallId, Date.now());
     } else if (event.type === 'tool_end' && 'toolCallId' in event && typeof event.toolCallId === 'string') {
@@ -284,7 +293,7 @@ export class EventReceiver {
       timestamp: new Date().toISOString(),
     };
 
-    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.writeHead(200, { 'Content-Type': 'application/json', 'X-Content-Type-Options': 'nosniff' });
     res.end(JSON.stringify(status));
   }
 
@@ -411,7 +420,7 @@ export class EventReceiver {
    * Send an error response.
    */
   private sendError(res: ServerResponse, code: number, message: string): void {
-    res.writeHead(code, { 'Content-Type': 'application/json' });
+    res.writeHead(code, { 'Content-Type': 'application/json', 'X-Content-Type-Options': 'nosniff' });
     res.end(JSON.stringify({ error: message }));
   }
 }

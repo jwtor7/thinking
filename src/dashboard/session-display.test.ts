@@ -30,11 +30,11 @@ describe('getSessionDisplayName', () => {
   }
 
   it('should extract folder name from path', () => {
-    expect(getSessionDisplayName('/Users/<REDACTED>/dev/thinking')).toBe('thinking');
+    expect(getSessionDisplayName('/home/user/projects/thinking')).toBe('thinking');
   });
 
   it('should handle paths with trailing slash', () => {
-    expect(getSessionDisplayName('/Users/<REDACTED>/dev/thinking/')).toBe('thinking');
+    expect(getSessionDisplayName('/home/user/projects/thinking/')).toBe('thinking');
   });
 
   it('should handle deeply nested paths', () => {
@@ -77,7 +77,7 @@ describe('getSessionFolderName', () => {
   }
 
   it('should extract folder name from path', () => {
-    expect(getSessionFolderName('/Users/<REDACTED>/dev/thinking')).toBe('thinking');
+    expect(getSessionFolderName('/home/user/projects/thinking')).toBe('thinking');
   });
 
   it('should return undefined for empty path', () => {

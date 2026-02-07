@@ -11,7 +11,8 @@
  */
 
 import { writeFile, mkdir, readdir, stat } from 'node:fs/promises';
-import { dirname, normalize, resolve, isAbsolute, join } from 'node:path';
+import { realpathSync } from 'node:fs';
+import { dirname, basename, normalize, resolve, isAbsolute, join } from 'node:path';
 import { homedir } from 'node:os';
 import { spawn } from 'node:child_process';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -47,7 +48,16 @@ export function validateExportPath(filePath: string): string | null {
     return null;
   }
 
-  return normalizedPath;
+  // Resolve symlinks on the parent directory to prevent symlink-based traversal
+  try {
+    const parentDir = dirname(normalizedPath);
+    const realParent = realpathSync(parentDir);
+    const realPath = join(realParent, basename(normalizedPath));
+    return realPath;
+  } catch {
+    // Parent directory doesn't exist yet, return the normalized path
+    return normalizedPath;
+  }
 }
 
 /**

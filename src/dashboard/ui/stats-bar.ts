@@ -41,23 +41,23 @@ export function initStatsBar(): void {
   if (!container) return;
 
   container.innerHTML = `
-    <div class="stat-cell">
+    <div class="stat-cell" data-stat-tooltip="Most frequently used tools this session, ranked by call count" title="Most frequently used tools this session, ranked by call count">
       <span class="stat-label">Top Tools</span>
       <span class="stat-value" id="stat-top-tools">--</span>
     </div>
-    <div class="stat-cell">
+    <div class="stat-cell" data-stat-tooltip="Average and 95th percentile tool execution time. P95 = 95% of calls complete within this duration" title="Average and 95th percentile tool execution time. P95 = 95% of calls complete within this duration">
       <span class="stat-label">Avg / P95</span>
       <span class="stat-value" id="stat-avg-p95">--</span>
     </div>
-    <div class="stat-cell">
+    <div class="stat-cell" data-stat-tooltip="Number of thinking/reasoning blocks Claude has produced this session" title="Number of thinking/reasoning blocks Claude has produced this session">
       <span class="stat-label">Thinking</span>
       <span class="stat-value" id="stat-thinking">0</span>
     </div>
-    <div class="stat-cell">
+    <div class="stat-cell" data-stat-tooltip="Hook execution results: allowed / denied / asked. Hooks run before and after tool calls" title="Hook execution results: allowed / denied / asked. Hooks run before and after tool calls">
       <span class="stat-label">Hooks</span>
       <span class="stat-value" id="stat-hooks">0 / 0 / 0</span>
     </div>
-    <div class="stat-cell">
+    <div class="stat-cell" data-stat-tooltip="Events per minute over the last 60 seconds (sliding window)" title="Events per minute over the last 60 seconds (sliding window)">
       <span class="stat-label">Rate</span>
       <span class="stat-value" id="stat-rate">--</span>
     </div>

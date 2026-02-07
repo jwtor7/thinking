@@ -173,8 +173,16 @@ describe('Export Handler', () => {
         // but we explicitly check for /../ and /.. patterns
         const result = validateExportPath(path);
         // The implementation normalizes first, so /Users/test/docs//../../../etc/passwd
-        // becomes /etc/passwd which is a valid path (no remaining traversal sequences)
-        expect(result).toBe('/etc/passwd');
+        // becomes /etc/passwd. Then realpathSync resolves symlinks on the parent dir.
+        // On macOS, /etc is a symlink to /private/etc, so the result is /private/etc/passwd
+        const { realpathSync } = require('node:fs');
+        try {
+          const realEtc = realpathSync('/etc');
+          expect(result).toBe(`${realEtc}/passwd`);
+        } catch {
+          // If /etc doesn't exist (unlikely), fall back to normalized path
+          expect(result).toBe('/etc/passwd');
+        }
       });
     });
 

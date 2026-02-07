@@ -41,6 +41,8 @@ export function initTooltip(): void {
   // Use event delegation on document for hover events
   document.addEventListener('mouseenter', handleTooltipMouseEnter, true);
   document.addEventListener('mouseleave', handleTooltipMouseLeave, true);
+  document.addEventListener('mouseenter', handleStatTooltipMouseEnter, true);
+  document.addEventListener('mouseleave', handleStatTooltipMouseLeave, true);
 }
 
 // ============================================
@@ -163,6 +165,84 @@ function showTooltip(target: HTMLElement, sessionId: string, sessionPath?: strin
   tooltip.setAttribute('aria-hidden', 'false');
 }
 
+// ============================================
+// Stat Tooltip Handlers
+// ============================================
+
+/**
+ * Handle mouseenter on elements with data-stat-tooltip attribute.
+ */
+function handleStatTooltipMouseEnter(e: Event): void {
+  const target = e.target;
+  if (!(target instanceof Element)) return;
+
+  const tooltipTarget = target.closest('[data-stat-tooltip]') as HTMLElement | null;
+  if (!tooltipTarget) return;
+
+  const tooltipText = tooltipTarget.dataset.statTooltip;
+  if (!tooltipText) return;
+
+  if (tooltipTimer) clearTimeout(tooltipTimer);
+
+  tooltipTimer = setTimeout(() => {
+    showStatTooltip(tooltipTarget, tooltipText);
+  }, TOOLTIP_DELAY_MS);
+}
+
+/**
+ * Handle mouseleave on elements with data-stat-tooltip attribute.
+ */
+function handleStatTooltipMouseLeave(e: Event): void {
+  const target = e.target;
+  if (!(target instanceof Element)) return;
+
+  const tooltipTarget = target.closest('[data-stat-tooltip]');
+  if (!tooltipTarget) return;
+
+  if (tooltipTimer) {
+    clearTimeout(tooltipTimer);
+    tooltipTimer = null;
+  }
+  hideTooltip();
+}
+
+/**
+ * Show a tooltip above the target stat cell.
+ */
+function showStatTooltip(target: HTMLElement, text: string): void {
+  const tooltip = elements.sessionTooltip;
+  if (!tooltip) return;
+
+  tooltip.innerHTML = `<div class="session-tooltip-path">${escapeHtml(text)}</div>`;
+
+  const rect = target.getBoundingClientRect();
+
+  // Show tooltip to get dimensions, position above stats bar
+  tooltip.classList.add('visible');
+  const actualRect = tooltip.getBoundingClientRect();
+
+  let left = rect.left + (rect.width / 2);
+  let top = rect.top - actualRect.height - 8;
+
+  // Adjust if off-screen horizontally
+  const viewportWidth = window.innerWidth;
+  if (left + actualRect.width / 2 > viewportWidth - 10) {
+    left = viewportWidth - actualRect.width / 2 - 10;
+  }
+  if (left - actualRect.width / 2 < 10) {
+    left = actualRect.width / 2 + 10;
+  }
+
+  // Fall below if no room above
+  if (top < 10) {
+    top = rect.bottom + 8;
+  }
+
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+  tooltip.setAttribute('aria-hidden', 'false');
+}
+
 /**
  * Hide the tooltip.
  */
@@ -190,4 +270,6 @@ export function destroyTooltip(): void {
 
   document.removeEventListener('mouseenter', handleTooltipMouseEnter, true);
   document.removeEventListener('mouseleave', handleTooltipMouseLeave, true);
+  document.removeEventListener('mouseenter', handleStatTooltipMouseEnter, true);
+  document.removeEventListener('mouseleave', handleStatTooltipMouseLeave, true);
 }

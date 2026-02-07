@@ -42,11 +42,6 @@ export function isValidPlanPath(filePath: string): boolean {
     return false;
   }
 
-  // Prevent directory traversal attacks
-  if (resolvedPath.includes('..')) {
-    return false;
-  }
-
   return true;
 }
 

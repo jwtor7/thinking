@@ -28,4 +28,6 @@ tmp/
 temp/
 *.tmp
 
-SecurityReport.md
+SecurityReport*.md
+REFACTOR-PLAN*.md
+TEST_EVALUATION_REPORT*.md

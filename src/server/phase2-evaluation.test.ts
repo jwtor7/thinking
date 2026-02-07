@@ -15,6 +15,8 @@ import { createServer, type Server } from 'node:http';
 import { WebSocket } from 'ws';
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { WebSocketHub } from './websocket-hub.ts';
 import { EventReceiver } from './event-receiver.ts';
 import { processHookInput } from './hook-processor.ts';
@@ -25,8 +27,9 @@ import {
   type HookType,
 } from './hook-types.ts';
 
-const HOOKS_DIR = '/Users/<REDACTED>/dev/thinking/hooks';
-const SCRIPTS_DIR = '/Users/<REDACTED>/dev/thinking/scripts';
+const __test_dirname = dirname(fileURLToPath(import.meta.url));
+const HOOKS_DIR = join(__test_dirname, '../../hooks');
+const SCRIPTS_DIR = join(__test_dirname, '../../scripts');
 
 describe('Phase 2.5: Universal Hook Script', () => {
   describe('Hook Script Structure', () => {
@@ -675,13 +678,13 @@ describe('Phase 2.7: Events Reach Server Integration', () => {
 describe('Security Requirements Verification', () => {
   it('should bind to localhost only (127.0.0.1)', () => {
     // Verify in types.ts
-    const typesContent = readFileSync('/Users/<REDACTED>/dev/thinking/src/server/types.ts', 'utf-8');
+    const typesContent = readFileSync(join(__test_dirname, 'types.ts'), 'utf-8');
     expect(typesContent).toContain("HOST: '127.0.0.1'");
     expect(typesContent).not.toContain("HOST: '0.0.0.0'");
   });
 
   it('should have secret redaction patterns defined', () => {
-    const secretsContent = readFileSync('/Users/<REDACTED>/dev/thinking/src/server/secrets.ts', 'utf-8');
+    const secretsContent = readFileSync(join(__test_dirname, 'secrets.ts'), 'utf-8');
 
     // Check for key secret patterns
     expect(secretsContent).toContain('Stripe');
@@ -693,13 +696,13 @@ describe('Security Requirements Verification', () => {
   });
 
   it('should have payload truncation implemented', () => {
-    const typesContent = readFileSync('/Users/<REDACTED>/dev/thinking/src/server/types.ts', 'utf-8');
+    const typesContent = readFileSync(join(__test_dirname, 'types.ts'), 'utf-8');
     expect(typesContent).toContain('MAX_PAYLOAD_SIZE');
     expect(typesContent).toContain('truncatePayload');
   });
 
   it('should have input validation in hook processor', () => {
-    const processorContent = readFileSync('/Users/<REDACTED>/dev/thinking/src/server/hook-processor.ts', 'utf-8');
+    const processorContent = readFileSync(join(__test_dirname, 'hook-processor.ts'), 'utf-8');
     expect(processorContent).toContain('validateHookInput');
     expect(processorContent).toContain('redactSecrets');
     expect(processorContent).toContain('truncatePayload');

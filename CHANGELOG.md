@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-02-07 — v0.24.0
+
+### Added
+- **MIT License** — Open source under MIT license with proper attribution
+- **Stats bar tooltips** — Descriptive hover tooltips on each stat cell explaining what the metric means (top tools, avg/P95, thinking, hooks, rate)
+- **Mock data script** — `scripts/mock-data.sh` populates all dashboard panels with realistic sample events for demos and screenshots
+- **SECURITY.md** — Standard vulnerability disclosure policy
+- **CONTRIBUTING.md** — Development setup, testing, and PR workflow guide
+- **README revamp** — New badges (MIT, PRs Welcome, GitHub Stars), How It Works explanation, Disclaimer, Contributing, and License sections
+
+### Security
+- **ReDoS mitigation** — Tightened password redaction pattern quantifier from `{8,80}` to `{8,40}`
+- **CSS injection prevention** — Applied `escapeCssValue()` to `session.color` in active session indicator
+- **Unbounded Map cap** — Added `MAX_PENDING_TOOLS = 10,000` limit on tool start time tracking with oldest-entry eviction
+- **Buffer size pre-check** — WebSocket message size validated on raw buffer before string conversion to prevent memory spikes
+- **X-Content-Type-Options** — Added `nosniff` header to all HTTP responses
+- **Loopback verification** — Origin-less WebSocket connections now verify `remoteAddress` is loopback
+- **Symlink resolution** — Export handler resolves parent directory symlinks before path validation
+- **Simplified path validation** — Removed redundant `..` check after `resolve()` in plan watcher
+
+### Removed
+- **PII scrubbed** — All hardcoded `/Users/<REDACTED>/` paths replaced with generic or relative paths
+- **Sensitive files** — Removed SecurityReport, REFACTOR-PLAN, and TEST_EVALUATION_REPORT from tracked files
+
+### Changed
+- **package.json** — Added author, MIT license, repository, homepage, and bugs fields
+
+---
+
 ## 2026-02-07 — v0.23.0
 
 ### Added

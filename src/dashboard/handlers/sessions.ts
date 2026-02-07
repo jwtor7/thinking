@@ -7,7 +7,7 @@
 
 import { state, subagentState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
-import { escapeHtml } from '../utils/html.ts';
+import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { formatElapsed } from '../utils/formatting.ts';
 import { getSessionColorByFolder, getAgentColor } from '../ui/colors.ts';
 import { filterAllBySession } from '../ui/filters.ts';
@@ -609,7 +609,7 @@ export function updateStatusBarSession(): void {
 
   indicator.style.display = 'flex';
   indicator.innerHTML = `
-    <span class="active-session-dot${isActive ? ' pulsing' : ''}" style="background: ${session.color}"></span>
+    <span class="active-session-dot${isActive ? ' pulsing' : ''}" style="background: ${escapeCssValue(session.color)}"></span>
     <span class="active-session-name" title="${escapeHtml(tooltipText)}">${escapeHtml(folderName)}</span>
     ${elapsed ? `<span class="active-session-duration">${escapeHtml(elapsed)}</span>` : ''}
   `;

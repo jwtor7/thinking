@@ -232,7 +232,7 @@ export interface SummarizationContext {
 export const DEFAULT_PERSISTENCE_CONFIG: PersistenceConfig = {
   version: 1,
   enabled: true,
-  baseDir: '/Users/<REDACTED>/Documents/Knowledge/AI/TRU/thinking monitor',
+  baseDir: '',  // User must configure via UI or settings file
   limits: {
     thinkingBlocks: 10,
     thinkingBlockMaxChars: 2000,
