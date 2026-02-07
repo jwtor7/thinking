@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-02-07 — v1.1.2
+
+### Fixed
+- **Stale team/tasks shown on "All Sessions"** — Team and Tasks panels (and their tabs) are now hidden when "All Sessions" is selected, matching Plan panel behavior. Prevents stale team data (like old team names and members) from showing when no specific session is active.
+
+---
+
 ## 2026-02-07 — v1.1.1
 
 ### Fixed

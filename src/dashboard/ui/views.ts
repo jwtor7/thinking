@@ -137,17 +137,24 @@ export function updateSessionViewTabs(isAllSessions: boolean): void {
 
   const planTab = elements.viewTabs.querySelector('[data-view="plan"]') as HTMLElement | null;
 
-  if (isAllSessions) {
-    // Hide Plan tab (session-specific)
-    if (planTab) planTab.style.display = 'none';
+  const teamTab = elements.viewTabs.querySelector('[data-view="team"]') as HTMLElement | null;
+  const tasksTab = elements.viewTabs.querySelector('[data-view="tasks"]') as HTMLElement | null;
 
-    // If currently on Plan view, switch to thinking view
-    if (state.activeView === 'plan') {
+  if (isAllSessions) {
+    // Hide session-specific tabs
+    if (planTab) planTab.style.display = 'none';
+    if (teamTab) teamTab.style.display = 'none';
+    if (tasksTab) tasksTab.style.display = 'none';
+
+    // If currently on a session-specific view, switch to thinking view
+    if (state.activeView === 'plan' || state.activeView === 'team' || state.activeView === 'tasks') {
       selectView('thinking');
     }
   } else {
-    // Show Plan tab
+    // Show session-specific tabs
     if (planTab) planTab.style.display = '';
+    if (teamTab) teamTab.style.display = '';
+    if (tasksTab) tasksTab.style.display = '';
   }
 }
 

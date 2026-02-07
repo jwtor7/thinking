@@ -167,12 +167,11 @@ export function filterTeamBySession(): void {
   if (!teamContent) return;
 
   if (state.selectedSession === 'all') {
-    // Show last updated team
-    const lastTeam = Array.from(teamState.teams.keys()).pop();
-    if (lastTeam) {
-      updateTeamHeader(lastTeam);
-      renderMemberGrid(lastTeam);
-    }
+    // Team panel is hidden for "All Sessions" — clear it to avoid stale data
+    const teamNameEl = elements.teamName;
+    if (teamNameEl) teamNameEl.textContent = '';
+    const memberGrid = elements.teamMemberGrid;
+    if (memberGrid) memberGrid.innerHTML = '';
     return;
   }
 

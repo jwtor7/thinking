@@ -461,6 +461,8 @@ if (state.sessions.size > 0) {
 // Hide session-specific panels on initial load when "All" is selected
 if (state.selectedSession === 'all') {
   elements.planPanel?.classList.add('session-hidden');
+  elements.teamPanel?.classList.add('session-hidden');
+  elements.tasksPanel?.classList.add('session-hidden');
 }
 
 // Initialize handler modules with callbacks

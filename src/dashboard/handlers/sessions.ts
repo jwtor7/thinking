@@ -421,9 +421,15 @@ export function updateSessionFilter(): void {
 function updateSessionPanelVisibility(sessionId: string): void {
   const isAllSessions = sessionId === 'all';
 
-  // Hide PLAN panel when viewing all sessions
+  // Hide session-specific panels when viewing all sessions
   if (elements.planPanel) {
     elements.planPanel.classList.toggle('session-hidden', isAllSessions);
+  }
+  if (elements.teamPanel) {
+    elements.teamPanel.classList.toggle('session-hidden', isAllSessions);
+  }
+  if (elements.tasksPanel) {
+    elements.tasksPanel.classList.toggle('session-hidden', isAllSessions);
   }
 
   // Rebuild resizers to only show between visible panels
