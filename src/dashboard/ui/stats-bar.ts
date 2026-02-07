@@ -6,7 +6,7 @@
  */
 
 import { elements } from './elements.ts';
-import { getDurationClass, formatDuration } from '../utils/formatting.ts';
+import { getDurationClass, formatDuration, shortenToolName } from '../utils/formatting.ts';
 import type { StrictMonitorEvent } from '../types.ts';
 
 interface StatsState {
@@ -110,7 +110,12 @@ export function renderStats(): void {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
     if (sorted.length > 0) {
-      cellElements.topTools.textContent = sorted.map(([name, count]) => `${name}: ${count}`).join(' | ');
+      cellElements.topTools.textContent = sorted.map(([name, count]) => `${shortenToolName(name)}: ${count}`).join(' | ');
+      // Full names in tooltip
+      const parent = cellElements.topTools.closest('.stat-cell');
+      if (parent) {
+        parent.setAttribute('title', sorted.map(([name, count]) => `${name}: ${count}`).join('\n'));
+      }
     } else {
       cellElements.topTools.textContent = '--';
     }

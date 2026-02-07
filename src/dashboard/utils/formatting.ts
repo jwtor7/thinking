@@ -61,6 +61,24 @@ export function getDurationClass(ms: number): string {
   }
 }
 
+/**
+ * Shorten MCP tool names for display.
+ * Strips the `mcp__{server}__` prefix, keeping only the tool action.
+ * Built-in tools (Bash, Read, Edit, etc.) are returned as-is.
+ *
+ * Examples:
+ *   mcp__claude-in-chrome__computer → computer
+ *   mcp__claude-in-chrome__read_page → read_page
+ *   Bash → Bash
+ */
+export function shortenToolName(name: string): string {
+  const mcpMatch = name.match(/^mcp__[^_]+(?:__)?(.+)$/);
+  if (mcpMatch) {
+    return mcpMatch[1];
+  }
+  return name;
+}
+
 export function summarizeInput(input: string | undefined, toolName?: string): string {
   if (!input) return '';
 

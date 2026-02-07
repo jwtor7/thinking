@@ -6,7 +6,7 @@
 
 import { state } from '../state.ts';
 import { elements } from '../ui/elements.ts';
-import { formatTime } from '../utils/formatting.ts';
+import { formatTime, shortenToolName } from '../utils/formatting.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { getAgentBadgeColors } from '../ui/colors.ts';
 import type { StrictMonitorEvent } from '../../shared/types.ts';
@@ -241,11 +241,11 @@ function getEventSummary(event: StrictMonitorEvent): string {
     case 'thinking':
       return event.content.slice(0, 60).replace(/\n/g, ' ') + (event.content.length > 60 ? '...' : '');
     case 'tool_start':
-      return `${event.toolName} started` + (event.input ? ': ' + event.input.slice(0, 40) : '');
+      return `${shortenToolName(event.toolName)} started` + (event.input ? ': ' + event.input.slice(0, 40) : '');
     case 'tool_end':
-      return `${event.toolName} completed` + (event.durationMs ? ` (${event.durationMs}ms)` : '');
+      return `${shortenToolName(event.toolName)} completed` + (event.durationMs ? ` (${event.durationMs}ms)` : '');
     case 'hook_execution':
-      return `${event.hookType}` + (event.toolName ? ` \u2192 ${event.toolName}` : '') + (event.decision ? ` [${event.decision}]` : '');
+      return `${event.hookType}` + (event.toolName ? ` \u2192 ${shortenToolName(event.toolName)}` : '') + (event.decision ? ` [${event.decision}]` : '');
     case 'agent_start':
       return `Agent started: ${event.agentName || event.agentId}`;
     case 'agent_stop':

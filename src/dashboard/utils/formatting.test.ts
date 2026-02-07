@@ -12,6 +12,7 @@ import {
   formatElapsed,
   getDurationClass,
   summarizeInput,
+  shortenToolName,
 } from './formatting.ts';
 
 describe('formatTime', () => {
@@ -391,6 +392,34 @@ describe('formatElapsed', () => {
     it('should correctly format just over 1 minute', () => {
       expect(formatElapsed(61000)).toBe('1m');
     });
+  });
+});
+
+describe('shortenToolName', () => {
+  it('should strip mcp__server__prefix from MCP tool names', () => {
+    expect(shortenToolName('mcp__claude-in-chrome__computer')).toBe('computer');
+    expect(shortenToolName('mcp__claude-in-chrome__read_page')).toBe('read_page');
+    expect(shortenToolName('mcp__claude-in-chrome__navigate')).toBe('navigate');
+  });
+
+  it('should handle MCP tools from other servers', () => {
+    expect(shortenToolName('mcp__github__create_issue')).toBe('create_issue');
+    expect(shortenToolName('mcp__filesystem__read_file')).toBe('read_file');
+  });
+
+  it('should keep built-in tool names unchanged', () => {
+    expect(shortenToolName('Bash')).toBe('Bash');
+    expect(shortenToolName('Read')).toBe('Read');
+    expect(shortenToolName('Edit')).toBe('Edit');
+    expect(shortenToolName('Write')).toBe('Write');
+    expect(shortenToolName('Grep')).toBe('Grep');
+    expect(shortenToolName('Glob')).toBe('Glob');
+    expect(shortenToolName('Task')).toBe('Task');
+  });
+
+  it('should handle empty and edge case inputs', () => {
+    expect(shortenToolName('')).toBe('');
+    expect(shortenToolName('simple')).toBe('simple');
   });
 });
 

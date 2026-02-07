@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-02-07 — v1.0.5
+
+### Changed
+- **Shortened MCP tool names** — Tool names like `mcp__claude-in-chrome__computer` now display as `computer` across the stats bar, tools panel, hooks panel, and timeline; full names available via tooltip on hover
+
+---
+
 ## 2026-02-07 — v1.0.4
 
 ### Added

@@ -7,7 +7,7 @@
 
 import { state, subagentState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
-import { formatTime } from '../utils/formatting.ts';
+import { formatTime, shortenToolName } from '../utils/formatting.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { getAgentBadgeColors, getSessionColorByHash, getSessionColorByFolder } from '../ui/colors.ts';
 import { getShortSessionId } from '../ui/filters.ts';
@@ -305,7 +305,7 @@ export function handleHookExecution(event: HookExecutionEvent): void {
     }
     // If it's just an ID, don't show a badge (the agent ID is already in agentBadge if relevant)
   } else if (toolName) {
-    toolInfo = `<span class="hook-tool">${escapeHtml(toolName)}</span>`;
+    toolInfo = `<span class="hook-tool" title="${escapeHtml(toolName)}">${escapeHtml(shortenToolName(toolName))}</span>`;
   }
 
   // Build the output preview (truncated)

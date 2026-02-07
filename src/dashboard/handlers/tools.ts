@@ -9,7 +9,7 @@
 import { state, subagentState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { addDuration } from '../ui/duration-histogram.ts';
-import { formatTime, formatDuration, getDurationClass, summarizeInput } from '../utils/formatting.ts';
+import { formatTime, formatDuration, getDurationClass, summarizeInput, shortenToolName } from '../utils/formatting.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { renderSimpleMarkdown } from '../utils/markdown.ts';
 import { getShortSessionId } from '../ui/filters.ts';
@@ -182,7 +182,7 @@ export function handleToolStart(event: ToolStartEvent): void {
       </div>
       <div class="tool-header-line2">
         <span class="tool-agent" style="background: ${escapeCssValue(agentBadgeColors.bg)}; color: ${escapeCssValue(agentBadgeColors.text)}">${escapeHtml(agentDisplayName)}</span>
-        <span class="tool-name">${escapeHtml(toolName)}</span>
+        <span class="tool-name" title="${escapeHtml(toolName)}">${escapeHtml(shortenToolName(toolName))}</span>
         <span class="tool-preview">${escapeHtml(preview)}</span>
       </div>
     </div>
