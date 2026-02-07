@@ -6,7 +6,7 @@
 
 import { state } from '../state.ts';
 import { elements } from '../ui/elements.ts';
-import { formatTime, shortenToolName } from '../utils/formatting.ts';
+import { formatTime, shortenToolName, summarizeInput } from '../utils/formatting.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { getAgentBadgeColors } from '../ui/colors.ts';
 import type { StrictMonitorEvent } from '../../shared/types.ts';
@@ -262,8 +262,10 @@ function getEventSummary(event: StrictMonitorEvent): string {
   switch (event.type) {
     case 'thinking':
       return event.content.slice(0, 60).replace(/\n/g, ' ') + (event.content.length > 60 ? '...' : '');
-    case 'tool_start':
-      return `${shortenToolName(event.toolName)} started` + (event.input ? ': ' + event.input.slice(0, 40) : '');
+    case 'tool_start': {
+      const inputPreview = summarizeInput(event.input, event.toolName);
+      return `${shortenToolName(event.toolName)} started` + (inputPreview ? ': ' + inputPreview : '');
+    }
     case 'tool_end':
       return `${shortenToolName(event.toolName)} completed` + (event.durationMs ? ` (${event.durationMs}ms)` : '');
     case 'hook_execution':

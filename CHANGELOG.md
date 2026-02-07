@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-02-07 — v1.0.9
+
+### Changed
+- **Timeline tool summaries** — Timeline tool_start entries now use `summarizeInput` for human-readable previews (e.g. `computer started: screenshot` instead of raw JSON), consistent with the tools panel
+
+---
+
 ## 2026-02-07 — v1.0.8
 
 ### Changed
