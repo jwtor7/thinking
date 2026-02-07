@@ -83,6 +83,20 @@ function ensureDOM(): void {
   });
 }
 
+/**
+ * Highlight matching portions of text with <mark> tags.
+ * Escapes HTML first to prevent XSS, then wraps matches.
+ */
+function highlightMatch(text: string, query: string): string {
+  const escaped = escapeHtml(text);
+  if (!query.trim()) return escaped;
+
+  // Escape regex special characters in the query
+  const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${safeQuery})`, 'gi');
+  return escaped.replace(regex, '<mark class="search-highlight-match">$1</mark>');
+}
+
 function performSearch(query: string): void {
   if (!resultsContainer) return;
 
@@ -152,7 +166,7 @@ function renderResults(groups: Record<string, HTMLElement[]>, query: string): vo
       const preview = (entry.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 100);
       const entryId = entry.id || '';
       html += `<button class="search-result" data-panel="${panel}" data-entry-id="${escapeHtml(entryId)}">`;
-      html += `<span class="search-result-text">${escapeHtml(preview)}</span>`;
+      html += `<span class="search-result-text">${highlightMatch(preview, query)}</span>`;
       html += `</button>`;
     }
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-02-07 — v1.0.6
+
+### Added
+- **Search result highlighting** — Matching text in Cmd+K search results is now highlighted with a blue background using `<mark>` tags, making it easier to spot relevant matches at a glance
+
+---
+
 ## 2026-02-07 — v1.0.5
 
 ### Changed

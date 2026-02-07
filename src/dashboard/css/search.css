@@ -130,6 +130,14 @@
   font-style: italic;
 }
 
+/* Inline match highlighting in search results */
+.search-highlight-match {
+  background: rgba(88, 166, 255, 0.25);
+  color: var(--color-text-primary);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
 /* Highlight animation for navigated-to entries */
 .search-highlight {
   animation: search-flash 2s ease-out !important;
