@@ -244,9 +244,9 @@ export function handleSessionStop(event: SessionStopEvent): void {
 // ============================================
 
 /**
- * Render the session filter bar with clickable session badges.
- * Shows when there are multiple sessions to filter between.
- * Sorts sessions by folder name for visual grouping.
+ * Render the session filter bar with a dropdown selector and subagent chips.
+ * Uses a <select> dropdown instead of badge buttons to prevent horizontal overflow.
+ * Subagent filter chips appear when the selected session has subagents.
  */
 export function updateSessionFilter(): void {
   // Create session filter element if it doesn't exist
@@ -280,21 +280,15 @@ export function updateSessionFilter(): void {
 
   filterEl.style.display = 'flex';
 
-  // Build session filter badges
-  let html = '<span class="session-filter-label">SESSIONS:</span>';
-  html += '<div class="session-filter-badges">';
+  // Build dropdown HTML
+  let html = '<span class="session-filter-label">SESSION:</span>';
 
   // Clear all panels button
-  html += `<button class="session-filter-clear-btn" title="Clear all panels" aria-label="Clear all panels">
-    &#10005;
-  </button>`;
+  html += `<button class="session-filter-clear-btn" title="Clear all panels" aria-label="Clear all panels">&#10005;</button>`;
 
-  // "All" option
-  const allActive = state.selectedSession === 'all' ? 'active' : '';
-  html += `<button class="session-filter-badge ${allActive}" data-session="all">
-    <span class="session-filter-dot" style="background: var(--color-text-muted)"></span>
-    All
-  </button>`;
+  // Dropdown select
+  html += '<select class="session-dropdown" id="session-dropdown" aria-label="Select session">';
+  html += `<option value="all"${state.selectedSession === 'all' ? ' selected' : ''}>All Sessions (${state.sessions.size})</option>`;
 
   // Sort sessions by folder name for grouping
   const sortedSessions = Array.from(state.sessions.entries()).sort((a, b) => {
@@ -303,104 +297,70 @@ export function updateSessionFilter(): void {
     return folderA.localeCompare(folderB);
   });
 
-  // Individual session badges with nested subagents
   for (const [sessionId, session] of sortedSessions) {
     const displayName = getSessionDisplayName(session.workingDirectory, sessionId);
-    const isActive = state.selectedSession === sessionId ? 'active' : '';
-    const isOnline = session.active ? 'online' : '';
-    const isPulsing = hasRecentActivity(sessionId) ? 'pulsing' : '';
-
-    // Only show clear button for inactive sessions that have stored todos
-    const hasTodos = state.sessionTodos.has(sessionId) && (state.sessionTodos.get(sessionId)?.length ?? 0) > 0;
-    const showClearBtn = !session.active && hasTodos;
-    const clearBtnHtml = showClearBtn
-      ? `<span class="session-close-btn" data-session="${escapeHtml(sessionId)}" title="Clear session">&times;</span>`
-      : '';
-
-    // Check if this session has subagents
+    const statusIndicator = session.active ? (hasRecentActivity(sessionId) ? '\u25CF' : '\u25CB') : '\u25CC';
+    const selected = state.selectedSession === sessionId ? ' selected' : '';
     const subagentIds = subagentState.sessionSubagents.get(sessionId);
-    const hasSubagents = subagentIds && subagentIds.size > 0;
-    const subagentIndicator = hasSubagents
-      ? `<span class="session-subagent-indicator" title="${subagentIds.size} subagent(s)">${subagentIds.size}</span>`
-      : '';
+    const subagentCount = subagentIds?.size || 0;
+    const subagentLabel = subagentCount > 0 ? ` [${subagentCount} agents]` : '';
 
-    // Build class list
-    const classes = ['session-filter-badge', isActive, isOnline, isPulsing, hasSubagents ? 'has-subagents' : '']
-      .filter(Boolean)
-      .join(' ') + (showClearBtn ? ' has-close' : '');
+    html += `<option value="${escapeHtml(sessionId)}"${selected}>${statusIndicator} ${escapeHtml(displayName)}${subagentLabel}</option>`;
+  }
 
-    html += `<button class="${classes}"
-      data-session="${escapeHtml(sessionId)}"
-      data-session-tooltip="true"
-      data-session-id="${escapeHtml(sessionId)}"
-      data-session-path="${escapeHtml(session.workingDirectory || '')}">
-      <span class="session-filter-dot" style="background: ${session.color}"></span>
-      ${escapeHtml(displayName)}${subagentIndicator}${clearBtnHtml}
-    </button>`;
+  html += '</select>';
 
-    // Add nested subagent badges
-    if (hasSubagents) {
+  // Subagent chips (shown when a specific session is selected and has subagents)
+  if (state.selectedSession !== 'all') {
+    const subagentIds = subagentState.sessionSubagents.get(state.selectedSession);
+    if (subagentIds && subagentIds.size > 0) {
+      html += '<div class="session-agent-chips">';
       for (const agentId of subagentIds) {
         const subagent = subagentState.subagents.get(agentId);
         if (!subagent) continue;
-
         const subagentName = subagent.agentName || agentId.slice(0, 8);
         const agentColor = getAgentColor(subagentName);
-        const subagentIsRunning = subagent.status === 'running';
-        const subagentClasses = ['session-filter-badge', 'subagent-badge', subagentIsRunning ? 'pulsing' : '']
-          .filter(Boolean)
-          .join(' ');
-
-        // Subagent badge shows tree line indicator
-        html += `<button class="${subagentClasses}"
-          data-session="${escapeHtml(sessionId)}"
-          data-agent="${escapeHtml(agentId)}"
-          title="Subagent: ${escapeHtml(subagentName)} (${escapeHtml(subagent.status)})">
-          <span class="subagent-tree-line"></span>
-          <span class="session-filter-dot" style="background: ${agentColor}"></span>
+        const isRunning = subagent.status === 'running';
+        const isSelected = state.selectedAgentId === agentId;
+        html += `<button class="session-agent-chip${isRunning ? ' running' : ''}${isSelected ? ' active' : ''}" data-agent="${escapeHtml(agentId)}" title="${escapeHtml(subagentName)} (${escapeHtml(subagent.status)})">
+          <span class="session-agent-chip-dot" style="background: ${agentColor}"></span>
           ${escapeHtml(subagentName)}
         </button>`;
       }
+      html += '</div>';
     }
   }
 
-  html += '</div>';
   filterEl.innerHTML = html;
 
-  // Clear all panels button handler
+  // Event handlers
+
+  // Clear button
   const clearBtn = filterEl.querySelector('.session-filter-clear-btn');
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
-      if (callbacks) {
-        callbacks.clearAllPanels();
-      }
+      if (callbacks) callbacks.clearAllPanels();
     });
   }
 
-  // Attach click handlers using event delegation
-  filterEl.querySelectorAll('.session-filter-badge').forEach((badge: Element) => {
-    badge.addEventListener('click', (e: Event) => {
-      const target = e.target as HTMLElement;
-      // Handle close button click
-      if (target.classList.contains('session-close-btn')) {
-        e.stopPropagation();
-        const sessionId = target.dataset.session;
-        if (sessionId && callbacks) {
-          callbacks.clearSessionTodos(sessionId);
-        }
-        return;
-      }
-      // Normal session selection
-      const sessionId = (badge as HTMLElement).dataset.session || 'all';
-      selectSession(sessionId);
+  // Dropdown change
+  const dropdown = filterEl.querySelector('.session-dropdown') as HTMLSelectElement;
+  if (dropdown) {
+    dropdown.addEventListener('change', () => {
+      selectSession(dropdown.value);
     });
+  }
 
-    // Context menu for Reveal in Finder
-    badge.addEventListener('contextmenu', (e: Event) => {
-      const mouseEvent = e as MouseEvent;
-      const sessionId = (badge as HTMLElement).dataset.session;
-      if (sessionId && sessionId !== 'all') {
-        handleSessionContextMenu(mouseEvent, sessionId);
+  // Agent chip clicks
+  filterEl.querySelectorAll('.session-agent-chip').forEach((chip: Element) => {
+    chip.addEventListener('click', () => {
+      const agentId = (chip as HTMLElement).dataset.agent;
+      if (agentId) {
+        if (state.selectedAgentId === agentId) {
+          selectAgentFilter(null);
+        } else {
+          selectAgentFilter(agentId);
+        }
       }
     });
   });
@@ -508,35 +468,6 @@ export function selectAgentFilter(agentId: string | null): void {
 
 /** Currently shown context menu session ID */
 let contextMenuSessionId: string | null = null;
-
-/**
- * Handle right-click on a session badge.
- * Shows a context menu with "Reveal in Finder" option.
- */
-function handleSessionContextMenu(e: MouseEvent, sessionId: string): void {
-  e.preventDefault();
-  e.stopPropagation();
-
-  const session = state.sessions.get(sessionId);
-  if (!session?.workingDirectory) {
-    return; // No path to reveal
-  }
-
-  contextMenuSessionId = sessionId;
-  showSessionContextMenu(e.clientX, e.clientY);
-}
-
-/**
- * Show the session context menu at the specified position.
- */
-function showSessionContextMenu(x: number, y: number): void {
-  const menu = elements.sessionContextMenu;
-  if (!menu) return;
-
-  menu.style.left = `${x}px`;
-  menu.style.top = `${y}px`;
-  menu.classList.add('visible');
-}
 
 /**
  * Hide the session context menu.

@@ -4,7 +4,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-0.20.0-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.22.0-purple)](./CHANGELOG.md)
 
 A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
 
@@ -28,10 +28,14 @@ Claude Code is powerful, but opaque. You see the output, not the process. Thinki
 | **Plan** | Active plan files with quick-open and reveal |
 | **Team** | Agent teams with member grid, status indicators, inter-agent message timeline |
 | **Tasks** | Three-column kanban board (Pending / In Progress / Completed) with task cards |
+| **Timeline** | Unified chronological feed across all event types with type icons and agent badges |
 
 **Plus:**
 - Nested agent hierarchy tree with click-to-filter
 - Per-agent event filtering across all panels
+- Cross-panel linking (click to navigate between related entries)
+- Hook PRE+POST grouping (merges paired hook events)
+- Tab count badges showing live event counts
 - Single-column vertical layout with resizable panels
 - Session filtering across all panels
 - Keyboard shortcuts for everything
@@ -94,8 +98,8 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 | Key | Action |
 |-----|--------|
-| `a` `t` `o` `d` `p` `m` `k` | Switch view (All, Thinking, Tools, Todo, Plan, Team, Tasks) |
-| `Shift` + `t` `o` `d` `p` `m` `k` | Collapse/expand panel |
+| `a` `t` `o` `d` `p` `m` `k` `l` | Switch view (All, Thinking, Tools, Todo, Plan, Team, Tasks, Timeline) |
+| `Shift` + `t` `o` `d` `p` `m` `k` `l` | Collapse/expand panel |
 | `c` | Clear all entries |
 | `s` | Toggle auto-scroll |
 | `/` | Focus search |
@@ -126,10 +130,10 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
+- **v0.22.0** (2026-02-07) — Dashboard UX: Timeline view, hook PRE+POST grouping, session dropdown, tab count badges, cross-panel linking, agent tree in Team panel
 - **v0.20.0** (2026-02-06) — Multi-agent team visibility: Team panel, Task board, agent tree, per-agent filtering, SendMessage detection, enhanced hooks
 - **v0.18.8** (2026-02-06) — Docs: CLAUDE.md architecture refresh (build targets, dashboard patterns, hook system, testing)
 - **v0.18.7** (2026-01-12) — Security: esbuild upgraded to 0.27.2 (GHSA-67mh-4wv8-2f99)
 - **v0.18.6** (2026-01-12) — Security: WebSocket message validation (CWE-20); 11 new tests
-- **v0.18.5** (2026-01-12) — Security: ReDoS protection in secret redaction (CWE-1333); 16 new tests
 
 *[Full changelog →](./CHANGELOG.md)*

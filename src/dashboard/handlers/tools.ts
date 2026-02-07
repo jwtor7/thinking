@@ -12,9 +12,10 @@ import { formatTime, formatDuration, getDurationClass, summarizeInput } from '..
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { renderSimpleMarkdown } from '../utils/markdown.ts';
 import { getShortSessionId } from '../ui/filters.ts';
-import { getAgentColor, getAgentBadgeColors, getSessionColorByFolder, getSessionColorByHash } from '../ui/colors.ts';
+import { getAgentBadgeColors, getSessionColorByFolder, getSessionColorByHash } from '../ui/colors.ts';
 import { getSessionDisplayName } from './sessions.ts';
 import { applyToolsFilter, updateToolsCount } from '../ui/filters.ts';
+import { updateTabBadge } from '../ui/views.ts';
 import type { ToolStartEvent, ToolEndEvent } from '../types.ts';
 
 // ============================================
@@ -124,6 +125,7 @@ export function handleToolStart(event: ToolStartEvent): void {
 
   state.toolsCount++;
   updateToolsCount();
+  updateTabBadge('tools', state.toolsCount);
 
   // Clear empty state if present
   const emptyState = elements.toolsContent.querySelector('.empty-state');
@@ -151,7 +153,7 @@ export function handleToolStart(event: ToolStartEvent): void {
     : '';
 
   // Generate preview text for collapsed state
-  const preview = summarizeInput(input);
+  const preview = summarizeInput(input, toolName);
 
   // Get the display name for this agent
   const agentDisplayName = callbacks.getAgentDisplayName(agentId);
@@ -167,6 +169,7 @@ export function handleToolStart(event: ToolStartEvent): void {
   entry.dataset.session = sessionId || '';
   entry.dataset.input = (input || '').toLowerCase();
   entry.dataset.agent = agentId;
+  entry.dataset.timestamp = String(Date.now());
 
   entry.innerHTML = `
     <div class="tool-entry-header">

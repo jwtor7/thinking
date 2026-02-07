@@ -8,7 +8,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { subagentState } from '../state.ts';
-import type { HookExecutionEvent, SubagentMappingInfo } from '../types.ts';
+import type { SubagentMappingInfo } from '../types.ts';
 
 // Mock the elements and callbacks
 vi.mock('../ui/elements.ts', () => ({
@@ -26,7 +26,7 @@ vi.mock('../ui/elements.ts', () => ({
 }));
 
 vi.mock('../utils/formatting.ts', () => ({
-  formatTime: vi.fn((ts: number) => '12:34:56'),
+  formatTime: vi.fn((_ts: number) => '12:34:56'),
 }));
 
 vi.mock('../ui/colors.ts', () => ({
@@ -181,7 +181,7 @@ describe('Hooks handler SubagentStart/SubagentStop', () => {
     it('should handle subagent with only ID (no output fallback)', () => {
       // SubagentStop without meaningful output and not in state
       const agentId = 'agent-jkl012';
-      const output = '';
+      const output: string = '';
 
       let agentType = '';
       if (agentId) {
@@ -191,7 +191,7 @@ describe('Hooks handler SubagentStart/SubagentStop', () => {
         }
       }
 
-      if (!agentType && output) {
+      if (!agentType && output.length > 0) {
         agentType = output.split(':')[0]?.trim() || '';
       }
 

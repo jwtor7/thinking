@@ -13,7 +13,7 @@ import { resetPanelFlex, rebuildResizers } from './resizer.ts';
 /**
  * Panel names that can be collapsed
  */
-export type PanelName = 'thinking' | 'todo' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks';
+export type PanelName = 'thinking' | 'todo' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline';
 
 /**
  * Callbacks for panel operations
@@ -53,6 +53,7 @@ function getPanelElements(): Record<PanelName, { panel: HTMLElement | null; btn:
     plan: { panel: elements.planPanel, btn: elements.planCollapseBtn },
     team: { panel: elements.teamPanel, btn: elements.teamCollapseBtn },
     tasks: { panel: elements.tasksPanel, btn: elements.tasksCollapseBtn },
+    timeline: { panel: elements.timelinePanel, btn: elements.timelineCollapseBtn },
   };
 }
 
@@ -79,6 +80,8 @@ function getShortcutKey(panelName: PanelName): string | null {
       return 'M';
     case 'tasks':
       return 'K';
+    case 'timeline':
+      return 'L';
   }
 }
 

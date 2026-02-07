@@ -38,6 +38,9 @@
 /* Tasks: Task board kanban styles */
 @import url('./tasks.css');
 
+/* Timeline: Unified chronological event view */
+@import url('./timeline.css');
+
 /* Markdown: Plan markdown rendering */
 @import url('./markdown.css');
 

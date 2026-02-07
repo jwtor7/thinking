@@ -88,7 +88,7 @@ export interface AppState {
   // Context menu state
   contextMenuFilePath: string | null;
   // Active view tab for navigation
-  activeView: 'all' | 'thinking' | 'tools' | 'todo' | 'hooks' | 'plan' | 'team' | 'tasks';
+  activeView: 'all' | 'thinking' | 'tools' | 'todo' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline';
   // Per-agent event filtering - null means show all agents
   selectedAgentId: string | null;
   // Todo tracking - maps session ID to todos for that session
@@ -119,6 +119,7 @@ export interface PanelVisibility {
   plan: boolean;
   team: boolean;
   tasks: boolean;
+  timeline: boolean;
 }
 
 // ============================================

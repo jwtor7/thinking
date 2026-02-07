@@ -9,10 +9,11 @@ import { state, subagentState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { formatTime } from '../utils/formatting.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
-import { getAgentColor, getAgentBadgeColors, getSessionColorByHash, getSessionColorByFolder } from '../ui/colors.ts';
+import { getAgentBadgeColors, getSessionColorByHash, getSessionColorByFolder } from '../ui/colors.ts';
 import { getShortSessionId } from '../ui/filters.ts';
 import { getSessionDisplayName } from './sessions.ts';
 import type { HookExecutionEvent } from '../types.ts';
+import { updateTabBadge, selectView } from '../ui/views.ts';
 
 // ============================================
 // Callback Interface
@@ -172,6 +173,8 @@ export function updateHooksCount(): void {
       : 0;
     elements.hooksCount.textContent = `${visibleCount}/${state.hooksCount}`;
   }
+
+  updateTabBadge('hooks', state.hooksCount);
 }
 
 // ============================================
@@ -196,12 +199,45 @@ export function handleHookExecution(event: HookExecutionEvent): void {
 
   const hookType = event.hookType;
   const toolName = event.toolName;
+  const toolCallId = event.toolCallId;
   const decision = event.decision;
   const hookName = event.hookName;
   const output = event.output;
   const time = formatTime(event.timestamp);
   const sessionId = event.sessionId;
   const agentId = event.agentId;
+
+  // Try to merge PostToolUse with existing PreToolUse entry by toolCallId
+  if (hookType === 'PostToolUse' && toolCallId) {
+    const existingEntry = elements.hooksContent?.querySelector(
+      `.hook-entry[data-hook-call-id="${CSS.escape(toolCallId)}"]`
+    ) as HTMLElement | null;
+
+    if (existingEntry) {
+      // Merge: update the existing PreToolUse entry to show grouped state
+      const typeEl = existingEntry.querySelector('.hook-type');
+      if (typeEl) {
+        typeEl.textContent = 'Pre\u2192Post';
+        typeEl.className = 'hook-type hook-type-grouped';
+      }
+
+      // Add "observed" decision badge if not already present
+      const headerEl = existingEntry.querySelector('.hook-entry-header');
+      if (headerEl && !headerEl.querySelector('.hook-decision-observed')) {
+        const observedBadge = document.createElement('span');
+        observedBadge.className = 'hook-decision hook-decision-observed';
+        observedBadge.textContent = 'observed';
+        headerEl.appendChild(observedBadge);
+      }
+
+      // Flash the merged entry
+      existingEntry.classList.add('new');
+      setTimeout(() => existingEntry.classList.remove('new'), 1000);
+
+      // DON'T increment hooksCount, DON'T create new entry
+      return;
+    }
+  }
 
   state.hooksCount++;
   updateHooksCount();
@@ -313,6 +349,10 @@ export function handleHookExecution(event: HookExecutionEvent): void {
   entry.dataset.hookType = hookType.toLowerCase();
   entry.dataset.session = sessionId || '';
   entry.dataset.decision = decision?.toLowerCase() || '';
+  entry.dataset.timestamp = String(Date.now());
+  if (toolCallId) {
+    entry.dataset.hookCallId = toolCallId;
+  }
 
   entry.innerHTML = `
     <div class="hook-entry-header">
@@ -333,6 +373,32 @@ export function handleHookExecution(event: HookExecutionEvent): void {
     applyHooksFilter(entry);
     callbacks.appendAndTrim(elements.hooksContent, entry);
     callbacks.smartScroll(elements.hooksContent);
+  }
+
+  // Add click handler for tool name -> scroll to matching tool entry
+  const toolEl = entry.querySelector('.hook-tool') as HTMLElement | null;
+  if (toolEl && toolName && !isSubagentHook) {
+    toolEl.style.cursor = 'pointer';
+    toolEl.title = 'Click to find in Tools panel';
+
+    toolEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectView('tools');
+
+      // Small delay to allow view switch to render
+      setTimeout(() => {
+        const toolEntries = document.querySelectorAll(
+          `#tools-content .tool-entry[data-tool-name="${CSS.escape(toolName.toLowerCase())}"]`
+        );
+        const lastEntry = toolEntries[toolEntries.length - 1] as HTMLElement | null;
+
+        if (lastEntry) {
+          lastEntry.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          lastEntry.classList.add('flash');
+          setTimeout(() => lastEntry.classList.remove('flash'), 1500);
+        }
+      }, 100);
+    });
   }
 
   // Remove 'new' class after animation

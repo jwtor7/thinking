@@ -76,4 +76,13 @@ export const elements = {
   tasksCollapseBtn: document.querySelector('.panel-tasks .panel-collapse-btn') as HTMLButtonElement,
   // Agent tree content (in the session filter area or dedicated section)
   agentTreeContent: document.getElementById('agent-tree-content'),
+  // Timeline panel elements
+  timelinePanel: document.querySelector('.panel-timeline') as HTMLElement,
+  timelineEntries: document.getElementById('timeline-entries'),
+  timelineCount: document.getElementById('timeline-count'),
+  timelineCollapseBtn: document.querySelector('.panel-timeline .panel-collapse-btn') as HTMLButtonElement,
+  // Activity pulse indicator
+  activityPulse: document.getElementById('activity-pulse'),
+  activityPulseDot: document.querySelector('.activity-pulse-dot'),
+  activityPulseRate: document.querySelector('.activity-pulse-rate'),
 };

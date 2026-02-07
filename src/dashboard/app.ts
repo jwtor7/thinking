@@ -15,7 +15,7 @@
  * - Improved responsiveness
  */
 
-import { state, agentContextStack, agentContextTimestamps, teamState } from './state.ts';
+import { state, agentContextStack, agentContextTimestamps, teamState, activityTracker } from './state.ts';
 
 import {
   MAX_ENTRIES,
@@ -108,6 +108,7 @@ import {
 import { initHooks } from './handlers/hooks.ts';
 import { initTeam, handleMessageSent } from './handlers/team.ts';
 import { initTasks } from './handlers/tasks.ts';
+import { initTimeline } from './handlers/timeline.ts';
 import {
   initExportModal,
   updateExportButtonState,
@@ -149,6 +150,7 @@ function focusActivePanel(view: ViewType): void {
     plan: 'plan-content',
     team: 'team-content',
     tasks: 'tasks-content',
+    timeline: 'timeline-entries',
   };
 
   const panelId = panelMap[view];
@@ -586,6 +588,11 @@ initTasks({
   },
 });
 
+initTimeline({
+  appendAndTrim,
+  smartScroll,
+});
+
 // Initialize UI modules
 initViews({
   announceStatus: announceStatus,
@@ -641,12 +648,62 @@ initStatusBarSession();
 
 // Initialize WebSocket with callbacks
 initWebSocket({
-  onEvent: handleEvent,
+  onEvent: (event) => {
+    // Track activity for pulse indicator
+    activityTracker.timestamps.push(Date.now());
+    handleEvent(event);
+  },
   showToast: showToast,
   announceStatus: announceStatus,
 });
 
 connect();
+
+// Activity pulse tracking
+const ACTIVITY_WINDOW_MS = 60_000; // 60 second window
+const ACTIVITY_UPDATE_INTERVAL_MS = 2_000; // Update every 2 seconds
+const ACTIVITY_IDLE_THRESHOLD_MS = 10_000; // Consider idle after 10s of no events
+
+// Set up activity pulse update interval
+setInterval(() => {
+  const now = Date.now();
+
+  // Remove timestamps older than the window
+  while (activityTracker.timestamps.length > 0 && activityTracker.timestamps[0] < now - ACTIVITY_WINDOW_MS) {
+    activityTracker.timestamps.shift();
+  }
+
+  // Calculate events per second
+  activityTracker.eventsPerSec = activityTracker.timestamps.length / (ACTIVITY_WINDOW_MS / 1000);
+
+  // Update DOM
+  const pulseEl = document.getElementById('activity-pulse');
+  const dotEl = pulseEl?.querySelector('.activity-pulse-dot') as HTMLElement | null;
+  const rateEl = pulseEl?.querySelector('.activity-pulse-rate') as HTMLElement | null;
+
+  if (pulseEl && dotEl && rateEl) {
+    const lastTimestamp = activityTracker.timestamps[activityTracker.timestamps.length - 1] || 0;
+    const isIdle = now - lastTimestamp > ACTIVITY_IDLE_THRESHOLD_MS;
+
+    if (isIdle) {
+      dotEl.classList.remove('active');
+      dotEl.classList.add('idle');
+      rateEl.textContent = '';
+    } else {
+      dotEl.classList.remove('idle');
+      dotEl.classList.add('active');
+      const rate = activityTracker.eventsPerSec;
+      if (rate >= 1) {
+        rateEl.textContent = `${rate.toFixed(1)}/s`;
+      } else if (rate > 0) {
+        rateEl.textContent = `${(rate * 60).toFixed(0)}/m`;
+      } else {
+        rateEl.textContent = '';
+      }
+    }
+  }
+}, ACTIVITY_UPDATE_INTERVAL_MS);
+
 console.log('[Dashboard] Thinking Monitor initialized');
 console.log('[Dashboard] Keyboard shortcuts: a/t/o/d/p=views, Shift+t/o/d=collapse, Shift+p=panel settings, c=clear, s=scroll, /=search, Esc=clear filters');
 console.log('[Dashboard] Plan shortcuts: Cmd+O=open, Cmd+Shift+R=reveal, Cmd+E=export, right-click=context menu');

@@ -12,7 +12,7 @@ import type { PanelName } from './panels.ts';
 /**
  * View type definition
  */
-export type ViewType = 'all' | 'thinking' | 'tools' | 'todo' | 'hooks' | 'plan' | 'team' | 'tasks';
+export type ViewType = 'all' | 'thinking' | 'tools' | 'todo' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline';
 
 /**
  * Callbacks for view navigation events
@@ -54,6 +54,7 @@ export function initViewTabs(): void {
     { id: 'hooks', label: 'Hooks', shortcut: 'h' },
     { id: 'team', label: 'Team', shortcut: 'm' },
     { id: 'tasks', label: 'Tasks', shortcut: 'k' },
+    { id: 'timeline', label: 'Timeline', shortcut: 'l' },
     { id: 'plan', label: 'Plan', shortcut: 'p' },
     { id: 'todo', label: 'Todo', shortcut: 'd' },
   ];
@@ -62,7 +63,7 @@ export function initViewTabs(): void {
     const tab = document.createElement('button');
     tab.className = `view-tab${state.activeView === view.id ? ' active' : ''}`;
     tab.dataset.view = view.id;
-    tab.innerHTML = `${view.label}<span class="view-tab-shortcut">${view.shortcut}</span>`;
+    tab.innerHTML = `${view.label}<span class="tab-badge" data-badge-view="${view.id}"></span><span class="view-tab-shortcut">${view.shortcut}</span>`;
     tab.addEventListener('click', () => selectView(view.id));
     viewTabsContainer.appendChild(tab);
   });
@@ -165,7 +166,7 @@ export function applyViewFilter(): void {
   if (!panels) return;
 
   // Remove any existing view-specific classes
-  panels.classList.remove('view-all', 'view-thinking', 'view-tools', 'view-todo', 'view-hooks', 'view-plan', 'view-team', 'view-tasks');
+  panels.classList.remove('view-all', 'view-thinking', 'view-tools', 'view-todo', 'view-hooks', 'view-plan', 'view-team', 'view-tasks', 'view-timeline');
 
   // Add the current view class
   panels.classList.add(`view-${state.activeView}`);
@@ -197,9 +198,10 @@ export function applyViewFilter(): void {
   applyVisibility(elements.todoPanel, pv.todo && state.activeView === 'todo');
   applyVisibility(elements.hooksPanel, pv.hooks && (showAll || state.activeView === 'hooks'));
   applyVisibility(elements.planPanel, pv.plan && state.activeView === 'plan');
-  // Team and Tasks panels only shown when explicitly selected
+  // Team, Tasks, and Timeline panels only shown when explicitly selected
   applyVisibility(elements.teamPanel, pv.team && state.activeView === 'team');
   applyVisibility(elements.tasksPanel, pv.tasks && state.activeView === 'tasks');
+  applyVisibility(elements.timelinePanel, pv.timeline && state.activeView === 'timeline');
 
   // Adjust layout for single-panel view
   if (!showAll) {
@@ -220,6 +222,7 @@ export function applyViewFilter(): void {
         plan: elements.planPanel,
         team: elements.teamPanel,
         tasks: elements.tasksPanel,
+        timeline: elements.timelinePanel,
       };
       const panel = panelElements[panelName];
       if (panel) {
@@ -236,5 +239,22 @@ export function applyViewFilter(): void {
 
     // Focus the active panel content for keyboard navigation
     callbacks.focusActivePanel(state.activeView);
+  }
+}
+
+/**
+ * Update the count badge on a view tab.
+ * Hides the badge when count is 0.
+ */
+export function updateTabBadge(view: ViewType, count: number): void {
+  const badge = document.querySelector(`.tab-badge[data-badge-view="${view}"]`) as HTMLElement | null;
+  if (!badge) return;
+
+  if (count > 0) {
+    badge.textContent = count > 999 ? '999+' : String(count);
+    badge.style.display = '';
+  } else {
+    badge.textContent = '';
+    badge.style.display = 'none';
   }
 }

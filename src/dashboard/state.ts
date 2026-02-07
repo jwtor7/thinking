@@ -52,6 +52,15 @@ export const teamState: TeamState = {
 };
 
 /**
+ * Activity tracking for pulse indicator.
+ * Ring buffer of event timestamps from the last 60 seconds.
+ */
+export const activityTracker = {
+  timestamps: [] as number[],
+  eventsPerSec: 0,
+};
+
+/**
  * Global application state.
  * Shared across all modules.
  */
@@ -93,6 +102,7 @@ export const state: AppState = {
     plan: false,
     team: false,
     tasks: false,
+    timeline: false,
   },
   panelVisibility: {
     thinking: true,
@@ -102,6 +112,7 @@ export const state: AppState = {
     plan: true,
     team: true,
     tasks: true,
+    timeline: true,
   },
 };
 

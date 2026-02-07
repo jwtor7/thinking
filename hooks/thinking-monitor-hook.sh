@@ -104,6 +104,7 @@ send_hook_execution() {
     local tool_name="$2"
     local decision="$3"
     local output="$4"
+    local tool_call_id="$5"
 
     HOOK_EXEC_JSON=$(jq -n \
         --arg type "hook_execution" \
@@ -115,6 +116,7 @@ send_hook_execution() {
         --arg decision "$decision" \
         --arg hookName "thinking-monitor-hook" \
         --arg output "$output" \
+        --arg toolCallId "$tool_call_id" \
         '{
             type: $type,
             timestamp: $timestamp,
@@ -124,7 +126,8 @@ send_hook_execution() {
             toolName: (if $toolName == "" then null else $toolName end),
             decision: (if $decision == "" then null else $decision end),
             hookName: $hookName,
-            output: (if $output == "" then null else $output end)
+            output: (if $output == "" then null else $output end),
+            toolCallId: (if $toolCallId == "" then null else $toolCallId end)
         }')
 
     send_event "$HOOK_EXEC_JSON"
@@ -160,7 +163,7 @@ case "$HOOK_TYPE" in
             }')
 
         # Also send hook_execution event
-        send_hook_execution "PreToolUse" "$TOOL_NAME" "allow" ""
+        send_hook_execution "PreToolUse" "$TOOL_NAME" "allow" "" "$TOOL_CALL_ID"
         ;;
 
     "PostToolUse")
@@ -194,7 +197,7 @@ case "$HOOK_TYPE" in
             }')
 
         # Also send hook_execution event
-        send_hook_execution "PostToolUse" "$TOOL_NAME" "" ""
+        send_hook_execution "PostToolUse" "$TOOL_NAME" "" "" "$TOOL_CALL_ID"
         ;;
 
     "SubagentStart")

@@ -300,6 +300,8 @@ export interface HookExecutionEvent extends MonitorEventBase {
   hookType: HookType;
   /** Name of the tool (for PreToolUse/PostToolUse hooks) */
   toolName?: string;
+  /** Tool call ID for correlating PreToolUse/PostToolUse pairs */
+  toolCallId?: string;
   /** Decision made by the hook (for PreToolUse hooks) */
   decision?: HookDecision;
   /** Name of the hook that ran */

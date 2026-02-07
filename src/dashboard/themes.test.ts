@@ -187,7 +187,7 @@ describe('Theme System', () => {
       ];
 
       themeKeys.forEach((themeKey) => {
-        const theme = themes[themeKey] as Record<string, string>;
+        const theme = themes[themeKey] as unknown as Record<string, string>;
         badgeColorKeys.forEach((colorKey) => {
           expect(theme[colorKey]).toBeDefined();
           expect(typeof theme[colorKey]).toBe('string');

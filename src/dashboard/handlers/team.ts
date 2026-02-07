@@ -5,12 +5,14 @@
  * rendering team members and inter-agent messages in the Team panel.
  */
 
-import { teamState } from '../state.ts';
+import { teamState, state, subagentState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { formatTime } from '../utils/formatting.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { getAgentBadgeColors } from '../ui/colors.ts';
+import { selectAgentFilter } from './sessions.ts';
 import type { TeamUpdateEvent, TeammateIdleEvent, MessageSentEvent } from '../types.ts';
+import { updateTabBadge } from '../ui/views.ts';
 
 // ============================================
 // Constants
@@ -71,6 +73,35 @@ function renderMemberGrid(teamName: string): void {
       </div>
     `;
   }).join('');
+
+  // Add click handlers for cross-panel agent filtering
+  memberGrid.querySelectorAll('.team-member-card').forEach((card, index) => {
+    const member = members[index];
+    if (!member) return;
+
+    (card as HTMLElement).style.cursor = 'pointer';
+    (card as HTMLElement).title = `Click to filter events by ${member.name}`;
+
+    card.addEventListener('click', () => {
+      // Find the agentId for this member from subagentState
+      let agentId: string | null = null;
+      for (const [id, mapping] of subagentState.subagents) {
+        if (mapping.agentName === member.name) {
+          agentId = id;
+          break;
+        }
+      }
+
+      if (agentId) {
+        // Toggle: if already selected, deselect
+        if (state.selectedAgentId === agentId) {
+          selectAgentFilter(null);
+        } else {
+          selectAgentFilter(agentId);
+        }
+      }
+    });
+  });
 }
 
 /**
@@ -101,6 +132,10 @@ export function handleTeamUpdate(event: TeamUpdateEvent): void {
 
   updateTeamHeader(teamName);
   renderMemberGrid(teamName);
+
+  // Update tab badge with member count
+  const memberCount = event.members.length;
+  updateTabBadge('team', memberCount);
 }
 
 /**
@@ -153,6 +188,7 @@ export function handleMessageSent(event: MessageSentEvent): void {
 
   const entry = document.createElement('div');
   entry.className = `team-message team-message-${event.messageType}`;
+  entry.dataset.timestamp = String(Date.now());
 
   const time = formatTime(event.timestamp);
   const senderColors = getAgentBadgeColors(event.sender);

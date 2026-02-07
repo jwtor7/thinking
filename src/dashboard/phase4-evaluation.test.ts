@@ -93,10 +93,10 @@ describe('Phase 4: Dashboard Polish', () => {
 
     it('should escape input in tool entries via summarizeInput', () => {
       // The code uses a two-step pattern that is equally secure:
-      // 1. const preview = summarizeInput(input);
+      // 1. const preview = summarizeInput(input, toolName);
       // 2. escapeHtml(preview)
       // Both summarizeInput and escapeHtml are used, ensuring XSS prevention
-      expect(appTsContent).toContain('summarizeInput(input)');
+      expect(appTsContent).toContain('summarizeInput(input,');
       expect(appTsContent).toContain('escapeHtml(preview)');
     });
 
@@ -127,9 +127,9 @@ describe('Phase 4: Dashboard Polish', () => {
       expect(appTsContent).toContain('escapeHtml(content)');
 
       // 2. Tool entries use escapeHtml for user content
-      // The code uses: const preview = summarizeInput(input); then escapeHtml(preview)
+      // The code uses: const preview = summarizeInput(input, toolName); then escapeHtml(preview)
       expect(appTsContent).toContain('escapeHtml(toolName)');
-      expect(appTsContent).toContain('summarizeInput(input)');
+      expect(appTsContent).toContain('summarizeInput(input,');
       expect(appTsContent).toContain('escapeHtml(preview)');
 
       // 3. Session badges use escapeHtml for user content

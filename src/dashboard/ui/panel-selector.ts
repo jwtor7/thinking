@@ -23,12 +23,13 @@ const PANEL_LABELS: Record<keyof PanelVisibility, string> = {
   plan: 'Plan',
   team: 'Team',
   tasks: 'Tasks',
+  timeline: 'Timeline',
 };
 
 /**
  * Order of panels in the selector UI.
  */
-const PANEL_ORDER: (keyof PanelVisibility)[] = ['thinking', 'todo', 'tools', 'hooks', 'team', 'tasks', 'plan'];
+const PANEL_ORDER: (keyof PanelVisibility)[] = ['thinking', 'todo', 'tools', 'hooks', 'team', 'tasks', 'timeline', 'plan'];
 
 /**
  * Modal element reference, created lazily on first open.
@@ -177,6 +178,7 @@ export function applyPanelVisibility(panelName: keyof PanelVisibility, visible: 
     plan: elements.planPanel,
     team: elements.teamPanel,
     tasks: elements.tasksPanel,
+    timeline: elements.timelinePanel,
   };
 
   const panel = panelElements[panelName];

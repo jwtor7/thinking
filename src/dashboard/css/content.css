@@ -455,3 +455,18 @@
 .entry-subagent-badge:hover {
   opacity: 1;
 }
+
+/* ========================================
+   Cross-Panel Linking Flash Highlight
+   ======================================== */
+
+.tool-entry.flash {
+  animation: flash-highlight 1.5s ease;
+}
+
+@keyframes flash-highlight {
+  0% { background: transparent; }
+  15% { background: rgba(59, 130, 246, 0.25); }
+  30% { background: rgba(59, 130, 246, 0.15); }
+  100% { background: transparent; }
+}

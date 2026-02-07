@@ -41,10 +41,60 @@ export function getDurationClass(ms: number): string {
   }
 }
 
-export function summarizeInput(input: string | undefined): string {
+export function summarizeInput(input: string | undefined, toolName?: string): string {
   if (!input) return '';
 
-  // Extract file paths or first meaningful content
+  // Tool-specific smart preview
+  if (toolName) {
+    try {
+      const parsed = JSON.parse(input);
+      switch (toolName) {
+        case 'Read':
+        case 'Write':
+        case 'Edit':
+          if (parsed.file_path) return parsed.file_path;
+          break;
+        case 'Bash':
+          if (parsed.command) {
+            const cmd = parsed.command;
+            return cmd.length > 80 ? cmd.slice(0, 80) + '...' : cmd;
+          }
+          break;
+        case 'Grep':
+          if (parsed.pattern) {
+            const parts = [parsed.pattern];
+            if (parsed.path) parts.push(parsed.path);
+            const result = parts.join(' in ');
+            return result.length > 80 ? result.slice(0, 80) + '...' : result;
+          }
+          break;
+        case 'Glob':
+          if (parsed.pattern) return parsed.pattern;
+          break;
+        case 'Task':
+          if (parsed.subagent_type || parsed.description) {
+            const parts: string[] = [];
+            if (parsed.subagent_type) parts.push(parsed.subagent_type);
+            if (parsed.description) parts.push(parsed.description);
+            const result = parts.join(': ');
+            return result.length > 80 ? result.slice(0, 80) + '...' : result;
+          }
+          break;
+        case 'WebFetch':
+          if (parsed.url) {
+            return parsed.url.length > 80 ? parsed.url.slice(0, 80) + '...' : parsed.url;
+          }
+          break;
+        case 'WebSearch':
+          if (parsed.query) return parsed.query;
+          break;
+      }
+    } catch {
+      // Input is not JSON, fall through to generic handling
+    }
+  }
+
+  // Generic fallback: Extract file paths or first meaningful content
   const pathMatch = input.match(/\/[^\s"']+/);
   if (pathMatch) {
     return pathMatch[0];

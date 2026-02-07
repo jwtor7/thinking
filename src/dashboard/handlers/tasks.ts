@@ -5,11 +5,13 @@
  * three-column kanban board (Pending | In Progress | Completed).
  */
 
-import { teamState } from '../state.ts';
+import { teamState, state, subagentState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { getAgentBadgeColors } from '../ui/colors.ts';
+import { selectAgentFilter } from './sessions.ts';
 import type { TaskUpdateEvent, TaskCompletedEvent, TaskInfo } from '../types.ts';
+import { updateTabBadge } from '../ui/views.ts';
 
 // ============================================
 // Callback Interface
@@ -52,7 +54,7 @@ function renderTaskCard(task: TaskInfo): string {
     : '&#9679;';
 
   return `
-    <div class="task-card task-card-${task.status}" data-task-id="${escapeHtml(task.id)}">
+    <div class="task-card task-card-${task.status}" data-task-id="${escapeHtml(task.id)}" data-timestamp="${Date.now()}">
       <div class="task-card-header">
         <span class="task-card-id">#${escapeHtml(task.id)}</span>
         <span class="task-card-status-icon">${statusIcon}</span>
@@ -108,6 +110,49 @@ function renderTaskBoard(): void {
   completedCol.innerHTML = completed.length > 0
     ? completed.map(renderTaskCard).join('')
     : '<div class="task-column-empty">No completed tasks</div>';
+
+  // Update tab badge with total task count
+  const totalCount = allTasks.length;
+  updateTabBadge('tasks', totalCount);
+
+  // Update total count badge in panel header
+  const totalCountEl = document.getElementById('tasks-total-count');
+  if (totalCountEl) {
+    totalCountEl.textContent = String(totalCount);
+  }
+
+  // Add click handlers for owner badges -> cross-panel agent filtering
+  const taskBoard = document.querySelector('.task-board');
+  if (taskBoard) {
+    taskBoard.querySelectorAll('.task-owner-badge').forEach((badge) => {
+      const ownerName = (badge as HTMLElement).textContent?.trim();
+      if (!ownerName) return;
+
+      (badge as HTMLElement).style.cursor = 'pointer';
+      (badge as HTMLElement).title = `Click to filter by ${ownerName}`;
+
+      badge.addEventListener('click', (e) => {
+        e.stopPropagation(); // Don't trigger card click
+
+        // Find agentId for this owner
+        let agentId: string | null = null;
+        for (const [id, mapping] of subagentState.subagents) {
+          if (mapping.agentName === ownerName) {
+            agentId = id;
+            break;
+          }
+        }
+
+        if (agentId) {
+          if (state.selectedAgentId === agentId) {
+            selectAgentFilter(null);
+          } else {
+            selectAgentFilter(agentId);
+          }
+        }
+      });
+    });
+  }
 }
 
 // ============================================

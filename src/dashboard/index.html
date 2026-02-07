@@ -158,6 +158,10 @@
                   </div>
                 </div>
               </div>
+              <div class="team-agent-tree-section" id="agent-tree-section" style="display: none;">
+                <div class="team-section-label">AGENT HIERARCHY</div>
+                <div class="agent-tree-content" id="agent-tree-content"></div>
+              </div>
               <div class="team-messages-section">
                 <div class="team-section-label">MESSAGES</div>
                 <div class="team-messages" id="team-messages">
@@ -216,8 +220,25 @@
           </div>
         </section>
 
-        <!-- Agent Tree (collapsible section in sidebar area) -->
-        <div id="agent-tree-content" class="agent-tree-content" style="display: none;"></div>
+        <!-- Timeline Panel (chronological view of all events) -->
+        <section class="panel panel-timeline panel-hidden" aria-labelledby="timeline-panel-title">
+          <header class="panel-header">
+            <button class="panel-collapse-btn" data-panel="timeline" aria-expanded="true" aria-label="Collapse Timeline panel" title="Collapse panel">
+              <span class="panel-collapse-icon">&#9660;</span>
+            </button>
+            <h2 class="panel-title" id="timeline-panel-title">TIMELINE</h2>
+            <div class="panel-header-controls">
+              <span class="panel-badge" id="timeline-count">0</span>
+            </div>
+          </header>
+          <div class="panel-content" id="timeline-entries">
+            <div class="empty-state">
+              <div class="empty-state-icon">&#128337;</div>
+              <p class="empty-state-title">No events yet</p>
+              <p class="empty-state-subtitle">Events will appear chronologically here</p>
+            </div>
+          </div>
+        </section>
 
         <!-- Plan Panel -->
         <section class="panel panel-plan" aria-labelledby="plan-panel-title">
@@ -273,6 +294,7 @@
     <footer class="footer" role="contentinfo">
       <span id="server-info">Server: --</span>
       <span id="active-session-indicator" class="active-session-indicator" title="Click to select session"></span>
+      <span id="activity-pulse" class="activity-pulse" title="Event activity rate"><span class="activity-pulse-dot"></span><span class="activity-pulse-rate"></span></span>
       <span id="event-count">Events: 0</span>
     </footer>
   </div>

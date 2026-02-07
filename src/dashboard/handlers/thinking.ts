@@ -17,7 +17,8 @@ import {
   applyThinkingFilter,
   updateThinkingCount,
 } from '../ui/filters.ts';
-import { getAgentColor, getAgentBadgeColors, getSessionColorByFolder, getSessionColorByHash } from '../ui/colors.ts';
+import { updateTabBadge } from '../ui/views.ts';
+import { getAgentBadgeColors, getSessionColorByFolder, getSessionColorByHash } from '../ui/colors.ts';
 import { getSessionDisplayName } from './sessions.ts';
 
 /**
@@ -81,6 +82,7 @@ export function handleThinking(event: ThinkingEvent): void {
 
   state.thinkingCount++;
   updateThinkingCount();
+  updateTabBadge('thinking', state.thinkingCount);
 
   const content = event.content;
   const time = formatTime(event.timestamp);
@@ -121,6 +123,7 @@ export function handleThinking(event: ThinkingEvent): void {
   entry.dataset.agent = agentId;
   entry.dataset.session = sessionId || '';
   entry.dataset.content = content.toLowerCase(); // For filtering
+  entry.dataset.timestamp = String(Date.now());
   // Track parent session for subagent filtering
   if (parentSessionId) {
     entry.dataset.parentSession = parentSessionId;

@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-02-07 — v0.22.0
+
+### Added
+- **Unified Timeline View** — chronological feed across all event types (thinking, tools, hooks, team, tasks) with type-specific icons, colored borders, and agent badges; `l` keyboard shortcut
+- **Hook PRE+POST Grouping** — PreToolUse and PostToolUse hook entries merge into a single "Pre→Post" entry when they share a toolCallId, reducing noise in the Hooks panel
+- **Session Dropdown** — compact `<select>` replacing badge-based session filter with status indicators (● active, ○ idle, ◌ inactive) and per-agent filter chips
+- **Tab Count Badges** — live event counts displayed on all view tabs (thinking, tools, hooks, team, tasks)
+- **Cross-Panel Linking** — click hook tool names to jump to matching tool entry; click team member cards and task owner badges to filter by agent
+- **Agent Tree inline in Team panel** — auto-shows nested agent hierarchy between member grid and messages when agents are active
+
+### Changed
+- Hook shell script now passes `toolCallId` as 5th parameter for PRE/POST matching
+- `HookExecutionEvent` type extended with optional `toolCallId` field
+- Timeline panel added to panel selector, persistence, and keyboard shortcuts
+- View tabs now include Timeline (`l`) with Shift+L to collapse
+
+---
+
 ## 2026-02-06 — v0.20.0
 
 ### Added

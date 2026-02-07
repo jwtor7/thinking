@@ -232,6 +232,7 @@ function getAgentDisplayName(agentId: string): string {
  */
 function renderAgentTree(): void {
   const treeContainer = elements.agentTreeContent;
+  const treeSection = document.getElementById('agent-tree-section');
   if (!treeContainer) return;
 
   // Find root agents (those without a parentAgentId, or whose parent is a session)
@@ -243,14 +244,15 @@ function renderAgentTree(): void {
   }
 
   if (rootAgents.length === 0) {
-    treeContainer.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">&#128279;</div>
-        <p class="empty-state-title">No agents active</p>
-        <p class="empty-state-subtitle">Agent hierarchy will appear here</p>
-      </div>
-    `;
+    if (treeSection && subagentState.subagents.size === 0) {
+      treeSection.style.display = 'none';
+    }
+    treeContainer.innerHTML = '';
     return;
+  }
+
+  if (treeSection) {
+    treeSection.style.display = '';
   }
 
   // Sort roots by start time
