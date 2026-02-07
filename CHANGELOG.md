@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-02-07 — v1.0.4
+
+### Added
+- **Keyboard shortcut help** — Press `?` to open a modal showing all available keyboard shortcuts, organized into Navigation, Panels, Actions, and Commands groups with styled key indicators
+
+### Fixed
+- **Connection overlay theme adaptation** — Reconnection overlay now uses theme-aware `--color-surface-overlay` instead of hardcoded dark background, working correctly on light and solarized themes
+- **Retry button hover color** — Replaced hardcoded `#4c96eb` with `filter: brightness()` for theme-independent hover state
+
+---
+
 ## 2026-02-07 — v1.0.3
 
 ### Changed

@@ -506,7 +506,7 @@ body.keyboard-mode .view-tab-shortcut {
   left: 0;
   right: 0;
   bottom: var(--footer-height);
-  background: rgba(13, 17, 23, 0.9);
+  background: var(--color-surface-overlay);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -560,7 +560,7 @@ body.keyboard-mode .view-tab-shortcut {
 }
 
 .connection-overlay-retry:hover {
-  background: #4c96eb;
+  filter: brightness(1.15);
 }
 
 /* ========================================

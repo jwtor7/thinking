@@ -11,6 +11,7 @@ import { selectView } from './views.ts';
 import { togglePanelCollapse } from './panels.ts';
 import { filterAllThinking, filterAllTools } from './filters.ts';
 import { openSearchOverlay } from './search-overlay.ts';
+import { openKeyboardHelp, isKeyboardHelpOpen, closeKeyboardHelp } from './keyboard-help.ts';
 
 /**
  * Callbacks for keyboard actions that need to be provided by app.ts.
@@ -108,8 +109,12 @@ export function handleKeydown(event: KeyboardEvent): void {
     return;
   }
 
-  // Escape to clear filters and blur
+  // Escape to clear filters and blur (or close keyboard help)
   if (event.key === 'Escape') {
+    if (isKeyboardHelpOpen()) {
+      closeKeyboardHelp();
+      return;
+    }
     state.thinkingFilter = '';
     state.toolsFilter = '';
     elements.thinkingFilter.value = '';
@@ -119,6 +124,16 @@ export function handleKeydown(event: KeyboardEvent): void {
     (document.activeElement as HTMLElement)?.blur();
     return;
   }
+
+  // '?' to show keyboard shortcuts help
+  if (event.key === '?' || (event.shiftKey && event.key === '/')) {
+    event.preventDefault();
+    openKeyboardHelp();
+    return;
+  }
+
+  // Don't process other shortcuts when keyboard help is open
+  if (isKeyboardHelpOpen()) return;
 
   // Panel collapse shortcuts (Shift + t/o/d) and panel selector (Shift + p)
   if (event.shiftKey && !event.ctrlKey && !event.metaKey) {
