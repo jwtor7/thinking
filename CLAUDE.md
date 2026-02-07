@@ -66,7 +66,10 @@ Key patterns:
 - `state.ts` holds all mutable global state (sessions, agents, filters, todos)
 - `handlers/dispatcher.ts` routes incoming WebSocket events by `event.type`
 - UI modules in `ui/` manage DOM interactions (panels, keyboard, drag-reorder, etc.)
+- `ui/views.ts` manages single-panel view switching (each view shows exactly one panel)
 - `storage/persistence.ts` handles localStorage save/restore
+
+**Note:** `src/dashboard/app.js` is a build artifact (esbuild IIFE bundle) — edit `app.ts`, not `app.js`.
 
 ### Shared Types
 
@@ -79,9 +82,17 @@ All event types live in `src/shared/types.ts` and are shared between server and 
 
 Claude Code hooks (configured in `~/.claude/settings.json`) POST JSON to `http://127.0.0.1:3355/event`. The `EventReceiver` validates origin, parses the payload, and passes it through `HookProcessor` which transforms raw hook JSON into typed `MonitorEvent` objects. Events are then broadcast via `WebSocketHub` to all connected dashboard clients.
 
-## Development Workflow
+## Agent Model Selection
 
-Uses two-agent pattern: `code-implementer` (writes code) → `code-test-evaluator` (tests and reviews). Both agents are defined in `.claude/agents/`.
+The main conversation (Opus) is the orchestrator — it decides what to do, then delegates. Prefer spawning cheap sub-agents over doing work inline.
+
+| Model | When to Use | Examples |
+|-------|-------------|---------|
+| **Haiku** | Mechanical, formulaic, or low-risk tasks | git commits, version bumps, CHANGELOG/README updates, file renames, simple grep/glob, `pnpm ship`, running tests, CSS tweaks |
+| **Sonnet** | Moderate complexity, multi-step but well-scoped | Adding a new handler, refactoring a module, writing tests for existing code, multi-file search & replace |
+| **Opus** | Complex architectural decisions, subtle bugs, security-sensitive changes | New event type end-to-end, redesigning the DI pattern, race condition debugging, security audit |
+
+**Default to Haiku.** Only escalate when the task genuinely requires deeper reasoning. A team of 3 Haiku agents finishing in parallel beats 1 Opus agent working sequentially.
 
 ## Server Ports
 

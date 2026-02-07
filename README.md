@@ -174,7 +174,7 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
-- **v1.0.10** (2026-02-07 13:37) — Removed "All" multi-panel view; default is now Thinking. Simplified view system, removed `a` shortcut.
+- **v1.0.10** (2026-02-07 13:43) — Removed "All" multi-panel view; default is now Thinking. Removed two-agent workflow, added model selection guidance.
 - **v1.0.9** (2026-02-07 13:10) — Smart tool previews in timeline, concise type badges, search keyboard navigation, MCP tool name shortening, keyboard help modal, debug logging system, focus trapping (8 patch releases, 1034 tests)
 - **v1.0.0** (2026-02-07) — First public release: platform support docs, repo made public
 

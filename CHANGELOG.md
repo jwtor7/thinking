@@ -4,6 +4,7 @@
 
 ### Removed
 - **"All" view** — Removed the multi-panel "All" view and `a` keyboard shortcut; default view is now Thinking. Every view is now single-panel, simplifying the view system by removing `showAll` branching, `view-all` CSS class, and mobile-specific multi-panel rules. Timeline already provides a unified chronological feed.
+- **Two-agent workflow** — Removed `code-implementer` and `code-test-evaluator` agents; replaced with model selection guidance (Haiku for mechanical tasks, Sonnet for moderate, Opus for complex)
 
 ---
 
