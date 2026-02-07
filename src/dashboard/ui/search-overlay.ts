@@ -13,6 +13,7 @@ let overlayEl: HTMLElement | null = null;
 let searchInput: HTMLInputElement | null = null;
 let resultsContainer: HTMLElement | null = null;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let previouslyFocused: HTMLElement | null = null;
 
 /**
  * Initialize the search overlay.
@@ -27,11 +28,13 @@ export function initSearchOverlay(): void {
 export function openSearchOverlay(): void {
   if (isOpen) return;
   isOpen = true;
+  previouslyFocused = document.activeElement as HTMLElement | null;
   ensureDOM();
   overlayEl!.classList.add('search-overlay-open');
   searchInput!.value = '';
   resultsContainer!.innerHTML = '<div class="search-empty">Type to search across all panels</div>';
   searchInput!.focus();
+  document.addEventListener('keydown', handleOverlayKeydown);
 }
 
 /**
@@ -41,6 +44,13 @@ export function closeSearchOverlay(): void {
   if (!isOpen) return;
   isOpen = false;
   overlayEl?.classList.remove('search-overlay-open');
+  document.removeEventListener('keydown', handleOverlayKeydown);
+
+  // Restore focus to the element that triggered the overlay
+  if (previouslyFocused && previouslyFocused.focus) {
+    previouslyFocused.focus();
+    previouslyFocused = null;
+  }
 }
 
 function ensureDOM(): void {
@@ -50,12 +60,12 @@ function ensureDOM(): void {
   overlayEl.className = 'search-overlay';
   overlayEl.innerHTML = `
     <div class="search-overlay-backdrop"></div>
-    <div class="search-overlay-modal">
+    <div class="search-overlay-modal" role="dialog" aria-modal="true" aria-label="Search across all panels">
       <div class="search-input-wrapper">
         <span class="search-input-icon">&#128269;</span>
-        <input type="text" class="search-input" placeholder="Search across all panels..." />
+        <input type="text" class="search-input" placeholder="Search across all panels..." aria-label="Search query" />
       </div>
-      <div class="search-results"></div>
+      <div class="search-results" role="listbox" aria-label="Search results"></div>
     </div>
   `;
   document.body.appendChild(overlayEl);
@@ -65,12 +75,7 @@ function ensureDOM(): void {
 
   overlayEl.querySelector('.search-overlay-backdrop')!.addEventListener('click', closeSearchOverlay);
 
-  searchInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      closeSearchOverlay();
-    }
-  });
+  // Escape handled by global handleOverlayKeydown listener
 
   searchInput.addEventListener('input', () => {
     if (debounceTimer) clearTimeout(debounceTimer);
@@ -185,4 +190,41 @@ function navigateToResult(panel: string, entryId: string): void {
   }
 
   closeSearchOverlay();
+}
+
+/**
+ * Handle keyboard events for the search overlay: Escape to close, Tab to trap focus.
+ */
+function handleOverlayKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeSearchOverlay();
+    return;
+  }
+
+  // Focus trap: keep Tab cycling within the modal
+  if (event.key === 'Tab' && overlayEl) {
+    const modal = overlayEl.querySelector('.search-overlay-modal');
+    if (!modal) return;
+
+    const focusable = modal.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey) {
+      if (document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+  }
 }

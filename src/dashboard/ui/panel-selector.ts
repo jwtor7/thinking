@@ -42,6 +42,11 @@ let modalElement: HTMLElement | null = null;
 let isOpen = false;
 
 /**
+ * Previously focused element, restored on close.
+ */
+let previouslyFocused: HTMLElement | null = null;
+
+/**
  * Callbacks for panel selector operations.
  */
 export interface PanelSelectorCallbacks {
@@ -159,8 +164,6 @@ function handlePanelToggle(panelName: keyof PanelVisibility, visible: boolean): 
   if (callbacks) {
     callbacks.announceStatus(`${PANEL_LABELS[panelName]} panel ${visible ? 'shown' : 'hidden'}`);
   }
-
-  console.log(`[PanelSelector] ${panelName} panel ${visible ? 'shown' : 'hidden'}`);
 }
 
 /**
@@ -232,6 +235,9 @@ export function openPanelSelector(): void {
   // Sync checkboxes with current state
   syncCheckboxes();
 
+  // Save currently focused element for restoration on close
+  previouslyFocused = document.activeElement as HTMLElement | null;
+
   // Show modal
   modalElement.classList.add('visible');
   isOpen = true;
@@ -242,10 +248,8 @@ export function openPanelSelector(): void {
     firstCheckbox.focus();
   }
 
-  // Add escape key handler
-  document.addEventListener('keydown', handleEscapeKey);
-
-  console.log('[PanelSelector] Modal opened');
+  // Add keyboard handler (escape + focus trap)
+  document.addEventListener('keydown', handleModalKeydown);
 }
 
 /**
@@ -257,10 +261,14 @@ export function closePanelSelector(): void {
   modalElement.classList.remove('visible');
   isOpen = false;
 
-  // Remove escape key handler
-  document.removeEventListener('keydown', handleEscapeKey);
+  // Remove keyboard handler
+  document.removeEventListener('keydown', handleModalKeydown);
 
-  console.log('[PanelSelector] Modal closed');
+  // Restore focus to the element that opened the modal
+  if (previouslyFocused && previouslyFocused.focus) {
+    previouslyFocused.focus();
+    previouslyFocused = null;
+  }
 }
 
 /**
@@ -282,10 +290,34 @@ export function isPanelSelectorOpen(): boolean {
 }
 
 /**
- * Handle Escape key to close modal.
+ * Handle keyboard events for the modal: Escape to close, Tab to trap focus.
  */
-function handleEscapeKey(event: KeyboardEvent): void {
+function handleModalKeydown(event: KeyboardEvent): void {
   if (event.key === 'Escape') {
     closePanelSelector();
+    return;
+  }
+
+  // Focus trap: keep Tab cycling within the modal
+  if (event.key === 'Tab' && modalElement) {
+    const focusable = modalElement.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey) {
+      if (document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
   }
 }

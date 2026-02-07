@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-02-07 — v1.0.2
+
+### Fixed
+- **Modal focus trapping** — Panel visibility modal and search overlay (Cmd+K) now trap Tab/Shift+Tab focus within the dialog, preventing keyboard navigation from escaping behind the overlay
+- **Modal focus restoration** — Closing either modal restores focus to the element that triggered it, improving keyboard workflow
+- **Search overlay ARIA** — Added `role="dialog"`, `aria-modal`, and `aria-label` attributes to the search overlay for screen reader compatibility
+- **Console.log cleanup** — Removed debug logging from panel selector module
+
+---
+
 ## 2026-02-07 — v1.0.1
 
 ### Fixed
