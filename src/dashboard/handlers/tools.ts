@@ -8,6 +8,7 @@
 
 import { state, subagentState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
+import { addDuration } from '../ui/duration-histogram.ts';
 import { formatTime, formatDuration, getDurationClass, summarizeInput } from '../utils/formatting.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { renderSimpleMarkdown } from '../utils/markdown.ts';
@@ -252,6 +253,12 @@ export function handleToolEnd(event: ToolEndEvent): void {
         line2El.appendChild(durationEl);
       }
     }
+
+  }
+
+  // Track duration in histogram (outside entry check to capture all durations)
+  if (durationMs !== undefined) {
+    addDuration(durationMs);
   }
 
   // Remove from pending

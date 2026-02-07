@@ -10,6 +10,7 @@ import { handleHookExecution } from './hooks.ts';
 import { handleTeamUpdate, handleTeammateIdle, handleMessageSent } from './team.ts';
 import { handleTaskUpdate, handleTaskCompleted } from './tasks.ts';
 import { addTimelineEntry } from './timeline.ts';
+import { updateStats } from '../ui/stats-bar.ts';
 
 /**
  * Main event dispatcher that routes incoming WebSocket events to appropriate handlers.
@@ -21,6 +22,9 @@ export function handleEvent(event: StrictMonitorEvent): void {
 
   // Add to timeline (before dispatch to specific handler)
   addTimelineEntry(event);
+
+  // Update stats bar
+  updateStats(event);
 
   console.log(`[Dashboard] Event received:`, {
     type: event.type,

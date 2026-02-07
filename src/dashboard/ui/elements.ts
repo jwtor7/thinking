@@ -83,8 +83,13 @@ export const elements = {
   timelineFilter: document.getElementById('timeline-filter') as HTMLInputElement | null,
   timelineFilterClear: document.getElementById('timeline-filter-clear'),
   timelineCollapseBtn: document.querySelector('.panel-timeline .panel-collapse-btn') as HTMLButtonElement,
+  timelineTypeChips: document.getElementById('timeline-type-chips'),
   // Activity pulse indicator
   activityPulse: document.getElementById('activity-pulse'),
   activityPulseDot: document.querySelector('.activity-pulse-dot'),
   activityPulseRate: document.querySelector('.activity-pulse-rate'),
+  // Duration histogram
+  durationHistogram: document.getElementById('tool-duration-histogram'),
+  // Stats bar
+  statsBar: document.getElementById('stats-bar'),
 };

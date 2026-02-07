@@ -81,7 +81,10 @@ import {
   hideSessionContextMenu,
   handleRevealSessionInFinder,
 } from './handlers/sessions.ts';
+import { initDurationHistogram, resetHistogram } from './ui/duration-histogram.ts';
 import { initTooltip } from './ui/tooltip.ts';
+import { initSearchOverlay } from './ui/search-overlay.ts';
+import { initStatsBar, renderStats, resetStats } from './ui/stats-bar.ts';
 import {
   initPlans,
   displayPlan,
@@ -108,12 +111,13 @@ import {
 import { initHooks } from './handlers/hooks.ts';
 import { initTeam, handleMessageSent } from './handlers/team.ts';
 import { initTasks } from './handlers/tasks.ts';
-import { initTimeline } from './handlers/timeline.ts';
+import { initTimeline, resetTypeChips } from './handlers/timeline.ts';
 import {
   initExportModal,
   updateExportButtonState,
   tryOpenExportModal,
 } from './ui/export-modal.ts';
+import { getEmptyStateHTML } from './ui/empty-states.ts';
 
 // ============================================
 // Accessibility Helpers
@@ -278,6 +282,12 @@ function clearAllPanels(): void {
   if (elements.hooksCount) {
     elements.hooksCount.textContent = '0';
   }
+  if (elements.timelineCount) {
+    elements.timelineCount.textContent = '0';
+  }
+
+  // Reset timeline type chips
+  resetTypeChips();
 
   // Clear filters
   state.thinkingFilter = '';
@@ -288,39 +298,18 @@ function clearAllPanels(): void {
   elements.toolsFilterClear.classList.add('panel-filter-hidden');
 
   // Clear panel contents with enhanced empty states
-  elements.thinkingContent.innerHTML = `
-    <div class="empty-state">
-      <div class="empty-state-icon">🧠</div>
-      <p class="empty-state-title">Waiting for thinking...</p>
-      <p class="empty-state-subtitle">Claude's thoughts will appear here</p>
-    </div>
-  `;
-
-  elements.toolsContent.innerHTML = `
-    <div class="empty-state">
-      <div class="empty-state-icon">🔧</div>
-      <p class="empty-state-title">No tool activity</p>
-      <p class="empty-state-subtitle">Tool calls will be logged here</p>
-    </div>
-  `;
-
-  elements.todoContent.innerHTML = `
-    <div class="empty-state">
-      <div class="empty-state-icon">📋</div>
-      <p class="empty-state-title">No active tasks</p>
-      <p class="empty-state-subtitle">Todo items will appear here</p>
-    </div>
-  `;
-
+  elements.thinkingContent.innerHTML = getEmptyStateHTML('thinking');
+  elements.toolsContent.innerHTML = getEmptyStateHTML('tools');
+  elements.todoContent.innerHTML = getEmptyStateHTML('todo');
   if (elements.hooksContent) {
-    elements.hooksContent.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">&#9881;</div>
-        <p class="empty-state-title">No hook activity</p>
-        <p class="empty-state-subtitle">Hook executions will appear here</p>
-      </div>
-    `;
+    elements.hooksContent.innerHTML = getEmptyStateHTML('hooks');
   }
+
+  // Reset duration histogram
+  resetHistogram();
+
+  // Reset stats bar
+  resetStats();
 
   // Show feedback toast
   showToast('Panels cleared', 'info');
@@ -593,6 +582,8 @@ initTimeline({
   smartScroll,
 });
 
+initDurationHistogram();
+
 // Initialize UI modules
 initViews({
   announceStatus: announceStatus,
@@ -643,6 +634,12 @@ initDragReorder();
 // Initialize custom tooltip system for session badges
 initTooltip();
 
+// Initialize global search overlay (Cmd+K)
+initSearchOverlay();
+
+// Initialize stats bar
+initStatsBar();
+
 // Initialize status bar session click handler
 initStatusBarSession();
 
@@ -666,6 +663,9 @@ const ACTIVITY_IDLE_THRESHOLD_MS = 10_000; // Consider idle after 10s of no even
 
 // Set up activity pulse update interval
 setInterval(() => {
+  // Render stats bar on 2-second interval
+  renderStats();
+
   const now = Date.now();
 
   // Remove timestamps older than the window

@@ -1,0 +1,63 @@
+/* ========================================
+   Session Stats Bar
+   ======================================== */
+
+.stats-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  background: var(--color-border);
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.stat-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 12px;
+  background: var(--color-bg-secondary);
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.stat-value {
+  font-size: 12px;
+  font-family: var(--font-family-mono);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Duration color coding on stat values */
+.stat-value.duration-fast { color: var(--color-accent-green); }
+.stat-value.duration-medium { color: var(--color-accent-yellow); }
+.stat-value.duration-slow { color: var(--color-accent-orange); }
+.stat-value.duration-very-slow { color: var(--color-accent-red); }
+
+.stat-deny {
+  color: var(--color-accent-red);
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .stats-bar {
+    flex-wrap: wrap;
+  }
+
+  .stat-cell {
+    flex: 0 0 auto;
+    min-width: 80px;
+  }
+}

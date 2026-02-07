@@ -41,8 +41,20 @@
 /* Timeline: Unified chronological event view */
 @import url('./timeline.css');
 
+/* Timeline type filter chips */
+@import url('./timeline-chips.css');
+
+/* Duration histogram in tools panel */
+@import url('./histogram.css');
+
+/* Session stats bar */
+@import url('./stats.css');
+
 /* Markdown: Plan markdown rendering */
 @import url('./markdown.css');
+
+/* Global search overlay */
+@import url('./search.css');
 
 /* Modals: Panel selector, context menus, toasts */
 @import url('./modals.css');

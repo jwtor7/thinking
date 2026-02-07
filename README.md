@@ -4,7 +4,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-0.22.4-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.23.0-purple)](./CHANGELOG.md)
 
 A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
 
@@ -130,10 +130,10 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 ## Recent Changes
 
+- **v0.23.0** (2026-02-07) — Dashboard upgrades: duration histogram, timeline filter chips, stats bar, global search (Cmd+K), enhanced empty states
 - **v0.22.4** (2026-02-07) — Dispatcher event routing tests (+95 tests, 1020 total)
 - **v0.22.3** (2026-02-07) — Security: ID validation, CSS escape allowlist; team/formatting/logger tests (+194 tests)
 - **v0.22.2** (2026-02-07) — Timeline filter input, endpoint test fix
 - **v0.22.1** (2026-02-07) — Session duration, tool color coding, WebSocket heartbeat, health endpoint
-- **v0.22.0** (2026-02-07) — Dashboard UX: Timeline, hook grouping, session dropdown, tab badges, cross-panel linking
 
 *[Full changelog →](./CHANGELOG.md)*

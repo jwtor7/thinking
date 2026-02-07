@@ -40,6 +40,35 @@ const TYPE_ICONS: Record<string, string> = {
   subagent_mapping: '&#128279;',   // link
 };
 
+/** Timeline category definitions for filter chips */
+const TIMELINE_CATEGORIES: Record<string, { label: string; types: string[]; color: string; icon: string }> = {
+  thinking: { label: 'Thinking', types: ['thinking'], color: 'var(--color-accent-blue)', icon: '&#129504;' },
+  tools: { label: 'Tools', types: ['tool_start', 'tool_end'], color: 'var(--color-accent-green)', icon: '&#128295;' },
+  hooks: { label: 'Hooks', types: ['hook_execution'], color: 'var(--color-accent-yellow)', icon: '&#9881;' },
+  agents: { label: 'Agents', types: ['agent_start', 'agent_stop'], color: 'var(--color-accent-purple)', icon: '&#129302;' },
+  team: { label: 'Team', types: ['team_update', 'task_update', 'task_completed', 'message_sent', 'teammate_idle'], color: 'var(--color-accent-orange)', icon: '&#128101;' },
+  plans: { label: 'Plans', types: ['plan_update', 'plan_delete'], color: 'var(--color-text-muted)', icon: '&#128196;' },
+};
+
+/** Reverse lookup: event type -> category */
+const TYPE_TO_CATEGORY: Record<string, string> = {};
+for (const [cat, def] of Object.entries(TIMELINE_CATEGORIES)) {
+  for (const t of def.types) {
+    TYPE_TO_CATEGORY[t] = cat;
+  }
+}
+
+/** Category filter state (all active by default) */
+const typeFilterState: Map<string, boolean> = new Map();
+
+/** Category event counts */
+const typeCounts: Map<string, number> = new Map();
+
+/** Chip button elements for count updates */
+const chipElements: Map<string, HTMLElement> = new Map();
+
+const STORAGE_KEY = 'tm-timeline-type-filter';
+
 // ============================================
 // Callback Interface
 // ============================================
@@ -58,6 +87,7 @@ let timelineCount = 0;
 export function initTimeline(cbs: TimelineCallbacks): void {
   callbacks = cbs;
   initTimelineFilter();
+  initTypeChips();
 }
 
 /**
@@ -90,6 +120,80 @@ function initTimelineFilter(): void {
 }
 
 /**
+ * Initialize timeline type filter chips.
+ */
+function initTypeChips(): void {
+  const container = elements.timelineTypeChips;
+  if (!container) return;
+
+  // Load saved state
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      for (const [cat, enabled] of Object.entries(parsed)) {
+        typeFilterState.set(cat, enabled as boolean);
+      }
+    }
+  } catch { /* ignore */ }
+
+  // Initialize defaults and counts
+  for (const cat of Object.keys(TIMELINE_CATEGORIES)) {
+    if (!typeFilterState.has(cat)) typeFilterState.set(cat, true);
+    typeCounts.set(cat, 0);
+  }
+
+  // Create chip buttons
+  for (const [cat, def] of Object.entries(TIMELINE_CATEGORIES)) {
+    const chip = document.createElement('button');
+    chip.className = 'timeline-chip' + (typeFilterState.get(cat) ? ' active' : '');
+    chip.dataset.category = cat;
+    if (typeFilterState.get(cat)) {
+      chip.style.background = def.color;
+    }
+    chip.innerHTML = `${def.icon} ${def.label} <span class="chip-count">0</span>`;
+    chip.addEventListener('click', () => {
+      const current = typeFilterState.get(cat) ?? true;
+      typeFilterState.set(cat, !current);
+      chip.classList.toggle('active', !current);
+      chip.style.background = !current ? def.color : '';
+      saveTypeFilterState();
+      applyTimelineFilter();
+    });
+    container.appendChild(chip);
+    chipElements.set(cat, chip);
+  }
+}
+
+function saveTypeFilterState(): void {
+  try {
+    const obj: Record<string, boolean> = {};
+    for (const [cat, enabled] of typeFilterState) {
+      obj[cat] = enabled;
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+  } catch { /* ignore */ }
+}
+
+/**
+ * Reset type chip counts and filter state (called from clearAllPanels).
+ */
+export function resetTypeChips(): void {
+  for (const cat of Object.keys(TIMELINE_CATEGORIES)) {
+    typeCounts.set(cat, 0);
+    typeFilterState.set(cat, true);
+    const chip = chipElements.get(cat);
+    if (chip) {
+      chip.classList.add('active');
+      chip.style.background = TIMELINE_CATEGORIES[cat].color;
+      const countEl = chip.querySelector('.chip-count');
+      if (countEl) countEl.textContent = '0';
+    }
+  }
+  saveTypeFilterState();
+}
+
+/**
  * Apply the current timeline filter to all entries.
  * Updates visibility and the badge count.
  */
@@ -111,8 +215,12 @@ export function applyTimelineFilter(): void {
     }
 
     if (!filter || el.dataset.filterText.includes(filter)) {
-      // Check session filter
-      if (state.selectedSession !== 'all' && el.dataset.session && el.dataset.session !== state.selectedSession) {
+      // Check type filter
+      const elCategory = el.dataset.category || '';
+      if (elCategory && typeFilterState.get(elCategory) === false) {
+        el.style.display = 'none';
+      } else if (state.selectedSession !== 'all' && el.dataset.session && el.dataset.session !== state.selectedSession) {
+        // Check session filter
         el.style.display = 'none';
       } else {
         el.style.display = '';
@@ -207,6 +315,17 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
 
   timelineCount++;
 
+  // Track category count and update chip
+  const category = TYPE_TO_CATEGORY[event.type] || '';
+  if (category) {
+    typeCounts.set(category, (typeCounts.get(category) || 0) + 1);
+    const chip = chipElements.get(category);
+    if (chip) {
+      const countEl = chip.querySelector('.chip-count');
+      if (countEl) countEl.textContent = String(typeCounts.get(category));
+    }
+  }
+
   // Update badge count
   if (elements.timelineCount) {
     elements.timelineCount.textContent = String(timelineCount);
@@ -232,6 +351,7 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
   entry.dataset.type = event.type;
   entry.dataset.session = event.sessionId || '';
   entry.dataset.filterText = filterText;
+  entry.dataset.category = category;
 
   entry.innerHTML = `
     <span class="timeline-icon">${icon}</span>
@@ -248,6 +368,11 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
 
   // Apply text filter
   if (state.timelineFilter && !filterText.includes(state.timelineFilter)) {
+    entry.style.display = 'none';
+  }
+
+  // Apply type filter
+  if (category && typeFilterState.get(category) === false) {
     entry.style.display = 'none';
   }
 

@@ -10,6 +10,7 @@ import { elements } from './elements.ts';
 import { selectView } from './views.ts';
 import { togglePanelCollapse } from './panels.ts';
 import { filterAllThinking, filterAllTools } from './filters.ts';
+import { openSearchOverlay } from './search-overlay.ts';
 
 /**
  * Callbacks for keyboard actions that need to be provided by app.ts.
@@ -195,6 +196,13 @@ export function handleKeydown(event: KeyboardEvent): void {
 
   // Plan file actions with Cmd/Ctrl modifiers
   if (event.metaKey || event.ctrlKey) {
+    // Cmd+K / Ctrl+K - Global search
+    if (event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      openSearchOverlay();
+      return;
+    }
+
     // Cmd+E / Ctrl+E - Export as Markdown
     if (event.key.toLowerCase() === 'e' && !event.shiftKey) {
       event.preventDefault();

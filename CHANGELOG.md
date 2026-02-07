@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-02-07 — v0.23.0
+
+### Added
+- **Tool Duration Histogram** — compact 6-bar chart in Tools panel header showing duration distribution (<100ms to 15s+) with color-coded buckets and hover tooltips
+- **Timeline Type Filter Chips** — clickable category chips (Thinking, Tools, Hooks, Agents, Team, Plans) above timeline entries with count badges, toggle visibility, and localStorage persistence
+- **Session Stats Bar** — always-visible metrics row between main content and footer showing top 5 tools by call count, avg/P95 duration, thinking block count, hook allow/deny/ask ratio, and events/min rate
+- **Global Search (Cmd+K)** — cross-panel search overlay with debounced input, grouped results by panel (Thinking, Tools, Hooks, Timeline), click-to-navigate with highlight animation
+- **Enhanced Empty States** — context-aware empty states with descriptive guidance text and keyboard shortcut hints (e.g., plan panel shows Cmd+O/Cmd+Shift+R)
+
+---
+
 ## 2026-02-07 — v0.22.4
 
 ### Added

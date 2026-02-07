@@ -54,9 +54,9 @@
           </header>
           <div class="panel-content" id="thinking-content">
             <div class="empty-state">
-              <div class="empty-state-icon">🧠</div>
-              <p class="empty-state-title">Waiting for thinking...</p>
-              <p class="empty-state-subtitle">Claude's thoughts will appear here</p>
+              <div class="empty-state-icon">&#129504;</div>
+              <p class="empty-state-title">Waiting for Claude Code session...</p>
+              <p class="empty-state-subtitle">Start a conversation in your terminal to see thinking blocks.</p>
             </div>
           </div>
         </section>
@@ -72,9 +72,9 @@
           </header>
           <div class="panel-content" id="todo-content">
             <div class="empty-state">
-              <div class="empty-state-icon">📋</div>
+              <div class="empty-state-icon">&#128203;</div>
               <p class="empty-state-title">No active tasks</p>
-              <p class="empty-state-subtitle">Todo items will appear here</p>
+              <p class="empty-state-subtitle">Tasks appear when Claude uses TodoWrite to track work items.</p>
             </div>
           </div>
         </section>
@@ -87,6 +87,7 @@
             </button>
             <h2 class="panel-title" id="tools-panel-title">TOOL ACTIVITY</h2>
             <div class="panel-header-controls">
+              <div id="tool-duration-histogram" class="duration-histogram"></div>
               <div class="panel-filter">
                 <input type="text" class="panel-filter-input" id="tools-filter" placeholder="Filter..." aria-label="Filter tool entries">
                 <button class="panel-filter-clear panel-filter-hidden" id="tools-filter-clear" aria-label="Clear filter">x</button>
@@ -96,9 +97,9 @@
           </header>
           <div class="panel-content" id="tools-content">
             <div class="empty-state">
-              <div class="empty-state-icon">🔧</div>
-              <p class="empty-state-title">No tool activity</p>
-              <p class="empty-state-subtitle">Tool calls will be logged here</p>
+              <div class="empty-state-icon">&#128295;</div>
+              <p class="empty-state-title">No tool calls yet</p>
+              <p class="empty-state-subtitle">Tools appear when Claude reads files, runs commands, edits code, or searches.</p>
             </div>
           </div>
         </section>
@@ -130,7 +131,7 @@
             <div class="empty-state">
               <div class="empty-state-icon">&#9881;</div>
               <p class="empty-state-title">No hook activity</p>
-              <p class="empty-state-subtitle">Hook executions will appear here</p>
+              <p class="empty-state-subtitle">Hooks run before/after tool execution to enforce rules and track behavior.</p>
             </div>
           </div>
         </section>
@@ -153,8 +154,8 @@
                 <div class="team-member-grid" id="team-member-grid">
                   <div class="empty-state">
                     <div class="empty-state-icon">&#128101;</div>
-                    <p class="empty-state-title">No team active</p>
-                    <p class="empty-state-subtitle">Team members will appear here</p>
+                    <p class="empty-state-title">No team activity</p>
+                    <p class="empty-state-subtitle">Teams appear when Claude uses TeamCreate and SendMessage for multi-agent collaboration.</p>
                   </div>
                 </div>
               </div>
@@ -167,8 +168,8 @@
                 <div class="team-messages" id="team-messages">
                   <div class="empty-state">
                     <div class="empty-state-icon">&#128172;</div>
-                    <p class="empty-state-title">No messages</p>
-                    <p class="empty-state-subtitle">Inter-agent messages will appear here</p>
+                    <p class="empty-state-title">No messages yet</p>
+                    <p class="empty-state-subtitle">Messages appear when agents communicate via SendMessage.</p>
                   </div>
                 </div>
               </div>
@@ -235,11 +236,12 @@
               <span class="panel-badge" id="timeline-count">0</span>
             </div>
           </header>
+          <div id="timeline-type-chips" class="timeline-type-chips"></div>
           <div class="panel-content" id="timeline-entries">
             <div class="empty-state">
               <div class="empty-state-icon">&#128337;</div>
               <p class="empty-state-title">No events yet</p>
-              <p class="empty-state-subtitle">Events will appear chronologically here</p>
+              <p class="empty-state-subtitle">A chronological feed of all events: thinking, tools, hooks, agents, and more.</p>
             </div>
           </div>
         </section>
@@ -276,13 +278,15 @@
           </div>
           <div class="panel-content" id="plan-content">
             <div class="empty-state">
-              <div class="empty-state-icon">📄</div>
+              <div class="empty-state-icon">&#128196;</div>
               <p class="empty-state-title">No plan loaded</p>
-              <p class="empty-state-subtitle">Select a plan from the dropdown above</p>
+              <p class="empty-state-subtitle">Select a plan from the dropdown above.</p>
             </div>
           </div>
         </section>
     </main>
+
+    <div id="stats-bar" class="stats-bar"></div>
 
     <!-- Connection Overlay -->
     <div class="connection-overlay" id="connection-overlay">
