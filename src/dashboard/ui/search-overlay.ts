@@ -14,6 +14,7 @@ let searchInput: HTMLInputElement | null = null;
 let resultsContainer: HTMLElement | null = null;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let previouslyFocused: HTMLElement | null = null;
+let selectedIndex = -1;
 
 /**
  * Initialize the search overlay.
@@ -33,6 +34,7 @@ export function openSearchOverlay(): void {
   overlayEl!.classList.add('search-overlay-open');
   searchInput!.value = '';
   resultsContainer!.innerHTML = '<div class="search-empty">Type to search across all panels</div>';
+  selectedIndex = -1;
   searchInput!.focus();
   document.addEventListener('keydown', handleOverlayKeydown);
 }
@@ -181,6 +183,7 @@ function renderResults(groups: Record<string, HTMLElement[]>, query: string): vo
   }
 
   resultsContainer.innerHTML = html;
+  selectedIndex = -1;
 
   resultsContainer.querySelectorAll('.search-result').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -214,6 +217,42 @@ function handleOverlayKeydown(event: KeyboardEvent): void {
     event.preventDefault();
     closeSearchOverlay();
     return;
+  }
+
+  // Arrow key navigation through results
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    const results = resultsContainer?.querySelectorAll<HTMLElement>('.search-result');
+    if (!results || results.length === 0) return;
+
+    // Remove current selection
+    if (selectedIndex >= 0 && selectedIndex < results.length) {
+      results[selectedIndex].classList.remove('search-result-active');
+      results[selectedIndex].removeAttribute('aria-selected');
+    }
+
+    // Move selection
+    if (event.key === 'ArrowDown') {
+      selectedIndex = selectedIndex < results.length - 1 ? selectedIndex + 1 : 0;
+    } else {
+      selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : results.length - 1;
+    }
+
+    // Apply new selection
+    results[selectedIndex].classList.add('search-result-active');
+    results[selectedIndex].setAttribute('aria-selected', 'true');
+    results[selectedIndex].scrollIntoView({ block: 'nearest' });
+    return;
+  }
+
+  // Enter to activate selected result
+  if (event.key === 'Enter') {
+    const results = resultsContainer?.querySelectorAll<HTMLElement>('.search-result');
+    if (results && selectedIndex >= 0 && selectedIndex < results.length) {
+      event.preventDefault();
+      results[selectedIndex].click();
+      return;
+    }
   }
 
   // Focus trap: keep Tab cycling within the modal

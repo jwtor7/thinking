@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-02-07 — v1.0.7
+
+### Added
+- **Search keyboard navigation** — Arrow keys (Up/Down) navigate through Cmd+K search results with a visual active highlight; Enter activates the selected result, matching standard command palette behavior
+
+### Changed
+- **Timeline type badge labels** — Replaced auto-generated labels with concise display names (e.g. "HOOK" instead of truncated "HOOK EXECUTI...", "SESSION" instead of "SESSION START"); full event type available via tooltip on hover
+
+---
+
 ## 2026-02-07 — v1.0.6
 
 ### Added

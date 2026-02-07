@@ -104,7 +104,8 @@
   transition: background 0.1s ease;
 }
 
-.search-result:hover {
+.search-result:hover,
+.search-result-active {
   background: var(--color-bg-hover);
   color: var(--color-text-primary);
 }

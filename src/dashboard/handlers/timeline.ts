@@ -18,6 +18,28 @@ import type { StrictMonitorEvent } from '../../shared/types.ts';
 const MAX_TIMELINE_ENTRIES = 500;
 
 
+/** Concise display labels for timeline type badges (must fit ~100px at 10px uppercase) */
+const TYPE_LABELS: Record<string, string> = {
+  thinking: 'thinking',
+  tool_start: 'tool start',
+  tool_end: 'tool end',
+  hook_execution: 'hook',
+  agent_start: 'agent start',
+  agent_stop: 'agent stop',
+  session_start: 'session',
+  session_stop: 'session',
+  team_update: 'team',
+  task_update: 'task',
+  task_completed: 'task done',
+  message_sent: 'message',
+  teammate_idle: 'idle',
+  plan_update: 'plan',
+  plan_delete: 'plan',
+  plan_list: 'plan',
+  connection_status: 'connection',
+  subagent_mapping: 'subagent',
+};
+
 /** Type icons mapping */
 const TYPE_ICONS: Record<string, string> = {
   thinking: '&#129504;',      // brain
@@ -335,8 +357,9 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
   const typeClass = event.type.replace(/_/g, '-');
 
   // Build filter text for search (lowercase for case-insensitive matching)
-  const typeLabel = event.type.replace(/_/g, ' ');
-  const filterText = `${typeLabel} ${summary} ${agentLabel}`.toLowerCase();
+  const typeLabel = TYPE_LABELS[event.type] || event.type.replace(/_/g, ' ');
+  const typeFull = event.type.replace(/_/g, ' ');
+  const filterText = `${typeFull} ${summary} ${agentLabel}`.toLowerCase();
 
   const entry = document.createElement('div');
   entry.className = `timeline-entry timeline-${typeClass} new`;
@@ -349,7 +372,7 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
   entry.innerHTML = `
     <span class="timeline-icon">${icon}</span>
     <span class="timeline-time">${escapeHtml(time)}</span>
-    <span class="timeline-type">${escapeHtml(typeLabel)}</span>
+    <span class="timeline-type" title="${escapeHtml(typeFull)}">${escapeHtml(typeLabel)}</span>
     <span class="timeline-summary">${escapeHtml(summary)}</span>
     <span class="timeline-agent" style="background: ${escapeCssValue(agentBadgeColors.bg)}; color: ${escapeCssValue(agentBadgeColors.text)}">${escapeHtml(agentLabel)}</span>
   `;
