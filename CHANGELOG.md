@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-02-07 — v1.1.1
+
+### Fixed
+- **Session chips show UUIDs** — Timeline session chips now update their label when the session's working directory resolves, instead of permanently showing a truncated UUID
+- **Identical session dropdown entries** — Sessions sharing the same folder name now show start time for disambiguation (e.g., "thinking (14:35)")
+- **Type chips persist as "all disabled"** — If all timeline category chips are disabled on page load, they auto-reset to enabled to prevent an empty-looking timeline
+- **Session events uncategorized** — `session_start`/`session_stop` events now belong to the Agents category and respect type filters
+- **Stale session auto-selected** — New sessions are auto-selected when the dashboard is on "All Sessions"; exported `autoSelectActiveSession()` for page-load recovery
+- **Session chips override dropdown silently** — Timeline count now shows a tooltip explaining when session chips are overriding the global dropdown filter
+- **Thinking entries lost in timeline cap** — Trimming now preferentially removes non-thinking entries, preserving rare thinking events from being displaced by tool/hook floods
+
+---
+
 ## 2026-02-07 — v1.1.0
 
 ### Added

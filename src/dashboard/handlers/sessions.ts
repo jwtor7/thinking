@@ -235,6 +235,11 @@ export function handleSessionStart(event: SessionStartEvent): void {
 
   state.currentSessionId = sessionId;
   updateSessionFilter();
+
+  // Auto-select the newly started session if we're viewing "All Sessions"
+  if (state.selectedSession === 'all') {
+    selectSession(sessionId);
+  }
 }
 
 /**
@@ -318,6 +323,13 @@ export function updateSessionFilter(): void {
     return folderA.localeCompare(folderB);
   });
 
+  // Build a map of displayName -> count to detect duplicates
+  const displayNameCounts = new Map<string, number>();
+  for (const [sessionId, session] of sortedSessions) {
+    const displayName = getSessionDisplayName(session.workingDirectory, sessionId);
+    displayNameCounts.set(displayName, (displayNameCounts.get(displayName) || 0) + 1);
+  }
+
   for (const [sessionId, session] of sortedSessions) {
     const displayName = getSessionDisplayName(session.workingDirectory, sessionId);
     const statusIndicator = session.active ? (hasRecentActivity(sessionId) ? '\u25CF' : '\u25CB') : '\u25CC';
@@ -326,7 +338,18 @@ export function updateSessionFilter(): void {
     const subagentCount = subagentIds?.size || 0;
     const subagentLabel = subagentCount > 0 ? ` [${subagentCount} agents]` : '';
 
-    html += `<option value="${escapeHtml(sessionId)}"${selected}>${statusIndicator} ${escapeHtml(displayName)}${subagentLabel}</option>`;
+    // Disambiguate entries with duplicate display names by appending start time or session ID
+    let disambiguated = displayName;
+    if ((displayNameCounts.get(displayName) || 0) > 1) {
+      let timeStr = '';
+      if (session.startTime) {
+        const d = new Date(session.startTime);
+        timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      }
+      disambiguated = `${displayName} (${timeStr || sessionId.slice(0, 8)})`;
+    }
+
+    html += `<option value="${escapeHtml(sessionId)}"${selected}>${statusIndicator} ${escapeHtml(disambiguated)}${subagentLabel}</option>`;
   }
 
   html += '</select>';
@@ -455,6 +478,28 @@ export function selectSession(sessionId: string): void {
   // Update export button state (disabled when "All" is selected)
   if (callbacks) {
     callbacks.updateExportButtonState();
+  }
+}
+
+/**
+ * Auto-select the most recently active session on page load.
+ * If no session is selected or the selected session is inactive,
+ * finds and selects the most recently active session.
+ */
+export function autoSelectActiveSession(): void {
+  // Check if selectedSession is set to a specific session
+  if (state.selectedSession && state.selectedSession !== 'all') {
+    const selectedSession = state.sessions.get(state.selectedSession);
+    // If the selected session is still active, keep it selected
+    if (selectedSession && selectedSession.active) {
+      return;
+    }
+  }
+
+  // Selected session is inactive or 'all' - find and select the most recently active session
+  const mostRecent = findMostRecentActiveSession();
+  if (mostRecent) {
+    selectSession(mostRecent.id);
   }
 }
 

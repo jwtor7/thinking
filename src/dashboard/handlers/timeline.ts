@@ -69,7 +69,7 @@ const TIMELINE_CATEGORIES: Record<string, { label: string; types: string[]; colo
   thinking: { label: 'Thinking', types: ['thinking'], color: 'var(--color-accent-blue)', icon: '&#129504;' },
   tools: { label: 'Tools', types: ['tool_start', 'tool_end'], color: 'var(--color-accent-green)', icon: '&#128295;' },
   hooks: { label: 'Hooks', types: ['hook_execution'], color: 'var(--color-accent-yellow)', icon: '&#9881;' },
-  agents: { label: 'Agents', types: ['agent_start', 'agent_stop'], color: 'var(--color-accent-purple)', icon: '&#129302;' },
+  agents: { label: 'Agents', types: ['agent_start', 'agent_stop', 'session_start', 'session_stop'], color: 'var(--color-accent-purple)', icon: '&#129302;' },
   team: { label: 'Team', types: ['team_update', 'task_update', 'task_completed', 'message_sent', 'teammate_idle'], color: 'var(--color-accent-orange)', icon: '&#128101;' },
   plans: { label: 'Plans', types: ['plan_update', 'plan_delete'], color: 'var(--color-text-muted)', icon: '&#128196;' },
 };
@@ -178,6 +178,14 @@ function initTypeChips(): void {
     typeCounts.set(cat, 0);
   }
 
+  // If all categories are disabled (unintentional state), reset to all enabled
+  const allDisabled = Array.from(typeFilterState.values()).every(v => !v);
+  if (allDisabled) {
+    for (const cat of Object.keys(TIMELINE_CATEGORIES)) {
+      typeFilterState.set(cat, true);
+    }
+  }
+
   // Create chip buttons
   for (const [cat, def] of Object.entries(TIMELINE_CATEGORIES)) {
     const chip = document.createElement('button');
@@ -266,11 +274,28 @@ function addOrUpdateSessionChip(sessionId: string): void {
   const container = elements.timelineSessionChips;
   if (!container) return;
 
-  // Already exists - just update count
+  // Already exists - update count and label (label may have been UUID, now resolved to project name)
   if (sessionChipElements.has(sessionId)) {
     const chip = sessionChipElements.get(sessionId)!;
+    const session = state.sessions.get(sessionId);
+    const newLabel = getSessionDisplayName(session?.workingDirectory, sessionId);
+    const color = session?.color || 'var(--color-text-muted)';
+
+    // Update chip label if it has changed (preserving the count span)
     const countEl = chip.querySelector('.chip-count');
-    if (countEl) countEl.textContent = String(sessionCounts.get(sessionId) || 0);
+    const currentCount = String(sessionCounts.get(sessionId) || 0);
+    if (countEl) {
+      countEl.textContent = currentCount;
+      // Update the text node before the span with the new label
+      chip.childNodes[0].textContent = newLabel + ' ';
+    }
+
+    // Update color if active
+    const isActive = sessionFilterState.get(sessionId) ?? false;
+    if (isActive) {
+      chip.style.background = color;
+    }
+    chip.title = `Session: ${sessionId}`;
     return;
   }
 
@@ -378,6 +403,13 @@ export function applyTimelineFilter(): void {
     elements.timelineCount.textContent = hasActiveFilter
       ? `${visible}/${timelineCount}`
       : String(timelineCount);
+
+    // Indicate when session chips are overriding global session selector
+    if (anySessionChipEnabled) {
+      elements.timelineCount.title = 'Filtered by session chips (overrides dropdown)';
+    } else {
+      elements.timelineCount.title = '';
+    }
   }
 }
 
@@ -553,10 +585,23 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
     entry.style.display = 'none';
   }
 
-  // Trim old entries if over limit
+  // Trim old entries if over limit - protect thinking entries
   const children = entriesContainer.children;
   while (children.length >= MAX_TIMELINE_ENTRIES) {
-    children[0].remove();
+    // Find first non-thinking entry to remove
+    let removed = false;
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i] as HTMLElement;
+      if (child.dataset.type !== 'thinking') {
+        child.remove();
+        removed = true;
+        break;
+      }
+    }
+    // If all entries are thinking (unlikely), remove the oldest
+    if (!removed) {
+      children[0].remove();
+    }
   }
 
   entriesContainer.appendChild(entry);
