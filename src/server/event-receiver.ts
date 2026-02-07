@@ -353,6 +353,12 @@ export class EventReceiver {
       return null;
     }
 
+    // Validate ID fields (prevent unbounded memory from malicious IDs)
+    if (!this.validateIdFields(parsed)) {
+      logger.warn('[EventReceiver] Rejected event with invalid ID format');
+      return null;
+    }
+
     // Process payloads: truncate large content and redact secrets
     const event = { ...parsed };
 
@@ -374,6 +380,31 @@ export class EventReceiver {
     }
 
     return event as MonitorEvent;
+  }
+
+  /** Max length for ID fields */
+  private static readonly MAX_ID_LENGTH = 256;
+  /** Allowed characters in ID fields: alphanumeric, hyphens, underscores, dots */
+  private static readonly ID_PATTERN = /^[a-zA-Z0-9._-]+$/;
+
+  /**
+   * Validate ID fields in an event (sessionId, agentId, toolCallId).
+   * Rejects IDs that are too long or contain unexpected characters.
+   */
+  private validateIdFields(event: MonitorEvent): boolean {
+    const idFields = ['sessionId', 'agentId', 'toolCallId'] as const;
+    for (const field of idFields) {
+      const value = event[field];
+      if (typeof value === 'string') {
+        if (value.length > EventReceiver.MAX_ID_LENGTH) {
+          return false;
+        }
+        if (!EventReceiver.ID_PATTERN.test(value)) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   /**

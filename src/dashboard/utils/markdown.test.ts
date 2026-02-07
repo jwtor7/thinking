@@ -83,28 +83,35 @@ describe('Markdown Rendering - Static Analysis', () => {
   });
 
   describe('escapeCssValue Function', () => {
-    it('should strip semicolons', () => {
-      expect(htmlContent).toMatch(/\[;"'<>\(\)\{\}\\\\]/);
+    it('should use allowlist approach', () => {
+      // Verify the regex uses a negated character class (allowlist)
+      expect(htmlContent).toMatch(/\[\^a-zA-Z0-9/);
     });
 
-    it('should strip quotes', () => {
-      expect(htmlContent).toMatch(/\[;"'<>/);
+    it('should allow alphanumeric and safe CSS characters', () => {
+      // Allowlist includes: letters, digits, spaces, hashes, dots, commas, percent, parens, slash, hyphen
+      expect(htmlContent).toContain('#.,%()/');
     });
 
-    it('should strip angle brackets', () => {
-      expect(htmlContent).toMatch(/<>/);
+    it('should implicitly block semicolons via allowlist', () => {
+      // Semicolons are not in the allowlist, so they are stripped
+      const allowlistMatch = htmlContent.match(/\[\^([^\]]+)\]/);
+      expect(allowlistMatch).toBeTruthy();
+      expect(allowlistMatch![1]).not.toContain(';');
     });
 
-    it('should strip parentheses', () => {
-      expect(htmlContent).toMatch(/\(\)/);
+    it('should implicitly block quotes via allowlist', () => {
+      const allowlistMatch = htmlContent.match(/\[\^([^\]]+)\]/);
+      expect(allowlistMatch).toBeTruthy();
+      expect(allowlistMatch![1]).not.toContain('"');
+      expect(allowlistMatch![1]).not.toContain("'");
     });
 
-    it('should strip curly braces', () => {
-      expect(htmlContent).toMatch(/\{\}/);
-    });
-
-    it('should strip backslashes', () => {
-      expect(htmlContent).toMatch(/\\\\/);
+    it('should implicitly block angle brackets via allowlist', () => {
+      const allowlistMatch = htmlContent.match(/\[\^([^\]]+)\]/);
+      expect(allowlistMatch).toBeTruthy();
+      expect(allowlistMatch![1]).not.toContain('<');
+      expect(allowlistMatch![1]).not.toContain('>');
     });
   });
 

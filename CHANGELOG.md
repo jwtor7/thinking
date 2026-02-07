@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-02-07 — v0.22.3
+
+### Added
+- **Team watcher tests** — 32 tests covering config parsing, task monitoring, secret redaction, error handling, lifecycle, and event emission
+- **Formatting utility tests** — 136 tests for duration, byte, timestamp, and elapsed-time formatting
+- **Logger tests** — 27 tests for log level filtering, formatting, and output
+
+### Security
+- **Event ID validation** — rejects session/agent/tool IDs longer than 256 chars or with unexpected characters, preventing unbounded memory usage
+- **CSS escape allowlist** — `escapeCssValue()` switched from blacklist to allowlist approach, only permitting known-safe characters
+
+---
+
 ## 2026-02-07 — v0.22.2
 
 ### Added

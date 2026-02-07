@@ -37,15 +37,20 @@ export function encodeHtmlAttribute(value: string): string {
 /**
  * Sanitize a string for safe use in CSS property values.
  *
- * Removes characters that could break out of a CSS value context
- * or inject malicious CSS. Used for dynamic style attributes.
+ * Uses an allowlist approach: only permits characters known to be safe
+ * in CSS values. This is more secure than a blacklist which may miss
+ * dangerous characters.
+ *
+ * Allowed: alphanumeric, spaces, hyphens, hashes, dots, commas, percent,
+ * forward slashes, parentheses (for CSS functions like var(), rgb())
+ *
+ * Blocked: semicolons, quotes, angle brackets, curly braces, backslashes,
+ * colons (prevents property injection like `; position: absolute`)
  *
  * @example
  * // Safe for style attributes:
  * `<span style="color: ${escapeCssValue(color)}">`
  */
 export function escapeCssValue(value: string): string {
-  // Remove characters that could break out of CSS value context
-  // or be used for CSS injection attacks
-  return value.replace(/[;"'<>(){}\\]/g, '');
+  return value.replace(/[^a-zA-Z0-9 #.,%()/\-]/g, '');
 }

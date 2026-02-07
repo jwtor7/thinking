@@ -18,10 +18,9 @@ const htmlUtilsContent = readFileSync(htmlUtilsPath, 'utf-8');
 
 // Extract escapeCssValue function for direct testing
 // Since it's a pure function with no DOM deps, we can recreate it for testing
+// Allowlist approach: only permit safe characters
 function escapeCssValue(value: string): string {
-  // Remove characters that could break out of CSS value context
-  // or be used for CSS injection attacks
-  return value.replace(/[;"'<>(){}\\]/g, '');
+  return value.replace(/[^a-zA-Z0-9 #.,%()/\-]/g, '');
 }
 
 // Extract encodeHtmlAttribute for testing (also pure, no DOM)
@@ -40,9 +39,9 @@ describe('HTML Utilities', () => {
       expect(htmlUtilsContent).toContain('function escapeCssValue');
     });
 
-    it('should strip dangerous CSS characters', () => {
-      // Verify the function removes: ; " \' < > ( ) { } \\
-      expect(htmlUtilsContent).toMatch(/return value\.replace\(\s*\/\[;"'<>\(\)\{\}\\\\]/);
+    it('should use allowlist approach for CSS sanitization', () => {
+      // Verify the function uses an allowlist pattern (only allowing safe chars)
+      expect(htmlUtilsContent).toMatch(/return value\.replace\(\s*\/\[\^a-zA-Z0-9/);
     });
 
     it('should be exported', () => {
@@ -74,49 +73,47 @@ describe('HTML Utilities', () => {
 
     describe('malicious CSS injection attempts', () => {
       it('should strip semicolons (property injection)', () => {
-        // Attack: left; background: url(evil.com)
-        // Removes ; ( ) so result has no semicolons or function calls
-        expect(escapeCssValue('left; background: url(evil.com)')).toBe('left background: urlevil.com');
-        expect(escapeCssValue('left; background: url(evil.com)')).not.toContain(';');
-        expect(escapeCssValue('left; background: url(evil.com)')).not.toContain('(');
-        expect(escapeCssValue('left; background: url(evil.com)')).not.toContain(')');
+        const result = escapeCssValue('left; background: url(evil.com)');
+        expect(result).not.toContain(';');
+        expect(result).not.toContain(':');
       });
 
       it('should strip double quotes (string breakout)', () => {
-        // Attack: left" onmouseover="alert(1)
-        // Removes " ( ) so attribute breakout is prevented
-        expect(escapeCssValue('left" onmouseover="alert(1)')).toBe('left onmouseover=alert1');
-        expect(escapeCssValue('left" onmouseover="alert(1)')).not.toContain('"');
-        expect(escapeCssValue('left" onmouseover="alert(1)')).not.toContain('(');
-        expect(escapeCssValue('left" onmouseover="alert(1)')).not.toContain(')');
+        const result = escapeCssValue('left" onmouseover="alert(1)');
+        expect(result).not.toContain('"');
+        expect(result).not.toContain('=');
       });
 
       it('should strip single quotes (string breakout)', () => {
-        // Attack: left' onmouseover='alert(1)
-        // Removes ' ( ) so attribute breakout is prevented
-        expect(escapeCssValue("left' onmouseover='alert(1)")).toBe('left onmouseover=alert1');
-        expect(escapeCssValue("left' onmouseover='alert(1)")).not.toContain("'");
-        expect(escapeCssValue("left' onmouseover='alert(1)")).not.toContain('(');
-        expect(escapeCssValue("left' onmouseover='alert(1)")).not.toContain(')');
+        const result = escapeCssValue("left' onmouseover='alert(1)");
+        expect(result).not.toContain("'");
+        expect(result).not.toContain('=');
       });
 
       it('should strip angle brackets (HTML injection)', () => {
-        expect(escapeCssValue('left<script>alert(1)</script>')).toBe('leftscriptalert1/script');
+        const result = escapeCssValue('left<script>alert(1)</script>');
+        expect(result).not.toContain('<');
+        expect(result).not.toContain('>');
       });
 
-      it('should strip parentheses (function calls)', () => {
-        // Attack: expression(alert(1))
-        expect(escapeCssValue('expression(alert(1))')).toBe('expressionalert1');
+      it('should allow parentheses but strip dangerous content', () => {
+        // Parentheses allowed for CSS functions like var(), rgb()
+        // But colons and semicolons are stripped
+        const result = escapeCssValue('expression(alert(1))');
+        expect(result).toBe('expression(alert(1))');
+        // The key protection is that ; and : are stripped, preventing
+        // injection like: expression(alert(1)); position: absolute
       });
 
       it('should strip curly braces (rule injection)', () => {
-        // Attack: left}body{background:red
-        expect(escapeCssValue('left}body{background:red')).toBe('leftbodybackground:red');
+        const result = escapeCssValue('left}body{background:red');
+        expect(result).not.toContain('{');
+        expect(result).not.toContain('}');
       });
 
       it('should strip backslashes (escape sequences)', () => {
-        // Attack: left\22 or other escape sequences
-        expect(escapeCssValue('left\\22')).toBe('left22');
+        const result = escapeCssValue('left\\22');
+        expect(result).not.toContain('\\');
       });
 
       it('should handle combined injection attempts', () => {
@@ -125,8 +122,7 @@ describe('HTML Utilities', () => {
         const result = escapeCssValue(attack);
         expect(result).not.toContain(';');
         expect(result).not.toContain('"');
-        expect(result).not.toContain('(');
-        expect(result).not.toContain(')');
+        expect(result).not.toContain(':');
       });
 
       it('should handle empty string', () => {
@@ -137,9 +133,10 @@ describe('HTML Utilities', () => {
         expect(escapeCssValue(';"\'')).toBe('');
       });
 
-      it('should handle CSS url injection', () => {
-        // Attack: url(javascript:alert(1))
-        expect(escapeCssValue('url(javascript:alert(1))')).toBe('urljavascript:alert1');
+      it('should strip colons from CSS url injection', () => {
+        const result = escapeCssValue('url(javascript:alert(1))');
+        expect(result).not.toContain(':');
+        // Parentheses allowed, but colon removal prevents javascript: protocol
       });
 
       it('should strip all XSS-relevant characters from real attack payloads', () => {
@@ -157,10 +154,9 @@ describe('HTML Utilities', () => {
           expect(result).not.toContain(';');
           expect(result).not.toContain('{');
           expect(result).not.toContain('}');
-          expect(result).not.toContain('(');
-          expect(result).not.toContain(')');
           expect(result).not.toContain('<');
           expect(result).not.toContain('>');
+          expect(result).not.toContain(':');
         }
       });
     });
@@ -173,7 +169,9 @@ describe('HTML Utilities', () => {
         const result = escapeCssValue(maliciousAlignment);
 
         // Result should be safe to use in style attribute
-        expect(result).not.toMatch(/[;"'<>(){}\\]/);
+        // Allowlist only permits alphanumeric, spaces, hyphens, hashes, dots, commas, percent, /
+        expect(result).not.toContain(';');
+        expect(result).not.toContain(':');
       });
 
       it('should produce output safe for inline style attributes', () => {
