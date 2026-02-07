@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-02-07 — v1.0.1
+
+### Fixed
+- **Timeline chip toggle** — Toggling type filter chips off and back on now correctly re-shows matching entries; count badge shows `visible/total` when any filter is active
+- **Plan panel empty icon** — Replaced literal "file" text with document emoji, matching the empty-states pattern used elsewhere
+- **Hooks filter empty state** — Hooks panel now shows "No matching hook events" when a filter yields zero results instead of appearing blank
+
+---
+
 ## 2026-02-07 — v1.0.0
 
 ### Added

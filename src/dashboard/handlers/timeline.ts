@@ -195,7 +195,8 @@ export function resetTypeChips(): void {
 
 /**
  * Apply the current timeline filter to all entries.
- * Updates visibility and the badge count.
+ * Always re-evaluates all three filter criteria (text, type, session)
+ * for every entry to ensure toggling any filter correctly shows/hides entries.
  */
 export function applyTimelineFilter(): void {
   const container = elements.timelineEntries;
@@ -208,23 +209,15 @@ export function applyTimelineFilter(): void {
     const el = child as HTMLElement;
     if (!el.dataset.filterText) continue;
 
-    const isSessionHidden = el.style.display === 'none' && !filter;
-    if (isSessionHidden) {
-      visible++; // Don't count session-filtered items
-      continue;
-    }
+    const matchesText = !filter || el.dataset.filterText.includes(filter);
+    const elCategory = el.dataset.category || '';
+    const matchesType = !elCategory || typeFilterState.get(elCategory) !== false;
+    const matchesSession = state.selectedSession === 'all'
+      || !el.dataset.session
+      || el.dataset.session === state.selectedSession;
 
-    if (!filter || el.dataset.filterText.includes(filter)) {
-      // Check type filter
-      const elCategory = el.dataset.category || '';
-      if (elCategory && typeFilterState.get(elCategory) === false) {
-        el.style.display = 'none';
-      } else if (state.selectedSession !== 'all' && el.dataset.session && el.dataset.session !== state.selectedSession) {
-        // Check session filter
-        el.style.display = 'none';
-      } else {
-        el.style.display = '';
-      }
+    if (matchesText && matchesType && matchesSession) {
+      el.style.display = '';
       visible++;
     } else {
       el.style.display = 'none';
@@ -232,11 +225,11 @@ export function applyTimelineFilter(): void {
   }
 
   if (elements.timelineCount) {
-    if (filter) {
-      elements.timelineCount.textContent = `${visible}/${timelineCount}`;
-    } else {
-      elements.timelineCount.textContent = String(timelineCount);
-    }
+    const anyTypeDisabled = Array.from(typeFilterState.values()).some(v => !v);
+    const hasActiveFilter = !!filter || anyTypeDisabled || state.selectedSession !== 'all';
+    elements.timelineCount.textContent = hasActiveFilter
+      ? `${visible}/${timelineCount}`
+      : String(timelineCount);
   }
 }
 

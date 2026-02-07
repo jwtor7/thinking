@@ -263,8 +263,8 @@ export function displayEmptyPlan(): void {
 
   elements.planContent.innerHTML = `
     <div class="empty-state">
-      <span class="empty-icon">file</span>
-      <p>${message}</p>
+      <div class="empty-state-icon">&#128196;</div>
+      <p class="empty-state-title">${message}</p>
     </div>
   `;
   updatePlanMeta(null);
@@ -286,9 +286,9 @@ export function displaySessionPlanEmpty(sessionId: string): void {
 
   elements.planContent.innerHTML = `
     <div class="empty-state">
-      <span class="empty-icon">file</span>
-      <p>No plan associated with session ${shortId}</p>
-      <p class="empty-hint">Use the dropdown to browse all plans</p>
+      <div class="empty-state-icon">&#128196;</div>
+      <p class="empty-state-title">No plan associated with session ${shortId}</p>
+      <p class="empty-state-subtitle">Use the dropdown to browse all plans</p>
     </div>
   `;
   updatePlanMeta(null);

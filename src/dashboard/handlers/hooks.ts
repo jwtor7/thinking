@@ -145,14 +145,33 @@ function applyHooksFilter(entry: HTMLElement): void {
 /**
  * Apply filter to all existing hook entries.
  * Exported so it can be called when session filter changes.
+ * Shows an empty state message when filter matches zero entries.
  */
 export function filterAllHooks(): void {
   if (!elements.hooksContent) return;
 
+  // Remove any existing filter empty state
+  const existingFilterEmpty = elements.hooksContent.querySelector('.filter-empty');
+  if (existingFilterEmpty) existingFilterEmpty.remove();
+
   const entries = elements.hooksContent.querySelectorAll('.hook-entry');
+  let visibleCount = 0;
   entries.forEach((entry) => {
     applyHooksFilter(entry as HTMLElement);
+    if ((entry as HTMLElement).style.display !== 'none') visibleCount++;
   });
+
+  // Show empty state when filter yields zero results but entries exist
+  if (visibleCount === 0 && entries.length > 0 && hooksFilter !== 'all') {
+    const emptyEl = document.createElement('div');
+    emptyEl.className = 'empty-state filter-empty';
+    emptyEl.innerHTML = `
+      <div class="empty-state-icon">&#9881;</div>
+      <p class="empty-state-title">No matching hook events</p>
+      <p class="empty-state-subtitle">Try changing the filter above</p>
+    `;
+    elements.hooksContent.appendChild(emptyEl);
+  }
 }
 
 /**
