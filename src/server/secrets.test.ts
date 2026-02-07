@@ -443,8 +443,8 @@ describe('Legitimate secrets still detected with bounded quantifiers', () => {
     expect(result).toBe('Authorization: Bearer [REDACTED]');
   });
 
-  it('should detect 256-character Bearer token (upper bound)', () => {
-    const input = 'Bearer ' + 'x'.repeat(256);
+  it('should detect 128-character Bearer token (upper bound)', () => {
+    const input = 'Bearer ' + 'x'.repeat(128);
     const result = redactSecrets(input);
     expect(result).toBe('Bearer [REDACTED]');
   });
@@ -488,17 +488,17 @@ describe('Boundary behavior with bounded quantifiers', () => {
     expect(result).toBe(input);
   });
 
-  it('should detect Bearer token up to 256 characters', () => {
-    const token = 'x'.repeat(256);
+  it('should detect Bearer token up to 128 characters', () => {
+    const token = 'x'.repeat(128);
     const input = `Bearer ${token}`;
     const result = redactSecrets(input);
     expect(result).toBe('Bearer [REDACTED]');
   });
 
-  it('should NOT redact Bearer token over 256 characters', () => {
+  it('should NOT redact Bearer token over 128 characters', () => {
     // Bearer pattern uses word boundary \b after token
-    // With {20,256} bound, patterns over 256 chars don't match at all
-    const longToken = 'x'.repeat(257);
+    // With {20,128} bound, patterns over 128 chars don't match at all
+    const longToken = 'x'.repeat(129);
     const input = `Bearer ${longToken}`;
     const result = redactSecrets(input);
     // Pattern fails to match entirely

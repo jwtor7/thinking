@@ -246,7 +246,10 @@ describe('Phase 1.3: HTTP Event Receiver Endpoint', () => {
     const data = await response.json();
     expect(data.status).toBe('ok');
     expect(data.version).toBe(CONFIG.VERSION);
-    expect(typeof data.clients).toBe('number');
+    expect(typeof data.connections).toBe('number');
+    expect(typeof data.uptime).toBe('number');
+    expect(typeof data.events_received).toBe('number');
+    expect(data.events_by_type).toBeDefined();
     expect(data.timestamp).toBeDefined();
   });
 

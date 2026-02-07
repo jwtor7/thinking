@@ -8,6 +8,7 @@
 import { state, subagentState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { escapeHtml } from '../utils/html.ts';
+import { formatElapsed } from '../utils/formatting.ts';
 import { getSessionColorByFolder, getAgentColor } from '../ui/colors.ts';
 import { filterAllBySession } from '../ui/filters.ts';
 import { rebuildResizers } from '../ui/resizer.ts';
@@ -26,6 +27,9 @@ const ACTIVITY_CHECK_INTERVAL_MS = 5_000;
 
 /** Activity checker interval ID */
 let activityCheckerInterval: ReturnType<typeof setInterval> | null = null;
+
+/** Session duration update interval ID */
+let durationInterval: ReturnType<typeof setInterval> | null = null;
 
 // ============================================
 // Callback Pattern for Circular Import Prevention
@@ -58,6 +62,8 @@ export function initSessions(cbs: SessionCallbacks): void {
   callbacks = cbs;
   // Start the activity checker when sessions are initialized
   startActivityChecker();
+  // Start the session duration timer (updates footer every 60s)
+  startDurationTimer();
 }
 
 // ============================================
@@ -145,6 +151,27 @@ export function stopActivityChecker(): void {
   if (activityCheckerInterval) {
     clearInterval(activityCheckerInterval);
     activityCheckerInterval = null;
+  }
+}
+
+/**
+ * Start the session duration timer.
+ * Updates the status bar every 60 seconds to show elapsed session time.
+ */
+function startDurationTimer(): void {
+  if (durationInterval) return;
+  durationInterval = setInterval(() => {
+    updateStatusBarSession();
+  }, 60_000);
+}
+
+/**
+ * Stop the session duration timer.
+ */
+export function stopDurationTimer(): void {
+  if (durationInterval) {
+    clearInterval(durationInterval);
+    durationInterval = null;
   }
 }
 
@@ -575,10 +602,16 @@ export function updateStatusBarSession(): void {
     ? `${session.workingDirectory}\nSession: ${id}`
     : `Session: ${id}`;
 
+  // Calculate elapsed time since session started
+  const elapsed = session.startTime
+    ? formatElapsed(Date.now() - new Date(session.startTime).getTime())
+    : '';
+
   indicator.style.display = 'flex';
   indicator.innerHTML = `
     <span class="active-session-dot${isActive ? ' pulsing' : ''}" style="background: ${session.color}"></span>
     <span class="active-session-name" title="${escapeHtml(tooltipText)}">${escapeHtml(folderName)}</span>
+    ${elapsed ? `<span class="active-session-duration">${escapeHtml(elapsed)}</span>` : ''}
   `;
   indicator.dataset.sessionId = id;
 }

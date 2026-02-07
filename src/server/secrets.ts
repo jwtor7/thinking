@@ -93,10 +93,10 @@ const SECRET_PATTERNS: SecretPattern[] = [
     minLength: 50,
   },
 
-  // Bearer tokens in headers
+  // Bearer tokens in headers (real tokens are typically <128 chars)
   {
     name: 'Bearer token',
-    pattern: /(Bearer\s+)([a-zA-Z0-9_.-]{20,256})\b/gi,
+    pattern: /(Bearer\s+)([a-zA-Z0-9_.-]{20,128})\b/gi,
   },
 
   // Authorization header values

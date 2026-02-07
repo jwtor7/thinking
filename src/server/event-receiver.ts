@@ -40,6 +40,12 @@ export class EventReceiver {
   private readonly TOOL_START_TTL_MS = 5 * 60 * 1000;
   /** Subagent mapper for tracking parent-child relationships */
   private subagentMapper: SubagentMapper;
+  /** Server start time for uptime calculation */
+  private readonly startTime = Date.now();
+  /** Total events received counter */
+  private eventsReceived = 0;
+  /** Events received by type */
+  private eventsByType: Map<string, number> = new Map();
 
   constructor(hub: WebSocketHub, rateLimitConfig?: Partial<RateLimiterConfig>) {
     this.hub = hub;
@@ -212,6 +218,10 @@ export class EventReceiver {
         return;
       }
 
+      // Track event metrics
+      this.eventsReceived++;
+      this.eventsByType.set(event.type, (this.eventsByType.get(event.type) || 0) + 1);
+
       // Track tool timing for duration calculation
       event = this.processToolTiming(event);
 
@@ -263,10 +273,14 @@ export class EventReceiver {
    * Handle GET /health - health check endpoint.
    */
   private handleHealthCheck(_req: IncomingMessage, res: ServerResponse): void {
+    const uptimeMs = Date.now() - this.startTime;
     const status = {
       status: 'ok',
       version: CONFIG.VERSION,
-      clients: this.hub.getClientCount(),
+      uptime: uptimeMs,
+      connections: this.hub.getClientCount(),
+      events_received: this.eventsReceived,
+      events_by_type: Object.fromEntries(this.eventsByType),
       timestamp: new Date().toISOString(),
     };
 

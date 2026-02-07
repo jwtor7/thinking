@@ -213,17 +213,22 @@
 
 /* Duration color coding based on speed */
 .tool-duration.duration-fast {
-  color: #22c55e;
+  color: var(--color-accent-green, #22c55e);
   background: rgba(34, 197, 94, 0.15);
 }
 
 .tool-duration.duration-medium {
-  color: #eab308;
+  color: var(--color-accent-yellow, #eab308);
   background: rgba(234, 179, 8, 0.15);
 }
 
 .tool-duration.duration-slow {
-  color: #ef4444;
+  color: var(--color-accent-orange, #f97316);
+  background: rgba(249, 115, 22, 0.15);
+}
+
+.tool-duration.duration-very-slow {
+  color: var(--color-accent-red, #ef4444);
   background: rgba(239, 68, 68, 0.15);
 }
 

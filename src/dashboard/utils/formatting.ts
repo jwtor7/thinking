@@ -26,18 +26,38 @@ export function formatDuration(ms: number): string {
 }
 
 /**
+ * Format elapsed time as a human-readable duration string.
+ * e.g., "2m", "1h 15m", "3h 0m"
+ */
+export function formatElapsed(ms: number): string {
+  if (ms < 60_000) {
+    return '<1m';
+  }
+  const totalMinutes = Math.floor(ms / 60_000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) {
+    return `${minutes}m`;
+  }
+  return `${hours}h ${minutes}m`;
+}
+
+/**
  * Get CSS class for duration-based color coding.
- * - 'fast' (green): < 500ms
- * - 'medium' (yellow): 500ms - 2000ms
- * - 'slow' (red): > 2000ms
+ * - 'fast' (green): < 1s
+ * - 'medium' (yellow): 1s - 5s
+ * - 'slow' (orange): 5s - 15s
+ * - 'very-slow' (red): > 15s
  */
 export function getDurationClass(ms: number): string {
-  if (ms < 500) {
+  if (ms < 1000) {
     return 'duration-fast';
-  } else if (ms <= 2000) {
+  } else if (ms < 5000) {
     return 'duration-medium';
-  } else {
+  } else if (ms < 15000) {
     return 'duration-slow';
+  } else {
+    return 'duration-very-slow';
   }
 }
 

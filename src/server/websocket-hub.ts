@@ -26,6 +26,8 @@ interface ConnectedClient {
   id: string;
   /** Counter for invalid messages received from this client */
   invalidMessageCount: number;
+  /** Whether the client responded to the last ping */
+  isAlive: boolean;
 }
 
 /**
@@ -43,6 +45,9 @@ export class WebSocketHub {
   private messageSeq = 0;
   private onClientConnectCallback: ((client: ConnectedClient) => void) | null = null;
   private clientRequestHandler: ClientRequestHandler | null = null;
+  /** Ping interval for detecting stale connections (30s) */
+  private pingInterval: ReturnType<typeof setInterval> | null = null;
+  private static readonly PING_INTERVAL_MS = 30_000;
 
   /**
    * Attach the WebSocket server to an existing HTTP server.
@@ -58,6 +63,9 @@ export class WebSocketHub {
     this.wss.on('error', (error) => {
       logger.error('[WebSocketHub] Server error:', error.message);
     });
+
+    // Start heartbeat to detect stale connections
+    this.startPingInterval();
 
     logger.info(`[WebSocketHub] Attached to HTTP server`);
   }
@@ -119,12 +127,18 @@ export class WebSocketHub {
       connectedAt: new Date(),
       id: clientId,
       invalidMessageCount: 0,
+      isAlive: true,
     };
 
     this.clients.set(clientId, client);
     logger.info(
       `[WebSocketHub] Client connected: ${clientId} (total: ${this.clients.size})`
     );
+
+    // Handle pong responses for heartbeat
+    ws.on('pong', () => {
+      client.isAlive = true;
+    });
 
     // Send connection status to the new client
     this.sendToClient(client, this.createConnectionStatusEvent('connected'));
@@ -295,9 +309,42 @@ export class WebSocketHub {
   }
 
   /**
+   * Start the ping interval to detect stale connections.
+   * Sends a ping to all clients every 30s. Clients that don't respond
+   * with a pong before the next ping are terminated.
+   */
+  private startPingInterval(): void {
+    if (this.pingInterval) return;
+
+    this.pingInterval = setInterval(() => {
+      for (const [clientId, client] of this.clients) {
+        if (!client.isAlive) {
+          logger.info(`[WebSocketHub] Terminating unresponsive client: ${clientId}`);
+          client.ws.terminate();
+          this.clients.delete(clientId);
+          continue;
+        }
+        client.isAlive = false;
+        try {
+          client.ws.ping();
+        } catch {
+          // Client already gone
+          this.clients.delete(clientId);
+        }
+      }
+    }, WebSocketHub.PING_INTERVAL_MS);
+  }
+
+  /**
    * Close all connections and shut down the server.
    */
   close(): void {
+    // Stop ping interval
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+
     // Close all client connections
     for (const [_clientId, client] of this.clients) {
       try {

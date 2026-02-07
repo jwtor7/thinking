@@ -486,6 +486,14 @@ body.keyboard-mode .view-tab-shortcut {
   color: var(--color-text-secondary);
 }
 
+.active-session-duration {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-left: var(--spacing-xs);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ========================================
    Connection Overlay
    ======================================== */

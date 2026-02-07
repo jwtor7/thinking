@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-02-07 — v0.22.1
+
+### Added
+- **Session duration in status bar** — shows elapsed time (e.g., "2h 15m") next to active session name in footer, updates every 60s
+- **WebSocket ping/pong heartbeat** — 30s ping interval detects and terminates stale connections, preventing memory leaks
+- **Enhanced health endpoint** — `/health` now returns uptime, events_received, and events_by_type breakdown
+
+### Changed
+- **Tool duration color coding** — four-tier system: green (<1s), yellow (1-5s), orange (5-15s), red (>15s) for better visual feedback on slow tools
+
+### Security
+- **Tightened Bearer token regex** — reduced upper bound from 256 to 128 chars, matching real-world token lengths and reducing ReDoS surface
+
+---
+
 ## 2026-02-07 — v0.22.0
 
 ### Added
