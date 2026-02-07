@@ -1,0 +1,180 @@
+/* ========================================
+   Tasks Panel - Kanban Board
+   ======================================== */
+
+.task-board {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--spacing-sm);
+  height: 100%;
+  padding: var(--spacing-xs);
+}
+
+.task-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--color-surface-0);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+}
+
+.task-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border-light);
+  flex-shrink: 0;
+}
+
+.task-column-title {
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.task-column-count {
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  min-width: 18px;
+  text-align: center;
+}
+
+.task-column-cards {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.task-column-empty {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--spacing-lg) var(--spacing-sm);
+}
+
+/* ========================================
+   Task Cards
+   ======================================== */
+
+.task-card {
+  padding: var(--spacing-sm);
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--duration-fast) var(--ease-default);
+}
+
+.task-card:hover {
+  border-color: var(--color-text-muted);
+}
+
+.task-card-pending {
+  border-left: 3px solid var(--color-accent-yellow);
+}
+
+.task-card-in_progress {
+  border-left: 3px solid var(--color-accent-blue);
+}
+
+.task-card-completed {
+  border-left: 3px solid var(--color-accent-green);
+  opacity: 0.7;
+}
+
+.task-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xs);
+}
+
+.task-card-id {
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+}
+
+.task-card-status-icon {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.task-card-pending .task-card-status-icon {
+  color: var(--color-accent-yellow);
+}
+
+.task-card-in_progress .task-card-status-icon {
+  color: var(--color-accent-blue);
+}
+
+.task-card-completed .task-card-status-icon {
+  color: var(--color-accent-green);
+}
+
+.task-card-subject {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+  margin-bottom: var(--spacing-xs);
+  /* Clamp to 3 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.task-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.task-owner-badge {
+  font-size: var(--font-size-2xs);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.task-unassigned {
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.task-blocked-by {
+  font-size: var(--font-size-2xs);
+  color: var(--color-accent-red);
+}
+
+.task-blocked-id {
+  font-family: var(--font-family-mono);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ========================================
+   Responsive
+   ======================================== */
+
+@media (max-width: 768px) {
+  .task-board {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+
+  .task-column {
+    max-height: 200px;
+  }
+}

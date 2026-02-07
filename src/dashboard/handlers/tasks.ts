@@ -1,0 +1,146 @@
+/**
+ * Task board handlers for the Thinking Monitor Dashboard.
+ *
+ * Handles task_update and task_completed events, rendering a
+ * three-column kanban board (Pending | In Progress | Completed).
+ */
+
+import { teamState } from '../state.ts';
+import { elements } from '../ui/elements.ts';
+import { escapeHtml, escapeCssValue } from '../utils/html.ts';
+import { getAgentBadgeColors } from '../ui/colors.ts';
+import type { TaskUpdateEvent, TaskCompletedEvent, TaskInfo } from '../types.ts';
+
+// ============================================
+// Callback Interface
+// ============================================
+
+export interface TasksCallbacks {
+  showTasksPanel: () => void;
+}
+
+let callbacks: TasksCallbacks | null = null;
+
+/**
+ * Initialize the tasks handler with required callbacks.
+ */
+export function initTasks(cbs: TasksCallbacks): void {
+  callbacks = cbs;
+}
+
+// ============================================
+// Rendering
+// ============================================
+
+/**
+ * Render a single task card.
+ */
+function renderTaskCard(task: TaskInfo): string {
+  const ownerBadge = task.owner
+    ? (() => {
+        const colors = getAgentBadgeColors(task.owner);
+        return `<span class="task-owner-badge" style="background: ${escapeCssValue(colors.bg)}; color: ${escapeCssValue(colors.text)}">${escapeHtml(task.owner)}</span>`;
+      })()
+    : '<span class="task-unassigned">unassigned</span>';
+
+  const blockedIndicators = task.blockedBy.length > 0
+    ? `<div class="task-blocked-by">blocked by: ${task.blockedBy.map(id => `<span class="task-blocked-id">#${escapeHtml(id)}</span>`).join(', ')}</div>`
+    : '';
+
+  const statusIcon = task.status === 'completed' ? '&#10003;'
+    : task.status === 'in_progress' ? '&#9654;'
+    : '&#9679;';
+
+  return `
+    <div class="task-card task-card-${task.status}" data-task-id="${escapeHtml(task.id)}">
+      <div class="task-card-header">
+        <span class="task-card-id">#${escapeHtml(task.id)}</span>
+        <span class="task-card-status-icon">${statusIcon}</span>
+      </div>
+      <div class="task-card-subject">${escapeHtml(task.subject)}</div>
+      <div class="task-card-footer">
+        ${ownerBadge}
+        ${blockedIndicators}
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Re-render the full task board from state.
+ */
+function renderTaskBoard(): void {
+  const pendingCol = elements.tasksPending;
+  const progressCol = elements.tasksInProgress;
+  const completedCol = elements.tasksCompleted;
+
+  if (!pendingCol || !progressCol || !completedCol) return;
+
+  // Gather all tasks from all teams
+  const allTasks: TaskInfo[] = [];
+  for (const tasks of teamState.teamTasks.values()) {
+    allTasks.push(...tasks);
+  }
+
+  const pending = allTasks.filter(t => t.status === 'pending');
+  const inProgress = allTasks.filter(t => t.status === 'in_progress');
+  const completed = allTasks.filter(t => t.status === 'completed');
+
+  // Update counts
+  if (elements.tasksPendingCount) {
+    elements.tasksPendingCount.textContent = String(pending.length);
+  }
+  if (elements.tasksInProgressCount) {
+    elements.tasksInProgressCount.textContent = String(inProgress.length);
+  }
+  if (elements.tasksCompletedCount) {
+    elements.tasksCompletedCount.textContent = String(completed.length);
+  }
+
+  pendingCol.innerHTML = pending.length > 0
+    ? pending.map(renderTaskCard).join('')
+    : '<div class="task-column-empty">No pending tasks</div>';
+
+  progressCol.innerHTML = inProgress.length > 0
+    ? inProgress.map(renderTaskCard).join('')
+    : '<div class="task-column-empty">No active tasks</div>';
+
+  completedCol.innerHTML = completed.length > 0
+    ? completed.map(renderTaskCard).join('')
+    : '<div class="task-column-empty">No completed tasks</div>';
+}
+
+// ============================================
+// Event Handlers
+// ============================================
+
+/**
+ * Handle a task_update event.
+ */
+export function handleTaskUpdate(event: TaskUpdateEvent): void {
+  if (!callbacks) return;
+
+  teamState.teamTasks.set(event.teamId, event.tasks);
+
+  callbacks.showTasksPanel();
+  renderTaskBoard();
+}
+
+/**
+ * Handle a task_completed event.
+ */
+export function handleTaskCompleted(event: TaskCompletedEvent): void {
+  if (!callbacks) return;
+
+  const teamId = event.teamId || '';
+  const tasks = teamState.teamTasks.get(teamId);
+  if (tasks) {
+    const task = tasks.find(t => t.id === event.taskId);
+    if (task) {
+      task.status = 'completed';
+    }
+  }
+
+  callbacks.showTasksPanel();
+  renderTaskBoard();
+}

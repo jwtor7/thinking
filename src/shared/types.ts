@@ -28,6 +28,12 @@ export type MonitorEventType =
   | 'hook_execution'
   // Subagent mapping events (for parent-child relationship tracking)
   | 'subagent_mapping'
+  // Team/task events (from team/task file watchers and hooks)
+  | 'team_update'
+  | 'task_update'
+  | 'message_sent'
+  | 'teammate_idle'
+  | 'task_completed'
   // Connection status (internal)
   | 'connection_status';
 
@@ -197,6 +203,8 @@ export interface SubagentMappingInfo {
   status: 'running' | 'success' | 'failure' | 'cancelled';
   /** ISO 8601 timestamp when the subagent stopped (if stopped) */
   endTime?: string;
+  /** Parent agent ID for nested agent hierarchies */
+  parentAgentId?: string;
 }
 
 /** Subagent mapping event - sent on connect and when mappings change */
@@ -204,6 +212,69 @@ export interface SubagentMappingEvent extends MonitorEventBase {
   type: 'subagent_mapping';
   /** All current subagent mappings */
   mappings: SubagentMappingInfo[];
+}
+
+// ============================================================================
+// Team/Task Event Interfaces
+// ============================================================================
+
+/** Team member info (from team config JSON) */
+export interface TeamMemberInfo {
+  name: string;
+  agentId: string;
+  agentType: string;
+  status?: 'active' | 'idle' | 'shutdown';
+}
+
+/** Team state changed (members joined/left, status changed) */
+export interface TeamUpdateEvent extends MonitorEventBase {
+  type: 'team_update';
+  teamName: string;
+  members: TeamMemberInfo[];
+}
+
+/** Task info (from task JSON files) */
+export interface TaskInfo {
+  id: string;
+  subject: string;
+  description?: string;
+  activeForm?: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  owner?: string;
+  blocks: string[];
+  blockedBy: string[];
+}
+
+/** Task state changed (created, assigned, completed) */
+export interface TaskUpdateEvent extends MonitorEventBase {
+  type: 'task_update';
+  teamId: string;
+  tasks: TaskInfo[];
+}
+
+/** Inter-agent message sent (detected from SendMessage tool calls) */
+export interface MessageSentEvent extends MonitorEventBase {
+  type: 'message_sent';
+  sender: string;
+  recipient: string;
+  messageType: 'message' | 'broadcast' | 'shutdown_request' | 'shutdown_response';
+  summary?: string;
+  content?: string;
+}
+
+/** Teammate went idle */
+export interface TeammateIdleEvent extends MonitorEventBase {
+  type: 'teammate_idle';
+  teammateName: string;
+  teamName?: string;
+}
+
+/** Task completed notification */
+export interface TaskCompletedEvent extends MonitorEventBase {
+  type: 'task_completed';
+  taskId: string;
+  taskSubject: string;
+  teamId?: string;
 }
 
 /** Hook type identifiers */
@@ -215,7 +286,9 @@ export type HookType =
   | 'SessionStart'
   | 'SessionStop'
   | 'Stop'
-  | 'UserPromptSubmit';
+  | 'UserPromptSubmit'
+  | 'TeammateIdle'
+  | 'TaskCompleted';
 
 /** Hook decision identifiers */
 export type HookDecision = 'allow' | 'deny' | 'ask';
@@ -233,6 +306,10 @@ export interface HookExecutionEvent extends MonitorEventBase {
   hookName: string;
   /** Output from the hook execution */
   output?: string;
+  /** Whether the hook runs asynchronously */
+  async?: boolean;
+  /** Execution type of the hook */
+  hookExecType?: 'command' | 'agent' | 'prompt';
 }
 
 // ============================================================================
@@ -258,7 +335,12 @@ export type StrictMonitorEvent =
   | PlanListEvent
   | ConnectionStatusEvent
   | SubagentMappingEvent
-  | HookExecutionEvent;
+  | HookExecutionEvent
+  | TeamUpdateEvent
+  | TaskUpdateEvent
+  | MessageSentEvent
+  | TeammateIdleEvent
+  | TaskCompletedEvent;
 
 /**
  * Message envelope for WebSocket communication.

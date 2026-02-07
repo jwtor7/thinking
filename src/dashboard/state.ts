@@ -4,7 +4,7 @@
  * Centralized state for the Thinking Monitor dashboard.
  */
 
-import { AppState, AgentContextStack, SubagentMappingInfo } from './types.ts';
+import { AppState, AgentContextStack, SubagentMappingInfo, TeamMemberInfo, TaskInfo, MessageSentEvent } from './types.ts';
 
 /**
  * Subagent tracking state.
@@ -15,6 +15,8 @@ export interface SubagentState {
   subagents: Map<string, SubagentMappingInfo>;
   /** parentSessionId -> Set<agentId> */
   sessionSubagents: Map<string, Set<string>>;
+  /** agentId -> Set<childAgentId> for nested agent hierarchies */
+  agentChildren: Map<string, Set<string>>;
 }
 
 /**
@@ -24,6 +26,29 @@ export interface SubagentState {
 export const subagentState: SubagentState = {
   subagents: new Map(),
   sessionSubagents: new Map(),
+  agentChildren: new Map(),
+};
+
+/**
+ * Team/task tracking state.
+ * Separate from AppState for team dashboard panels.
+ */
+export interface TeamState {
+  /** teamName -> team members */
+  teams: Map<string, TeamMemberInfo[]>;
+  /** teamId -> tasks */
+  teamTasks: Map<string, TaskInfo[]>;
+  /** Chronological message log */
+  teamMessages: MessageSentEvent[];
+}
+
+/**
+ * Global team state.
+ */
+export const teamState: TeamState = {
+  teams: new Map(),
+  teamTasks: new Map(),
+  teamMessages: [],
 };
 
 /**
@@ -56,6 +81,7 @@ export const state: AppState = {
   planSelectorOpen: false,
   contextMenuFilePath: null,
   activeView: 'all',
+  selectedAgentId: null,
   sessionTodos: new Map(),
   sessionPlanMap: new Map(),
   todos: [],
@@ -65,6 +91,8 @@ export const state: AppState = {
     tools: false,
     hooks: false,
     plan: false,
+    team: false,
+    tasks: false,
   },
   panelVisibility: {
     thinking: true,
@@ -72,6 +100,8 @@ export const state: AppState = {
     tools: true,
     hooks: true,
     plan: true,
+    team: true,
+    tasks: true,
   },
 };
 

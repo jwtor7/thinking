@@ -103,11 +103,13 @@ export class EventReceiver {
       const parentSessionId = event.sessionId;
 
       if (agentId && parentSessionId) {
+        const parentAgentId = event.parentAgentId as string | undefined;
         this.subagentMapper.registerSubagent(
           agentId,
           parentSessionId,
           agentName,
-          event.timestamp
+          event.timestamp,
+          parentAgentId
         );
         // Broadcast updated mappings to all clients
         this.hub.broadcast(this.createSubagentMappingEvent());

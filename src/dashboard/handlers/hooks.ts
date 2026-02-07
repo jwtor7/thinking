@@ -83,6 +83,10 @@ function getHookTypeClass(hookType: string): string {
     case 'SubagentStart':
     case 'SubagentStop':
       return 'hook-type-subagent';
+    case 'TeammateIdle':
+      return 'hook-type-teammate';
+    case 'TaskCompleted':
+      return 'hook-type-task';
     default:
       return '';
   }
@@ -120,6 +124,15 @@ function applyHooksFilter(entry: HTMLElement): void {
       break;
     case 'deny-subagent':
       matchesHookFilter = decision === 'deny' || hookType.startsWith('subagent');
+      break;
+    case 'teammate':
+      matchesHookFilter = hookType === 'teammateidle';
+      break;
+    case 'task':
+      matchesHookFilter = hookType === 'taskcompleted';
+      break;
+    case 'team-all':
+      matchesHookFilter = hookType === 'teammateidle' || hookType === 'taskcompleted';
       break;
     default:
       matchesHookFilter = true;
@@ -271,12 +284,26 @@ export function handleHookExecution(event: HookExecutionEvent): void {
     agentBadge = `<span class="hook-agent-badge" style="background: ${escapeCssValue(agentBadgeColors.bg)}; color: ${escapeCssValue(agentBadgeColors.text)}">${escapeHtml(getShortSessionId(agentId))}</span>`;
   }
 
+  // Async badge
+  const asyncBadge = event.async
+    ? `<span class="hook-async-badge" title="Async hook">async</span>`
+    : '';
+
+  // Hook exec type indicator
+  let execTypeBadge = '';
+  if (event.hookExecType) {
+    const execTypeClass = `hook-exec-${event.hookExecType}`;
+    execTypeBadge = `<span class="hook-exec-type ${execTypeClass}">${escapeHtml(event.hookExecType)}</span>`;
+  }
+
   // For subagent hooks or our own hook, don't render the content section
   const isOurHook = hookName === 'thinking-monitor-hook';
   const contentSection = (isSubagentHook || isOurHook)
     ? ''
     : `<div class="hook-entry-content">
         <span class="hook-name">${escapeHtml(hookName)}</span>
+        ${asyncBadge}
+        ${execTypeBadge}
         ${outputPreview}
       </div>`;
 

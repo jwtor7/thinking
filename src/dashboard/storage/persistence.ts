@@ -28,7 +28,7 @@ import { elements } from '../ui/elements.ts';
 // Panel Types (local to this module)
 // ============================================
 
-type PanelName = 'thinking' | 'todo' | 'tools' | 'hooks' | 'plan';
+type PanelName = 'thinking' | 'todo' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks';
 
 /**
  * Panel elements mapping for collapse state restoration.
@@ -41,6 +41,8 @@ function getPanelElements(): Record<PanelName, { panel: HTMLElement | null; btn:
     tools: { panel: elements.toolsPanel, btn: elements.toolsCollapseBtn },
     hooks: { panel: elements.hooksPanel, btn: elements.hooksCollapseBtn },
     plan: { panel: elements.planPanel, btn: elements.planCollapseBtn },
+    team: { panel: elements.teamPanel, btn: elements.teamCollapseBtn },
+    tasks: { panel: elements.tasksPanel, btn: elements.tasksCollapseBtn },
   };
 }
 
@@ -358,12 +360,14 @@ const DEFAULT_PANEL_VISIBILITY: PanelVisibility = {
   tools: true,
   hooks: true,
   plan: true,
+  team: true,
+  tasks: true,
 };
 
 /**
  * Valid panel names for validation.
  */
-const VALID_PANEL_NAMES: (keyof PanelVisibility)[] = ['thinking', 'todo', 'tools', 'hooks', 'plan'];
+const VALID_PANEL_NAMES: (keyof PanelVisibility)[] = ['thinking', 'todo', 'tools', 'hooks', 'plan', 'team', 'tasks'];
 
 /**
  * Check if a value is a valid panel name.

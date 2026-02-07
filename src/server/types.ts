@@ -26,6 +26,13 @@ export type {
   PlanDeleteEvent,
   PlanListEvent,
   ConnectionStatusEvent,
+  TeamMemberInfo,
+  TeamUpdateEvent,
+  TaskInfo,
+  TaskUpdateEvent,
+  MessageSentEvent,
+  TeammateIdleEvent,
+  TaskCompletedEvent,
 } from '../shared/types.js';
 
 // Import for local use
@@ -192,6 +199,11 @@ export function isMonitorEvent(obj: unknown): obj is MonitorEvent {
     'plan_list',
     'hook_execution',
     'subagent_mapping',
+    'team_update',
+    'task_update',
+    'message_sent',
+    'teammate_idle',
+    'task_completed',
     'connection_status',
   ];
 

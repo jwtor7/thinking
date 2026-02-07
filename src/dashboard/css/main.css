@@ -32,6 +32,12 @@
 /* Hooks: Hook entry styles */
 @import url('./hooks.css');
 
+/* Team: Team panel styles */
+@import url('./team.css');
+
+/* Tasks: Task board kanban styles */
+@import url('./tasks.css');
+
 /* Markdown: Plan markdown rendering */
 @import url('./markdown.css');
 

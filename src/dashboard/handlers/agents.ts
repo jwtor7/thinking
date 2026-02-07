@@ -1,6 +1,9 @@
 import { state, agentContextStack, agentContextTimestamps, subagentState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { MAX_AGENT_STACK_SIZE, AGENT_STACK_STALE_MS, AGENT_STACK_CLEANUP_INTERVAL_MS } from '../config.ts';
+import { escapeHtml, escapeCssValue } from '../utils/html.ts';
+import { getAgentBadgeColors } from '../ui/colors.ts';
+import { selectAgentFilter } from './sessions.ts';
 import type { AgentStartEvent, AgentStopEvent, AgentInfo, SubagentMappingEvent, SubagentMappingInfo } from '../types.ts';
 
 /**
@@ -50,12 +53,13 @@ function handleAgentStop(event: AgentStopEvent): void {
 
 /**
  * Handles subagent_mapping events from the server.
- * Updates the subagent state with parent-child relationships.
+ * Updates the subagent state with parent-child relationships and nested hierarchies.
  */
 function handleSubagentMapping(event: SubagentMappingEvent): void {
   // Clear existing mappings
   subagentState.subagents.clear();
   subagentState.sessionSubagents.clear();
+  subagentState.agentChildren.clear();
 
   // Populate with new mappings
   for (const mapping of event.mappings) {
@@ -69,11 +73,23 @@ function handleSubagentMapping(event: SubagentMappingEvent): void {
       subagentState.sessionSubagents.set(mapping.parentSessionId, subagents);
     }
     subagents.add(mapping.agentId);
+
+    // Build nested agent hierarchy (parentAgentId -> children)
+    if (mapping.parentAgentId) {
+      let children = subagentState.agentChildren.get(mapping.parentAgentId);
+      if (!children) {
+        children = new Set();
+        subagentState.agentChildren.set(mapping.parentAgentId, children);
+      }
+      children.add(mapping.agentId);
+    }
   }
 
   console.log(
-    `[Dashboard] Subagent mappings updated: ${event.mappings.length} subagent(s)`
+    `[Dashboard] Subagent mappings updated: ${event.mappings.length} subagent(s), ${subagentState.agentChildren.size} parent(s) with children`
   );
+
+  renderAgentTree();
 }
 
 /**
@@ -211,11 +227,102 @@ function getAgentDisplayName(agentId: string): string {
 }
 
 /**
- * Renders the agent tree
- * No-op: Agent tree panel has been replaced with todo panel
+ * Renders the agent tree showing nested hierarchies.
+ * Builds a recursive tree from subagent mappings and agent state.
  */
 function renderAgentTree(): void {
-  // No-op: Agent tree panel has been replaced with todo panel
+  const treeContainer = elements.agentTreeContent;
+  if (!treeContainer) return;
+
+  // Find root agents (those without a parentAgentId, or whose parent is a session)
+  const rootAgents: SubagentMappingInfo[] = [];
+  for (const mapping of subagentState.subagents.values()) {
+    if (!mapping.parentAgentId || !subagentState.subagents.has(mapping.parentAgentId)) {
+      rootAgents.push(mapping);
+    }
+  }
+
+  if (rootAgents.length === 0) {
+    treeContainer.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">&#128279;</div>
+        <p class="empty-state-title">No agents active</p>
+        <p class="empty-state-subtitle">Agent hierarchy will appear here</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Sort roots by start time
+  rootAgents.sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+  treeContainer.innerHTML = '';
+  for (const root of rootAgents) {
+    const node = renderAgentNode(root, 0);
+    treeContainer.appendChild(node);
+  }
+}
+
+/**
+ * Render a single agent node and its children recursively.
+ */
+function renderAgentNode(mapping: SubagentMappingInfo, depth: number): HTMLElement {
+  const node = document.createElement('div');
+  node.className = 'agent-tree-node';
+  node.style.paddingLeft = `${depth * 16}px`;
+
+  const statusClass = mapping.status === 'running' ? 'agent-status-running'
+    : mapping.status === 'success' ? 'agent-status-success'
+    : mapping.status === 'failure' ? 'agent-status-failure'
+    : 'agent-status-cancelled';
+
+  const badgeColors = getAgentBadgeColors(mapping.agentName);
+  const isSelected = state.selectedAgentId === mapping.agentId;
+
+  // Calculate duration for completed agents
+  let durationText = '';
+  if (mapping.endTime && mapping.startTime) {
+    const ms = new Date(mapping.endTime).getTime() - new Date(mapping.startTime).getTime();
+    if (ms < 1000) durationText = `${ms}ms`;
+    else if (ms < 60000) durationText = `${(ms / 1000).toFixed(1)}s`;
+    else durationText = `${(ms / 60000).toFixed(1)}m`;
+  }
+
+  node.innerHTML = `
+    <div class="agent-tree-item ${statusClass} ${isSelected ? 'agent-tree-selected' : ''}" data-agent-id="${escapeHtml(mapping.agentId)}">
+      ${depth > 0 ? '<span class="agent-tree-line">&#9492;</span>' : ''}
+      <span class="agent-tree-dot ${statusClass}"></span>
+      <span class="agent-tree-name" style="background: ${escapeCssValue(badgeColors.bg)}; color: ${escapeCssValue(badgeColors.text)}">${escapeHtml(mapping.agentName)}</span>
+      ${durationText ? `<span class="agent-tree-duration">${escapeHtml(durationText)}</span>` : ''}
+    </div>
+  `;
+
+  // Click handler for per-agent filtering
+  const item = node.querySelector('.agent-tree-item') as HTMLElement;
+  item?.addEventListener('click', () => {
+    const agentId = mapping.agentId;
+    // Toggle: if already selected, deselect
+    if (state.selectedAgentId === agentId) {
+      selectAgentFilter(null);
+    } else {
+      selectAgentFilter(agentId);
+    }
+    renderAgentTree();
+  });
+
+  // Render children
+  const children = subagentState.agentChildren.get(mapping.agentId);
+  if (children) {
+    for (const childId of children) {
+      const childMapping = subagentState.subagents.get(childId);
+      if (childMapping) {
+        const childNode = renderAgentNode(childMapping, depth + 1);
+        node.appendChild(childNode);
+      }
+    }
+  }
+
+  return node;
 }
 
 // Start the periodic cleanup interval for stale agent contexts

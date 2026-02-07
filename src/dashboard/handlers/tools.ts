@@ -46,6 +46,7 @@ export interface ToolsCallbacks {
   getAgentDisplayName: (agentId: string) => string;
   parseTodoWriteInput: (input: string | undefined, sessionId: string | undefined) => void;
   detectPlanAccess: (input: string, sessionId: string) => void;
+  detectSendMessage: (input: string | undefined, agentId: string | undefined, timestamp: string) => void;
   appendAndTrim: (container: HTMLElement, element: HTMLElement) => void;
   smartScroll: (container: HTMLElement) => void;
 }
@@ -114,6 +115,11 @@ export function handleToolStart(event: ToolStartEvent): void {
   // and associate the plan with the current session
   if ((toolName === 'Read' || toolName === 'Write' || toolName === 'Edit') && input && sessionId) {
     callbacks.detectPlanAccess(input, sessionId);
+  }
+
+  // Detect SendMessage tool calls for inter-agent message tracking
+  if (toolName === 'SendMessage') {
+    callbacks.detectSendMessage(input, agentId, event.timestamp);
   }
 
   state.toolsCount++;

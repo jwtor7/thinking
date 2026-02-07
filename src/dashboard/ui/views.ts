@@ -12,7 +12,7 @@ import type { PanelName } from './panels.ts';
 /**
  * View type definition
  */
-export type ViewType = 'all' | 'thinking' | 'tools' | 'todo' | 'hooks' | 'plan';
+export type ViewType = 'all' | 'thinking' | 'tools' | 'todo' | 'hooks' | 'plan' | 'team' | 'tasks';
 
 /**
  * Callbacks for view navigation events
@@ -52,6 +52,8 @@ export function initViewTabs(): void {
     { id: 'thinking', label: 'Thinking', shortcut: 't' },
     { id: 'tools', label: 'Tools', shortcut: 'o' },
     { id: 'hooks', label: 'Hooks', shortcut: 'h' },
+    { id: 'team', label: 'Team', shortcut: 'm' },
+    { id: 'tasks', label: 'Tasks', shortcut: 'k' },
     { id: 'plan', label: 'Plan', shortcut: 'p' },
     { id: 'todo', label: 'Todo', shortcut: 'd' },
   ];
@@ -137,7 +139,7 @@ export function updateSessionViewTabs(isAllSessions: boolean): void {
   const planTab = elements.viewTabs.querySelector('[data-view="plan"]') as HTMLElement | null;
 
   if (isAllSessions) {
-    // Hide Todo and Plan tabs
+    // Hide Todo and Plan tabs (session-specific)
     if (todoTab) todoTab.style.display = 'none';
     if (planTab) planTab.style.display = 'none';
 
@@ -150,6 +152,9 @@ export function updateSessionViewTabs(isAllSessions: boolean): void {
     if (todoTab) todoTab.style.display = '';
     if (planTab) planTab.style.display = '';
   }
+
+  // Team and Tasks tabs are always visible once events arrive (not session-specific)
+  // They auto-show/hide based on whether data exists via showTeamPanel/showTasksPanel callbacks
 }
 
 /**
@@ -160,7 +165,7 @@ export function applyViewFilter(): void {
   if (!panels) return;
 
   // Remove any existing view-specific classes
-  panels.classList.remove('view-all', 'view-thinking', 'view-tools', 'view-todo', 'view-hooks', 'view-plan');
+  panels.classList.remove('view-all', 'view-thinking', 'view-tools', 'view-todo', 'view-hooks', 'view-plan', 'view-team', 'view-tasks');
 
   // Add the current view class
   panels.classList.add(`view-${state.activeView}`);
@@ -192,6 +197,9 @@ export function applyViewFilter(): void {
   applyVisibility(elements.todoPanel, pv.todo && state.activeView === 'todo');
   applyVisibility(elements.hooksPanel, pv.hooks && (showAll || state.activeView === 'hooks'));
   applyVisibility(elements.planPanel, pv.plan && state.activeView === 'plan');
+  // Team and Tasks panels only shown when explicitly selected
+  applyVisibility(elements.teamPanel, pv.team && state.activeView === 'team');
+  applyVisibility(elements.tasksPanel, pv.tasks && state.activeView === 'tasks');
 
   // Adjust layout for single-panel view
   if (!showAll) {
@@ -210,6 +218,8 @@ export function applyViewFilter(): void {
         todo: elements.todoPanel,
         hooks: elements.hooksPanel,
         plan: elements.planPanel,
+        team: elements.teamPanel,
+        tasks: elements.tasksPanel,
       };
       const panel = panelElements[panelName];
       if (panel) {

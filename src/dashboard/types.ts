@@ -29,6 +29,13 @@ export type {
   HookExecutionEvent,
   HookType,
   HookDecision,
+  TeamMemberInfo,
+  TeamUpdateEvent,
+  TaskInfo,
+  TaskUpdateEvent,
+  MessageSentEvent,
+  TeammateIdleEvent,
+  TaskCompletedEvent,
 } from '../shared/types.ts';
 
 // ============================================
@@ -81,7 +88,9 @@ export interface AppState {
   // Context menu state
   contextMenuFilePath: string | null;
   // Active view tab for navigation
-  activeView: 'all' | 'thinking' | 'tools' | 'todo' | 'hooks' | 'plan';
+  activeView: 'all' | 'thinking' | 'tools' | 'todo' | 'hooks' | 'plan' | 'team' | 'tasks';
+  // Per-agent event filtering - null means show all agents
+  selectedAgentId: string | null;
   // Todo tracking - maps session ID to todos for that session
   sessionTodos: SessionTodosMap;
   // Session-plan associations - maps session ID to the plan path that session uses
@@ -108,6 +117,8 @@ export interface PanelVisibility {
   tools: boolean;
   hooks: boolean;
   plan: boolean;
+  team: boolean;
+  tasks: boolean;
 }
 
 // ============================================

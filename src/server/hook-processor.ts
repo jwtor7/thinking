@@ -14,6 +14,8 @@ import type {
   AgentStopEvent,
   SessionStartEvent,
   SessionStopEvent,
+  TeammateIdleEvent,
+  TaskCompletedEvent,
 } from './types.ts';
 import { truncatePayload } from './types.ts';
 import { redactSecrets } from './secrets.ts';
@@ -25,6 +27,8 @@ import type {
   SubagentStopInput,
   SessionStartInput,
   SessionStopInput,
+  TeammateIdleInput,
+  TaskCompletedInput,
 } from './hook-types.ts';
 import { validateHookInput, safeStringify } from './hook-types.ts';
 
@@ -149,6 +153,35 @@ function processSessionStop(input: SessionStopInput): SessionStopEvent {
 }
 
 /**
+ * Process a TeammateIdle hook input into a TeammateIdleEvent.
+ */
+function processTeammateIdle(input: TeammateIdleInput): TeammateIdleEvent {
+  return {
+    type: 'teammate_idle',
+    timestamp: new Date().toISOString(),
+    sessionId: input.session_id,
+    agentId: input.agent_id,
+    teammateName: input.teammate_name || 'unknown',
+    teamName: input.team_name,
+  };
+}
+
+/**
+ * Process a TaskCompleted hook input into a TaskCompletedEvent.
+ */
+function processTaskCompleted(input: TaskCompletedInput): TaskCompletedEvent {
+  return {
+    type: 'task_completed',
+    timestamp: new Date().toISOString(),
+    sessionId: input.session_id,
+    agentId: input.agent_id,
+    taskId: input.task_id || 'unknown',
+    taskSubject: input.task_subject ? redactSecrets(input.task_subject) : 'unknown',
+    teamId: input.team_id,
+  };
+}
+
+/**
  * Process a raw hook input into a MonitorEvent.
  *
  * @param hookType - The type of hook that triggered
@@ -209,6 +242,14 @@ export function processHookInput(
 
       case 'SessionStop':
         event = processSessionStop(input as SessionStopInput);
+        break;
+
+      case 'TeammateIdle':
+        event = processTeammateIdle(input as TeammateIdleInput);
+        break;
+
+      case 'TaskCompleted':
+        event = processTaskCompleted(input as TaskCompletedInput);
         break;
 
       default:

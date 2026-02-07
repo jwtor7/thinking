@@ -15,7 +15,7 @@
  * - Improved responsiveness
  */
 
-import { state, agentContextStack, agentContextTimestamps } from './state.ts';
+import { state, agentContextStack, agentContextTimestamps, teamState } from './state.ts';
 
 import {
   MAX_ENTRIES,
@@ -106,6 +106,8 @@ import {
   renderTodoPanel,
 } from './handlers/todos.ts';
 import { initHooks } from './handlers/hooks.ts';
+import { initTeam, handleMessageSent } from './handlers/team.ts';
+import { initTasks } from './handlers/tasks.ts';
 import {
   initExportModal,
   updateExportButtonState,
@@ -145,6 +147,8 @@ function focusActivePanel(view: ViewType): void {
     tools: 'tools-content',
     todo: 'todo-content',
     plan: 'plan-content',
+    team: 'team-content',
+    tasks: 'tasks-content',
   };
 
   const panelId = panelMap[view];
@@ -257,6 +261,12 @@ function clearAllPanels(): void {
   } catch (error) {
     console.warn('[Dashboard] Failed to clear todos from localStorage:', error);
   }
+
+  // Clear team/task state
+  teamState.teams.clear();
+  teamState.teamTasks.clear();
+  teamState.teamMessages = [];
+  state.selectedAgentId = null;
 
   // Update counters
   elements.eventCount.textContent = 'Events: 0';
@@ -501,6 +511,28 @@ initTools({
   getAgentDisplayName,
   parseTodoWriteInput,
   detectPlanAccess,
+  detectSendMessage: (input: string | undefined, agentId: string | undefined, timestamp: string) => {
+    if (!input) return;
+    try {
+      // Parse the SendMessage tool input (JSON format)
+      const parsed = JSON.parse(input);
+      const msgType = parsed.type || 'message';
+      const sender = agentId || 'unknown';
+      const recipient = parsed.recipient || (msgType === 'broadcast' ? 'all' : 'unknown');
+      const summary = parsed.summary || parsed.content?.slice(0, 80) || '';
+
+      handleMessageSent({
+        type: 'message_sent',
+        timestamp,
+        sender,
+        recipient,
+        messageType: msgType,
+        summary,
+      });
+    } catch {
+      // Not valid JSON, skip
+    }
+  },
   appendAndTrim,
   smartScroll,
 });
@@ -531,6 +563,27 @@ initTodos({
 initHooks({
   appendAndTrim,
   smartScroll,
+});
+
+initTeam({
+  appendAndTrim,
+  smartScroll,
+  showTeamPanel: () => {
+    // Show team panel when first team event arrives (remove panel-hidden)
+    if (elements.teamPanel?.classList.contains('panel-hidden')) {
+      elements.teamPanel.classList.remove('panel-hidden');
+      // Only show if currently in team view or will be visible
+    }
+  },
+});
+
+initTasks({
+  showTasksPanel: () => {
+    // Show tasks panel when first task event arrives (remove panel-hidden)
+    if (elements.tasksPanel?.classList.contains('panel-hidden')) {
+      elements.tasksPanel.classList.remove('panel-hidden');
+    }
+  },
 });
 
 // Initialize UI modules

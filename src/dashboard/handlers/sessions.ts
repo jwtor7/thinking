@@ -489,6 +489,20 @@ export function selectSession(sessionId: string): void {
 }
 
 // ============================================
+// Per-Agent Filtering
+// ============================================
+
+/**
+ * Select an agent to filter events by, or null to show all.
+ * Applies filtering to thinking, tools, and hooks panels.
+ */
+export function selectAgentFilter(agentId: string | null): void {
+  state.selectedAgentId = agentId;
+  filterAllBySession(); // Re-applies all filters including agent
+  console.log(`[Dashboard] Agent filter: ${agentId || 'all'}`);
+}
+
+// ============================================
 // Session Context Menu
 // ============================================
 

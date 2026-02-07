@@ -1,0 +1,300 @@
+/* ========================================
+   Team Panel Styles
+   ======================================== */
+
+/* Team layout - dual pane */
+.team-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  height: 100%;
+}
+
+.team-section-label {
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-xs);
+  padding: 0 var(--spacing-xs);
+}
+
+/* Team name badge in header */
+.team-name-badge {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent-cyan);
+  margin-left: var(--spacing-xs);
+}
+
+/* ========================================
+   Member Grid
+   ======================================== */
+
+.team-member-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs);
+}
+
+.team-member-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--duration-fast) var(--ease-default);
+}
+
+.team-member-card:hover {
+  border-color: var(--color-text-muted);
+}
+
+.team-member-status-active {
+  border-left: 3px solid var(--color-accent-green);
+}
+
+.team-member-status-idle {
+  border-left: 3px solid var(--color-accent-yellow);
+}
+
+.team-member-status-shutdown {
+  border-left: 3px solid var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.team-member-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.team-member-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.team-member-dot-active {
+  background: var(--color-accent-green);
+  box-shadow: 0 0 6px rgba(63, 185, 80, 0.5);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.team-member-dot-idle {
+  background: var(--color-accent-yellow);
+}
+
+.team-member-dot-shutdown {
+  background: var(--color-text-muted);
+}
+
+.team-member-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.team-member-type {
+  font-size: var(--font-size-2xs);
+  padding: 1px 4px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  align-self: flex-start;
+}
+
+.team-empty {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--spacing-lg);
+}
+
+/* ========================================
+   Messages Section
+   ======================================== */
+
+.team-messages-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.team-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-xs);
+}
+
+.team-message {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-1);
+  border-left: 2px solid var(--color-border);
+  animation: entry-fade-in var(--duration-normal) var(--ease-out);
+}
+
+.team-message.new {
+  animation: highlight 1s ease-out;
+}
+
+.team-message-broadcast {
+  border-left-color: var(--color-accent-purple);
+  background: var(--color-surface-2);
+}
+
+.team-message-shutdown_request,
+.team-message-shutdown_response {
+  border-left-color: var(--color-accent-red);
+}
+
+.team-message-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+
+.team-message-time {
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+}
+
+.team-message-badge {
+  font-size: var(--font-size-2xs);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.team-message-arrow {
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+}
+
+.team-message-broadcast-label {
+  font-size: var(--font-size-2xs);
+  color: var(--color-accent-purple);
+  font-weight: var(--font-weight-medium);
+}
+
+.team-message-type-icon {
+  font-size: var(--font-size-xs);
+}
+
+.team-message-shutdown {
+  color: var(--color-accent-red);
+}
+
+.team-message-summary {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  padding-left: var(--spacing-sm);
+}
+
+/* ========================================
+   Agent Tree
+   ======================================== */
+
+.agent-tree-content {
+  padding: var(--spacing-xs);
+}
+
+.agent-tree-node {
+  margin-bottom: 1px;
+}
+
+.agent-tree-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 3px var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default);
+}
+
+.agent-tree-item:hover {
+  background: var(--color-surface-2);
+}
+
+.agent-tree-selected {
+  background: var(--color-surface-3);
+  outline: 1px solid var(--color-accent-blue);
+}
+
+.agent-tree-line {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+  user-select: none;
+}
+
+.agent-tree-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.agent-tree-dot.agent-status-running {
+  background: var(--color-accent-green);
+  box-shadow: 0 0 4px rgba(63, 185, 80, 0.4);
+}
+
+.agent-tree-dot.agent-status-success {
+  background: var(--color-accent-blue);
+}
+
+.agent-tree-dot.agent-status-failure {
+  background: var(--color-accent-red);
+}
+
+.agent-tree-dot.agent-status-cancelled {
+  background: var(--color-text-muted);
+}
+
+.agent-tree-name {
+  font-size: var(--font-size-2xs);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.agent-tree-duration {
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+  margin-left: auto;
+}
+
+/* Pulse animation for active dots */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ========================================
+   Responsive
+   ======================================== */
+
+@media (max-width: 768px) {
+  .team-member-grid {
+    grid-template-columns: 1fr;
+  }
+}

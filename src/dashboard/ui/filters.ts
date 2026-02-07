@@ -36,8 +36,18 @@ export function filterAllBySession(): void {
 }
 
 /**
+ * Check if an entry matches the per-agent filter.
+ * When selectedAgentId is set, only show events from that agent.
+ */
+function matchesAgentFilter(entry: HTMLElement): boolean {
+  if (!state.selectedAgentId) return true;
+  const entryAgent = entry.dataset.agent || '';
+  return entryAgent === state.selectedAgentId;
+}
+
+/**
  * Apply session filter to a single entry element.
- * Also considers text filter and subagent parent relationships.
+ * Also considers text filter, agent filter, and subagent parent relationships.
  */
 export function applySessionFilter(entry: HTMLElement): void {
   const entrySession = entry.dataset.session || '';
@@ -64,20 +74,23 @@ export function applySessionFilter(entry: HTMLElement): void {
     }
   }
 
+  // Per-agent filter
+  const matchesAgent = matchesAgentFilter(entry);
+
   // Check if this is a thinking entry or tool entry
   const isThinkingEntry = entry.classList.contains('thinking-entry');
 
   if (isThinkingEntry) {
     const matchesText = !state.thinkingFilter ||
       (entry.dataset.content || '').includes(state.thinkingFilter.toLowerCase());
-    entry.style.display = (matchesSession && matchesText) ? '' : 'none';
+    entry.style.display = (matchesSession && matchesAgent && matchesText) ? '' : 'none';
   } else {
     // Tool entry
     const toolName = entry.dataset.toolName || '';
     const input = entry.dataset.input || '';
     const filter = state.toolsFilter.toLowerCase();
     const matchesText = !filter || toolName.includes(filter) || input.includes(filter);
-    entry.style.display = (matchesSession && matchesText) ? '' : 'none';
+    entry.style.display = (matchesSession && matchesAgent && matchesText) ? '' : 'none';
   }
 }
 

@@ -167,6 +167,51 @@
   color: var(--color-accent-yellow);
 }
 
+/* Teammate hook type styling */
+.hook-type-teammate {
+  background: rgba(57, 197, 207, 0.15);
+  color: var(--color-accent-cyan);
+}
+
+/* Task hook type styling */
+.hook-type-task {
+  background: rgba(63, 185, 80, 0.15);
+  color: var(--color-accent-green);
+}
+
+/* Async badge */
+.hook-async-badge {
+  font-size: var(--font-size-2xs);
+  color: var(--color-accent-purple);
+  background: rgba(163, 113, 247, 0.15);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: var(--font-weight-medium);
+}
+
+/* Hook exec type indicator */
+.hook-exec-type {
+  font-size: var(--font-size-2xs);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: var(--font-weight-medium);
+}
+
+.hook-exec-command {
+  color: var(--color-accent-green);
+  background: rgba(63, 185, 80, 0.1);
+}
+
+.hook-exec-agent {
+  color: var(--color-accent-blue);
+  background: rgba(88, 166, 255, 0.1);
+}
+
+.hook-exec-prompt {
+  color: var(--color-accent-yellow);
+  background: rgba(210, 153, 34, 0.1);
+}
+
 /* ========================================
    Hook Filter Select
    ======================================== */

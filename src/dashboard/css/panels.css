@@ -472,7 +472,9 @@ body.dragging-panel * {
   .panels[data-view="thinking"] .panel:not(.panel-thinking),
   .panels[data-view="tools"] .panel:not(.panel-tools),
   .panels[data-view="todo"] .panel:not(.panel-todo),
-  .panels[data-view="plan"] .panel:not(.panel-plan) {
+  .panels[data-view="plan"] .panel:not(.panel-plan),
+  .panels[data-view="team"] .panel:not(.panel-team),
+  .panels[data-view="tasks"] .panel:not(.panel-tasks) {
     display: none;
   }
 

@@ -28,6 +28,10 @@ export const PLAN_ASSOCIATION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 export const PLAN_ASSOCIATION_MAX_ENTRIES = 100;
 export const PLAN_ASSOCIATION_STORAGE_KEY = 'sessionPlanAssociations';
 
+// Team/task panel state storage
+export const STORAGE_KEY_TEAM_VISIBLE = 'thinking-monitor-team-visible';
+export const STORAGE_KEY_TASKS_VISIBLE = 'thinking-monitor-tasks-visible';
+
 // Agent context stack limits to prevent memory leaks
 export const MAX_AGENT_STACK_SIZE = 100; // Maximum number of agents in the stack
 export const AGENT_STACK_STALE_MS = 60 * 60 * 1000; // 1 hour - entries older than this are considered stale

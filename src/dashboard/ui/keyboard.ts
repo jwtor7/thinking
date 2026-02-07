@@ -138,6 +138,14 @@ export function handleKeydown(event: KeyboardEvent): void {
         event.preventDefault();
         togglePanelCollapse('hooks');
         return;
+      case 'm':
+        event.preventDefault();
+        togglePanelCollapse('team');
+        return;
+      case 'k':
+        event.preventDefault();
+        togglePanelCollapse('tasks');
+        return;
       case 'p':
         // Shift+P opens the panel selector modal
         event.preventDefault();
@@ -165,6 +173,12 @@ export function handleKeydown(event: KeyboardEvent): void {
         return;
       case 'h':
         selectView('hooks');
+        return;
+      case 'm':
+        selectView('team');
+        return;
+      case 'k':
+        selectView('tasks');
         return;
       case 'p':
         selectView('plan');

@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-02-06 — v0.20.0
+
+### Added
+- **Team Dashboard panel** — visualizes Claude Code agent teams with member grid (active/idle/shutdown status indicators), inter-agent message timeline with sender/recipient badges, and broadcast/shutdown styling
+- **Task Board panel** — three-column kanban (Pending | In Progress | Completed) with task cards showing subject, owner badge, blocked-by indicators, and auto-updates on task events
+- **Agent tree rendering** — nested agent hierarchy visualization with recursive tree lines, status dots (running/success/failure), click-to-filter by agent
+- **Per-agent event filtering** — click any agent in the tree to filter thinking, tools, and hooks panels to only that agent's events
+- **SendMessage detection** — parses SendMessage tool calls from tool_start events to populate team message timeline (same pattern as TodoWrite detection)
+- **Enhanced hook filters** — new TeammateIdle, TaskCompleted, and Team Events filter options in hooks panel dropdown
+- **Hook execution metadata** — async badge and hookExecType indicator (command/agent/prompt) displayed on hook entries
+- **Keyboard shortcuts** — `m` for Team view, `k` for Tasks view, Shift+M/K to collapse
+- 5 event types now fully handled in dashboard: team_update, task_update, message_sent, teammate_idle, task_completed
+
+### Changed
+- View tab navigation extended with Team and Tasks tabs
+- Panel selector modal includes Team and Tasks visibility toggles
+- Agent tree populated from parentAgentId in subagent_mapping events (agentChildren Map)
+- Mobile responsive CSS for team member grid and task board columns
+
+---
+
 ## 2026-02-06
 
 ### Changed

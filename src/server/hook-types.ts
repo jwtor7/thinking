@@ -15,7 +15,9 @@ export type HookType =
   | 'SubagentStart'
   | 'SubagentStop'
   | 'SessionStart'
-  | 'SessionStop';
+  | 'SessionStop'
+  | 'TeammateIdle'
+  | 'TaskCompleted';
 
 /**
  * Base interface for all hook inputs.
@@ -105,6 +107,28 @@ export interface SessionStopInput extends HookInputBase {
 }
 
 /**
+ * TeammateIdle hook input - fires when a teammate goes idle.
+ */
+export interface TeammateIdleInput extends HookInputBase {
+  /** Name of the idle teammate */
+  teammate_name?: string;
+  /** Team name the teammate belongs to */
+  team_name?: string;
+}
+
+/**
+ * TaskCompleted hook input - fires when a task is marked complete.
+ */
+export interface TaskCompletedInput extends HookInputBase {
+  /** ID of the completed task */
+  task_id?: string;
+  /** Subject of the completed task */
+  task_subject?: string;
+  /** Team/task directory ID */
+  team_id?: string;
+}
+
+/**
  * Union type for all hook inputs.
  */
 export type HookInput =
@@ -113,7 +137,9 @@ export type HookInput =
   | SubagentStartInput
   | SubagentStopInput
   | SessionStartInput
-  | SessionStopInput;
+  | SessionStopInput
+  | TeammateIdleInput
+  | TaskCompletedInput;
 
 /**
  * Validation result structure.
@@ -174,6 +200,14 @@ export function validateHookInput(
       }
       break;
 
+    case 'TeammateIdle':
+      // Minimal validation - all fields are optional
+      break;
+
+    case 'TaskCompleted':
+      // Minimal validation - all fields are optional
+      break;
+
     default:
       return { valid: false, error: `Unknown hook type: ${hookType}` };
   }
@@ -192,6 +226,8 @@ export function isValidHookType(value: string): value is HookType {
     'SubagentStop',
     'SessionStart',
     'SessionStop',
+    'TeammateIdle',
+    'TaskCompleted',
   ];
   return validTypes.includes(value as HookType);
 }

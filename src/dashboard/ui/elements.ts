@@ -59,4 +59,21 @@ export const elements = {
   activeSessionIndicator: document.getElementById('active-session-indicator'),
   // Session tooltip element (created dynamically)
   sessionTooltip: null as HTMLElement | null,
+  // Team panel elements
+  teamPanel: document.querySelector('.panel-team') as HTMLElement,
+  teamName: document.getElementById('team-name'),
+  teamMemberGrid: document.getElementById('team-member-grid'),
+  teamMessages: document.getElementById('team-messages'),
+  teamCollapseBtn: document.querySelector('.panel-team .panel-collapse-btn') as HTMLButtonElement,
+  // Tasks panel elements
+  tasksPanel: document.querySelector('.panel-tasks') as HTMLElement,
+  tasksPending: document.getElementById('tasks-pending'),
+  tasksInProgress: document.getElementById('tasks-in-progress'),
+  tasksCompleted: document.getElementById('tasks-completed'),
+  tasksPendingCount: document.getElementById('tasks-pending-count'),
+  tasksInProgressCount: document.getElementById('tasks-in-progress-count'),
+  tasksCompletedCount: document.getElementById('tasks-completed-count'),
+  tasksCollapseBtn: document.querySelector('.panel-tasks .panel-collapse-btn') as HTMLButtonElement,
+  // Agent tree content (in the session filter area or dedicated section)
+  agentTreeContent: document.getElementById('agent-tree-content'),
 };

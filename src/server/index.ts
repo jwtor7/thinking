@@ -17,6 +17,7 @@ import { EventReceiver } from './event-receiver.ts';
 import { StaticServer } from './static-server.ts';
 import { TranscriptWatcher } from './transcript-watcher.ts';
 import { PlanWatcher } from './plan-watcher.ts';
+import { TeamWatcher } from './team-watcher.ts';
 import { handleFileActionRequest } from './file-actions.ts';
 import { handleExportRequest, handleBrowseRequest, handleRevealFileRequest } from './export-handler.ts';
 import { CONFIG } from './types.ts';
@@ -128,6 +129,11 @@ async function main(): Promise<void> {
   await planWatcher.start();
   logger.info(`[Server] Plan watcher started`);
 
+  // Start team/task watcher for ~/.claude/teams/ and ~/.claude/tasks/
+  const teamWatcher = new TeamWatcher(hub);
+  await teamWatcher.start();
+  logger.info(`[Server] Team/task watcher started`);
+
   // Send current state to newly connected clients
   hub.onClientConnect(async (sendEvent) => {
     // Send session_start events for all known sessions (with working directories)
@@ -158,6 +164,16 @@ async function main(): Promise<void> {
     if (planEvent) {
       sendEvent(planEvent);
     }
+
+    // Send current team state
+    for (const teamEvent of teamWatcher.getTeamEvents()) {
+      sendEvent(teamEvent);
+    }
+
+    // Send current task state
+    for (const taskEvent of teamWatcher.getTaskEvents()) {
+      sendEvent(taskEvent);
+    }
   });
 
   // Handle client requests (e.g., plan_request)
@@ -183,6 +199,7 @@ async function main(): Promise<void> {
   const shutdown = async (): Promise<void> => {
     logger.info('\n[Server] Shutting down...');
 
+    teamWatcher.stop();
     planWatcher.stop();
     transcriptWatcher.stop();
     eventReceiver.destroy();

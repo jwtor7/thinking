@@ -118,6 +118,9 @@
                 <option value="pre">PreToolUse</option>
                 <option value="post">PostToolUse</option>
                 <option value="subagent">Subagents</option>
+                <option value="teammate">TeammateIdle</option>
+                <option value="task">TaskCompleted</option>
+                <option value="team-all">Team Events</option>
                 <option value="deny-subagent">Deny + Subagents</option>
               </select>
               <span class="panel-badge" id="hooks-count">0</span>
@@ -131,6 +134,90 @@
             </div>
           </div>
         </section>
+
+        <!-- Team Panel (hidden until team events arrive) -->
+        <section class="panel panel-team panel-hidden" aria-labelledby="team-panel-title">
+          <header class="panel-header">
+            <button class="panel-collapse-btn" data-panel="team" aria-expanded="true" aria-label="Collapse Team panel" title="Collapse panel">
+              <span class="panel-collapse-icon">&#9660;</span>
+            </button>
+            <h2 class="panel-title" id="team-panel-title">TEAM <span class="team-name-badge" id="team-name"></span></h2>
+            <div class="panel-header-controls">
+              <span class="panel-badge" id="team-count">0</span>
+            </div>
+          </header>
+          <div class="panel-content" id="team-content">
+            <div class="team-layout">
+              <div class="team-member-section">
+                <div class="team-section-label">MEMBERS</div>
+                <div class="team-member-grid" id="team-member-grid">
+                  <div class="empty-state">
+                    <div class="empty-state-icon">&#128101;</div>
+                    <p class="empty-state-title">No team active</p>
+                    <p class="empty-state-subtitle">Team members will appear here</p>
+                  </div>
+                </div>
+              </div>
+              <div class="team-messages-section">
+                <div class="team-section-label">MESSAGES</div>
+                <div class="team-messages" id="team-messages">
+                  <div class="empty-state">
+                    <div class="empty-state-icon">&#128172;</div>
+                    <p class="empty-state-title">No messages</p>
+                    <p class="empty-state-subtitle">Inter-agent messages will appear here</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tasks Panel (hidden until task events arrive) -->
+        <section class="panel panel-tasks panel-hidden" aria-labelledby="tasks-panel-title">
+          <header class="panel-header">
+            <button class="panel-collapse-btn" data-panel="tasks" aria-expanded="true" aria-label="Collapse Tasks panel" title="Collapse panel">
+              <span class="panel-collapse-icon">&#9660;</span>
+            </button>
+            <h2 class="panel-title" id="tasks-panel-title">TASKS</h2>
+            <div class="panel-header-controls">
+              <span class="panel-badge" id="tasks-total-count">0</span>
+            </div>
+          </header>
+          <div class="panel-content" id="tasks-content">
+            <div class="task-board">
+              <div class="task-column">
+                <div class="task-column-header">
+                  <span class="task-column-title">Pending</span>
+                  <span class="task-column-count" id="tasks-pending-count">0</span>
+                </div>
+                <div class="task-column-cards" id="tasks-pending">
+                  <div class="task-column-empty">No pending tasks</div>
+                </div>
+              </div>
+              <div class="task-column">
+                <div class="task-column-header">
+                  <span class="task-column-title">In Progress</span>
+                  <span class="task-column-count" id="tasks-in-progress-count">0</span>
+                </div>
+                <div class="task-column-cards" id="tasks-in-progress">
+                  <div class="task-column-empty">No active tasks</div>
+                </div>
+              </div>
+              <div class="task-column">
+                <div class="task-column-header">
+                  <span class="task-column-title">Completed</span>
+                  <span class="task-column-count" id="tasks-completed-count">0</span>
+                </div>
+                <div class="task-column-cards" id="tasks-completed">
+                  <div class="task-column-empty">No completed tasks</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Agent Tree (collapsible section in sidebar area) -->
+        <div id="agent-tree-content" class="agent-tree-content" style="display: none;"></div>
 
         <!-- Plan Panel -->
         <section class="panel panel-plan" aria-labelledby="plan-panel-title">

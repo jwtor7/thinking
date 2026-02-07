@@ -28,6 +28,8 @@ export interface SubagentMapping {
   status: 'running' | 'success' | 'failure' | 'cancelled';
   /** ISO 8601 timestamp when the subagent stopped (if stopped) */
   endTime?: string;
+  /** Parent agent ID for nested agent hierarchies (agent A spawns agent B) */
+  parentAgentId?: string;
   /** Cleanup timer ID for delayed removal */
   cleanupTimer?: NodeJS.Timeout;
 }
@@ -43,6 +45,7 @@ export interface SubagentMappingInfo {
   startTime: string;
   status: 'running' | 'success' | 'failure' | 'cancelled';
   endTime?: string;
+  parentAgentId?: string;
 }
 
 /** Grace period before cleaning up stopped subagents (5 minutes) */
@@ -72,7 +75,8 @@ export class SubagentMapper {
     agentId: string,
     parentSessionId: string,
     agentName: string,
-    startTime: string
+    startTime: string,
+    parentAgentId?: string
   ): void {
     // Check if this subagent is already registered
     const existing = this.mappings.get(agentId);
@@ -86,7 +90,7 @@ export class SubagentMapper {
       );
     } else {
       logger.info(
-        `[SubagentMapper] Registered subagent: ${agentId} (name: ${agentName}) under session: ${parentSessionId}`
+        `[SubagentMapper] Registered subagent: ${agentId} (name: ${agentName}) under session: ${parentSessionId}${parentAgentId ? ` (parent agent: ${parentAgentId})` : ''}`
       );
     }
 
@@ -97,6 +101,7 @@ export class SubagentMapper {
       agentName,
       startTime,
       status: 'running',
+      parentAgentId,
     });
 
     // Add to session's subagent set
