@@ -11,6 +11,7 @@ import { handleHookExecution } from './hooks.ts';
 import { handleTeamUpdate, handleTeammateIdle, handleMessageSent } from './team.ts';
 import { handleTaskUpdate, handleTaskCompleted } from './tasks.ts';
 import { addTimelineEntry } from './timeline.ts';
+import { addAgentThinking } from './agents-view.ts';
 import { updateStats } from '../ui/stats-bar.ts';
 
 /**
@@ -24,8 +25,8 @@ export function handleEvent(event: StrictMonitorEvent): void {
   // Add to timeline (before dispatch to specific handler)
   addTimelineEntry(event);
 
-  // Update stats bar
-  updateStats(event);
+  // Update stats bar (pass sessionId for per-session tracking)
+  updateStats(event, event.sessionId);
 
   debug(`[Dashboard] Event received:`, {
     type: event.type,
@@ -44,6 +45,7 @@ export function handleEvent(event: StrictMonitorEvent): void {
       break;
     case 'thinking':
       handleThinking(event);
+      addAgentThinking(event);
       // Update activity for thinking events
       if (event.sessionId) {
         updateSessionActivity(event.sessionId);

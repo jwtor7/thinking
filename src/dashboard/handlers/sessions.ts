@@ -14,6 +14,9 @@ import { getSessionColorByFolder, getAgentColor } from '../ui/colors.ts';
 import { filterAllBySession } from '../ui/filters.ts';
 import { rebuildResizers } from '../ui/resizer.ts';
 import { updateSessionViewTabs } from '../ui/views.ts';
+import { filterTeamBySession } from './team.ts';
+import { filterTasksBySession } from './tasks.ts';
+import { refreshSessionChips } from './timeline.ts';
 import type { SessionStartEvent, SessionStopEvent } from '../types.ts';
 
 // ============================================
@@ -45,12 +48,10 @@ export interface SessionCallbacks {
   displayPlan: (planPath: string) => void;
   displayEmptyPlan: () => void;
   displaySessionPlanEmpty: (sessionId: string) => void;
-  clearSessionTodos: (sessionId: string) => void;
-  renderTodoPanel: () => void;
-  updateTodosForCurrentSession: () => void;
   showToast: (message: string, type: 'success' | 'error' | 'info', duration?: number) => void;
   updateExportButtonState: () => void;
   clearAllPanels: () => void;
+  setStatsSource: (sessionId: string) => void;
 }
 
 let callbacks: SessionCallbacks | null = null;
@@ -189,7 +190,6 @@ export function trackSession(sessionId: string, timestamp: string): void {
   if (!sessionId) return;
 
   const isNewSession = !state.sessions.has(sessionId);
-  const isSessionSwitch = state.currentSessionId !== null && state.currentSessionId !== sessionId;
 
   if (isNewSession) {
     // No working directory yet - use session ID for color (will update on session_start)
@@ -202,18 +202,11 @@ export function trackSession(sessionId: string, timestamp: string): void {
     });
     debug(`[Dashboard] New session tracked: ${sessionId}`);
     updateSessionFilter();
+    refreshSessionChips();
   }
 
   // Update current session
   state.currentSessionId = sessionId;
-
-  // When switching to a different session, update the todo panel
-  if (isSessionSwitch || isNewSession) {
-    debug(`[Dashboard] Session switch detected, updating todos for: ${sessionId}`);
-    if (callbacks) {
-      callbacks.updateTodosForCurrentSession();
-    }
-  }
 }
 
 // ============================================
@@ -405,10 +398,7 @@ export function updateSessionFilter(): void {
 function updateSessionPanelVisibility(sessionId: string): void {
   const isAllSessions = sessionId === 'all';
 
-  // Hide TODO and PLAN panels when viewing all sessions
-  if (elements.todoPanel) {
-    elements.todoPanel.classList.toggle('session-hidden', isAllSessions);
-  }
+  // Hide PLAN panel when viewing all sessions
   if (elements.planPanel) {
     elements.planPanel.classList.toggle('session-hidden', isAllSessions);
   }
@@ -453,22 +443,14 @@ export function selectSession(sessionId: string): void {
     }
   }
 
-  // Update todo display based on session selection
-  if (sessionId === 'all') {
-    // With "All" selected, show empty todos (user can select a specific session)
-    state.todos = [];
-    elements.todoCount.textContent = '0';
-    if (callbacks) {
-      callbacks.renderTodoPanel();
-    }
-  } else {
-    // Show todos for the selected session
-    state.todos = state.sessionTodos.get(sessionId) || [];
-    elements.todoCount.textContent = String(state.todos.length);
-    if (callbacks) {
-      callbacks.renderTodoPanel();
-    }
+  // Update stats bar to show session-specific stats
+  if (callbacks) {
+    callbacks.setStatsSource(sessionId);
   }
+
+  // Filter team and tasks panels by session
+  filterTeamBySession();
+  filterTasksBySession();
 
   // Update export button state (disabled when "All" is selected)
   if (callbacks) {

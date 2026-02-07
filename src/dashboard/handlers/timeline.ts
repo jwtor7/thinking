@@ -4,11 +4,13 @@
  * Provides a unified chronological view of all events across panels.
  */
 
-import { state } from '../state.ts';
+import { state, subagentState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { formatTime, shortenToolName, summarizeInput } from '../utils/formatting.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { getAgentBadgeColors } from '../ui/colors.ts';
+import { getSessionDisplayName } from './sessions.ts';
+import { selectView } from '../ui/views.ts';
 import type { StrictMonitorEvent } from '../../shared/types.ts';
 
 // ============================================
@@ -90,6 +92,16 @@ const typeCounts: Map<string, number> = new Map();
 const chipElements: Map<string, HTMLElement> = new Map();
 
 const STORAGE_KEY = 'tm-timeline-type-filter';
+const SESSION_STORAGE_KEY = 'tm-timeline-session-filter';
+
+/** Session filter state: sessionId → enabled. All disabled by default (user opts in). */
+const sessionFilterState: Map<string, boolean> = new Map();
+
+/** Session event counts for chip badges */
+const sessionCounts: Map<string, number> = new Map();
+
+/** Session chip elements for count updates */
+const sessionChipElements: Map<string, HTMLElement> = new Map();
 
 // ============================================
 // Callback Interface
@@ -110,6 +122,7 @@ export function initTimeline(cbs: TimelineCallbacks): void {
   callbacks = cbs;
   initTimelineFilter();
   initTypeChips();
+  loadSessionFilterState();
 }
 
 /**
@@ -213,6 +226,108 @@ export function resetTypeChips(): void {
     }
   }
   saveTypeFilterState();
+  resetSessionChips();
+}
+
+// ============================================
+// Session Filter Chips
+// ============================================
+
+/**
+ * Load session filter state from localStorage.
+ */
+function loadSessionFilterState(): void {
+  try {
+    const saved = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      for (const [id, enabled] of Object.entries(parsed)) {
+        sessionFilterState.set(id, enabled as boolean);
+      }
+    }
+  } catch { /* ignore */ }
+}
+
+function saveSessionFilterState(): void {
+  try {
+    const obj: Record<string, boolean> = {};
+    for (const [id, enabled] of sessionFilterState) {
+      obj[id] = enabled;
+    }
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(obj));
+  } catch { /* ignore */ }
+}
+
+/**
+ * Add or update a session chip when a new session appears.
+ * Chips start disabled (user opts in to see session events).
+ */
+function addOrUpdateSessionChip(sessionId: string): void {
+  const container = elements.timelineSessionChips;
+  if (!container) return;
+
+  // Already exists - just update count
+  if (sessionChipElements.has(sessionId)) {
+    const chip = sessionChipElements.get(sessionId)!;
+    const countEl = chip.querySelector('.chip-count');
+    if (countEl) countEl.textContent = String(sessionCounts.get(sessionId) || 0);
+    return;
+  }
+
+  // Load saved state or default to disabled
+  if (!sessionFilterState.has(sessionId)) {
+    sessionFilterState.set(sessionId, false);
+  }
+
+  const session = state.sessions.get(sessionId);
+  const label = getSessionDisplayName(session?.workingDirectory, sessionId);
+  const color = session?.color || 'var(--color-text-muted)';
+  const isActive = sessionFilterState.get(sessionId) ?? false;
+
+  const chip = document.createElement('button');
+  chip.className = 'timeline-chip timeline-session-chip' + (isActive ? ' active' : '');
+  chip.dataset.sessionId = sessionId;
+  if (isActive) {
+    chip.style.background = color;
+  }
+  chip.title = `Session: ${sessionId}`;
+  chip.innerHTML = `${escapeHtml(label)} <span class="chip-count">${sessionCounts.get(sessionId) || 0}</span>`;
+
+  chip.addEventListener('click', () => {
+    const current = sessionFilterState.get(sessionId) ?? false;
+    sessionFilterState.set(sessionId, !current);
+    chip.classList.toggle('active', !current);
+    chip.style.background = !current ? color : '';
+    saveSessionFilterState();
+    applyTimelineFilter();
+  });
+
+  container.appendChild(chip);
+  sessionChipElements.set(sessionId, chip);
+}
+
+/**
+ * Reset session chips (called from clearAllPanels).
+ */
+function resetSessionChips(): void {
+  sessionFilterState.clear();
+  sessionCounts.clear();
+  sessionChipElements.clear();
+  const container = elements.timelineSessionChips;
+  if (container) container.innerHTML = '';
+  try { localStorage.removeItem(SESSION_STORAGE_KEY); } catch { /* ignore */ }
+}
+
+/**
+ * Refresh session chips when new sessions appear.
+ * Called from sessions.ts.
+ */
+export function refreshSessionChips(): void {
+  for (const sessionId of state.sessions.keys()) {
+    if (!sessionChipElements.has(sessionId)) {
+      addOrUpdateSessionChip(sessionId);
+    }
+  }
 }
 
 /**
@@ -234,9 +349,19 @@ export function applyTimelineFilter(): void {
     const matchesText = !filter || el.dataset.filterText.includes(filter);
     const elCategory = el.dataset.category || '';
     const matchesType = !elCategory || typeFilterState.get(elCategory) !== false;
-    const matchesSession = state.selectedSession === 'all'
-      || !el.dataset.session
-      || el.dataset.session === state.selectedSession;
+
+    // Session filtering: global session selector + session chip filter
+    const anySessionChipActive = Array.from(sessionFilterState.values()).some(v => v);
+    let matchesSession: boolean;
+    if (anySessionChipActive) {
+      // When session chips are active, they override global session selector for timeline
+      matchesSession = !el.dataset.session || sessionFilterState.get(el.dataset.session) === true;
+    } else {
+      // No chips active: fall back to global session selector
+      matchesSession = state.selectedSession === 'all'
+        || !el.dataset.session
+        || el.dataset.session === state.selectedSession;
+    }
 
     if (matchesText && matchesType && matchesSession) {
       el.style.display = '';
@@ -248,7 +373,8 @@ export function applyTimelineFilter(): void {
 
   if (elements.timelineCount) {
     const anyTypeDisabled = Array.from(typeFilterState.values()).some(v => !v);
-    const hasActiveFilter = !!filter || anyTypeDisabled || state.selectedSession !== 'all';
+    const anySessionChipEnabled = Array.from(sessionFilterState.values()).some(v => v);
+    const hasActiveFilter = !!filter || anyTypeDisabled || anySessionChipEnabled || state.selectedSession !== 'all';
     elements.timelineCount.textContent = hasActiveFilter
       ? `${visible}/${timelineCount}`
       : String(timelineCount);
@@ -343,6 +469,12 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
     }
   }
 
+  // Track per-session count and update/create session chip
+  if (event.sessionId) {
+    sessionCounts.set(event.sessionId, (sessionCounts.get(event.sessionId) || 0) + 1);
+    addOrUpdateSessionChip(event.sessionId);
+  }
+
   // Update badge count
   if (elements.timelineCount) {
     elements.timelineCount.textContent = String(timelineCount);
@@ -352,8 +484,22 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
   const icon = TYPE_ICONS[event.type] || '&#9679;';
   const summary = getEventSummary(event);
   const agentId = event.agentId || 'main';
-  const agentBadgeColors = getAgentBadgeColors(agentId === 'main' ? 'main' : agentId);
-  const agentLabel = agentId === 'main' ? 'main' : (agentId.length > 12 ? agentId.slice(0, 12) : agentId);
+
+  // Resolve agent label: use session folder name for "main", agent name for subagents
+  let agentLabel: string;
+  let agentTooltip: string;
+  if (agentId === 'main') {
+    const session = state.sessions.get(event.sessionId || '');
+    agentLabel = getSessionDisplayName(session?.workingDirectory, event.sessionId);
+    agentTooltip = session?.workingDirectory
+      ? `${session.workingDirectory}\nSession: ${event.sessionId || ''}`
+      : `Session: ${event.sessionId || ''}`;
+  } else {
+    const subagent = subagentState.subagents.get(agentId);
+    agentLabel = subagent?.agentName || (agentId.length > 12 ? agentId.slice(0, 12) + '...' : agentId);
+    agentTooltip = `Agent: ${subagent?.agentName || agentId}\nStatus: ${subagent?.status || 'unknown'}\nSession: ${event.sessionId || ''}`;
+  }
+  const agentBadgeColors = getAgentBadgeColors(agentId === 'main' ? agentLabel : agentId);
 
   // Type class for color coding
   const typeClass = event.type.replace(/_/g, '-');
@@ -371,13 +517,26 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
   entry.dataset.filterText = filterText;
   entry.dataset.category = category;
 
+  // Store source timestamp for thinking click navigation
+  if (event.type === 'thinking') {
+    entry.dataset.sourceTimestamp = event.timestamp;
+    entry.style.cursor = 'pointer';
+  }
+
   entry.innerHTML = `
     <span class="timeline-icon">${icon}</span>
     <span class="timeline-time">${escapeHtml(time)}</span>
     <span class="timeline-type" title="${escapeHtml(typeFull)}">${escapeHtml(typeLabel)}</span>
     <span class="timeline-summary">${escapeHtml(summary)}</span>
-    <span class="timeline-agent" style="background: ${escapeCssValue(agentBadgeColors.bg)}; color: ${escapeCssValue(agentBadgeColors.text)}">${escapeHtml(agentLabel)}</span>
+    <span class="timeline-agent" style="background: ${escapeCssValue(agentBadgeColors.bg)}; color: ${escapeCssValue(agentBadgeColors.text)}" title="${escapeHtml(agentTooltip)}">${escapeHtml(agentLabel)}</span>
   `;
+
+  // Click handler for thinking entries: navigate to thinking view and scroll to entry
+  if (event.type === 'thinking') {
+    entry.addEventListener('click', () => {
+      navigateToThinkingEntry(event.timestamp);
+    });
+  }
 
   // Apply session filter
   if (state.selectedSession !== 'all' && event.sessionId && event.sessionId !== state.selectedSession) {
@@ -405,4 +564,31 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
 
   // Remove 'new' class after animation
   setTimeout(() => entry.classList.remove('new'), 1000);
+}
+
+/**
+ * Navigate from a timeline thinking entry to the corresponding entry in the Thinking view.
+ * Switches to Thinking view, finds the matching entry by timestamp, scrolls to it, and highlights.
+ */
+function navigateToThinkingEntry(eventTimestamp: string): void {
+  // Switch to thinking view
+  selectView('thinking');
+
+  // Find the matching thinking entry by event timestamp
+  const thinkingContent = elements.thinkingContent;
+  if (!thinkingContent) return;
+
+  // Use a small delay to allow the view switch to render
+  requestAnimationFrame(() => {
+    const entries = Array.from(thinkingContent.querySelectorAll('.thinking-entry'));
+    for (const entry of entries) {
+      const el = entry as HTMLElement;
+      if (el.dataset.eventTimestamp === eventTimestamp) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('highlight-flash');
+        setTimeout(() => el.classList.remove('highlight-flash'), 2000);
+        return;
+      }
+    }
+  });
 }

@@ -127,6 +127,9 @@ export function handleTeamUpdate(event: TeamUpdateEvent): void {
   const teamName = event.teamName;
   teamState.teams.set(teamName, event.members);
 
+  // Resolve team's session by matching member agentIds against subagent mappings
+  resolveTeamSession(teamName, event.members);
+
   // Show team panel on first team event
   callbacks.showTeamPanel();
 
@@ -136,6 +139,65 @@ export function handleTeamUpdate(event: TeamUpdateEvent): void {
   // Update tab badge with member count
   const memberCount = event.members.length;
   updateTabBadge('team', memberCount);
+}
+
+/**
+ * Resolve which session a team belongs to by checking member agentIds
+ * against known subagent mappings.
+ */
+function resolveTeamSession(teamName: string, members: TeamUpdateEvent['members']): void {
+  for (const member of members) {
+    // Check if any member name matches a known subagent
+    for (const [, mapping] of subagentState.subagents) {
+      if (mapping.agentName === member.name) {
+        teamState.teamSessionMap.set(teamName, mapping.parentSessionId);
+        return;
+      }
+    }
+  }
+}
+
+/**
+ * Filter team panel by session.
+ * When a specific session is selected, only show matching teams.
+ * When "all", show all teams.
+ */
+export function filterTeamBySession(): void {
+  const teamContent = elements.teamMemberGrid?.parentElement;
+  if (!teamContent) return;
+
+  if (state.selectedSession === 'all') {
+    // Show last updated team
+    const lastTeam = Array.from(teamState.teams.keys()).pop();
+    if (lastTeam) {
+      updateTeamHeader(lastTeam);
+      renderMemberGrid(lastTeam);
+    }
+    return;
+  }
+
+  // Find team(s) belonging to this session
+  let matchedTeam: string | null = null;
+  for (const [teamName, sessionId] of teamState.teamSessionMap) {
+    if (sessionId === state.selectedSession) {
+      matchedTeam = teamName;
+      break;
+    }
+  }
+
+  if (matchedTeam) {
+    updateTeamHeader(matchedTeam);
+    renderMemberGrid(matchedTeam);
+  } else {
+    const teamNameEl = elements.teamName;
+    if (teamNameEl) {
+      teamNameEl.textContent = 'No team';
+    }
+    const memberGrid = elements.teamMemberGrid;
+    if (memberGrid) {
+      memberGrid.innerHTML = `<div class="team-empty">No team for this session</div>`;
+    }
+  }
 }
 
 /**

@@ -42,9 +42,6 @@ export function getEmptyStateHTML(panel: string, ctx?: EmptyStateContext): strin
       }
       return emptyState('&#128295;', 'No tool calls yet', 'Tools appear when Claude reads files, runs commands, edits code, or searches.');
 
-    case 'todo':
-      return emptyState('&#128203;', 'No active tasks', 'Tasks appear when Claude uses TodoWrite to track work items.');
-
     case 'hooks':
       return emptyState('&#9881;', 'No hook activity', 'Hooks run before/after tool execution to enforce rules and track behavior.');
 
@@ -66,6 +63,9 @@ export function getEmptyStateHTML(panel: string, ctx?: EmptyStateContext): strin
 
     case 'timeline':
       return emptyState('&#128337;', 'No events yet', 'A chronological feed of all events: thinking, tools, hooks, agents, and more.');
+
+    case 'agents':
+      return emptyState('&#129302;', 'No agents', 'Sub-agents will appear here when Claude spawns them.');
 
     default:
       return emptyState('&#9679;', 'No data', 'Waiting for events...');

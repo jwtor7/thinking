@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-02-07 — v1.1.0
+
+### Added
+- **Agents view** — New dedicated panel for browsing sub-agent thinking; sidebar lists all agents with status dots and thinking counts, detail pane shows thinking entries for the selected agent
+- **Timeline session chips** — Dynamic session filter chips appear as sessions emit events; click to toggle visibility (independent of global session selector); persisted to localStorage
+- **Timeline click navigation** — Click a thinking entry in the timeline to switch to Thinking view, scroll to the matching entry, and flash-highlight it
+- **Session-aware stats bar** — Stats bar now shows per-session metrics when a specific session is selected, aggregates when "All" is selected
+- **Team session scoping** — Team panel filters by session; selecting a session shows only that session's team and hides others
+- **Tasks session filtering** — Tasks kanban board filters by session using team-session mapping
+
+### Changed
+- **Timeline labels** — "main" entries now show folder/project name instead of a generic label; subagent entries show agent name; tooltips show full session path and status
+- **Keyboard shortcuts** — `a` selects Agents view, `Shift+A` collapses it; todo shortcuts (`d`/`Shift+D`) removed
+
+### Removed
+- **Todo view** — Removed the broken/redundant Todo panel, handler, CSS, and all related state. Todos are fully replaced by the Tasks system (TaskCreate/TaskUpdate). Moved `detectPlanAccess` to tools handler.
+
+---
+
 ## 2026-02-07 — v1.0.10
 
 ### Removed

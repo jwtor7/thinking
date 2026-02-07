@@ -19,17 +19,17 @@ const PANEL_LABELS: Record<keyof PanelVisibility, string> = {
   thinking: 'Thinking',
   tools: 'Tools',
   hooks: 'Hooks',
-  todo: 'Todo',
   plan: 'Plan',
   team: 'Team',
   tasks: 'Tasks',
   timeline: 'Timeline',
+  agents: 'Agents',
 };
 
 /**
  * Order of panels in the selector UI.
  */
-const PANEL_ORDER: (keyof PanelVisibility)[] = ['thinking', 'todo', 'tools', 'hooks', 'team', 'tasks', 'timeline', 'plan'];
+const PANEL_ORDER: (keyof PanelVisibility)[] = ['thinking', 'tools', 'hooks', 'team', 'tasks', 'timeline', 'agents', 'plan'];
 
 /**
  * Modal element reference, created lazily on first open.
@@ -175,13 +175,13 @@ function handlePanelToggle(panelName: keyof PanelVisibility, visible: boolean): 
 export function applyPanelVisibility(panelName: keyof PanelVisibility, visible: boolean): void {
   const panelElements: Record<keyof PanelVisibility, HTMLElement | null> = {
     thinking: elements.thinkingPanel,
-    todo: elements.todoPanel,
     tools: elements.toolsPanel,
     hooks: elements.hooksPanel,
     plan: elements.planPanel,
     team: elements.teamPanel,
     tasks: elements.tasksPanel,
     timeline: elements.timelinePanel,
+    agents: elements.agentsPanel,
   };
 
   const panel = panelElements[panelName];

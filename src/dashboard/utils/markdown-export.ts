@@ -6,7 +6,7 @@
  */
 
 import { state } from '../state.ts';
-import type { SessionInfo, TodoItem } from '../types.ts';
+import type { SessionInfo } from '../types.ts';
 
 /**
  * Options for what content to include in the export.
@@ -14,7 +14,6 @@ import type { SessionInfo, TodoItem } from '../types.ts';
 export interface ExportOptions {
   includeThinking: boolean;
   includeTools: boolean;
-  includeTodos: boolean;
   includeHooks: boolean;
 }
 
@@ -42,7 +41,6 @@ export interface ExportData {
   sessionId: string | null;
   thinkingBlocks: ThinkingBlock[];
   toolCalls: ToolCall[];
-  todos: TodoItem[];
   hooks: HookEntry[];
   plan: PlanData | null;
 }
@@ -91,7 +89,6 @@ export function extractSessionData(options?: ExportOptions): ExportData {
     sessionId,
     thinkingBlocks: options?.includeThinking !== false ? extractThinkingBlocks(sessionId) : [],
     toolCalls: options?.includeTools !== false ? extractToolCalls(sessionId) : [],
-    todos: options?.includeTodos !== false ? extractTodos() : [],
     hooks: options?.includeHooks !== false ? extractHooks(sessionId) : [],
     plan: extractPlanData(),
   };
@@ -159,13 +156,6 @@ function extractToolCalls(sessionId: string | null): ToolCall[] {
   });
 
   return calls;
-}
-
-/**
- * Extract todos from state (already filtered by session).
- */
-function extractTodos(): TodoItem[] {
-  return [...state.todos];
 }
 
 /**
@@ -249,21 +239,6 @@ export function formatAsMarkdown(data: ExportData): string {
   }
   lines.push(`- **Export Date**: ${exportDate}`);
   lines.push('');
-
-  // Todos
-  if (data.todos.length > 0) {
-    lines.push('## Todos');
-    lines.push('');
-    const completed = data.todos.filter(t => t.status === 'completed').length;
-    lines.push(`Progress: ${completed}/${data.todos.length} completed`);
-    lines.push('');
-    data.todos.forEach((todo) => {
-      const checkbox = todo.status === 'completed' ? '[x]' : '[ ]';
-      const statusLabel = todo.status === 'in_progress' ? ' _(in progress)_' : '';
-      lines.push(`- ${checkbox} ${todo.content}${statusLabel}`);
-    });
-    lines.push('');
-  }
 
   // Thinking blocks
   if (data.thinkingBlocks.length > 0) {

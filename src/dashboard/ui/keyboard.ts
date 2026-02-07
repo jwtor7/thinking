@@ -146,9 +146,9 @@ export function handleKeydown(event: KeyboardEvent): void {
         event.preventDefault();
         togglePanelCollapse('tools');
         return;
-      case 'd':
+      case 'a':
         event.preventDefault();
-        togglePanelCollapse('todo');
+        togglePanelCollapse('agents');
         return;
       case 'h':
         event.preventDefault();
@@ -185,8 +185,8 @@ export function handleKeydown(event: KeyboardEvent): void {
       case 'o':
         selectView('tools');
         return;
-      case 'd':
-        selectView('todo');
+      case 'a':
+        selectView('agents');
         return;
       case 'h':
         selectView('hooks');

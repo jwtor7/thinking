@@ -93,6 +93,24 @@
    Global Transition Classes
    ======================================== */
 
+/* ========================================
+   Highlight Flash (Timeline → Thinking navigation)
+   ======================================== */
+
+@keyframes highlight-flash {
+  0% { background: rgba(88, 166, 255, 0.3); }
+  50% { background: rgba(88, 166, 255, 0.15); }
+  100% { background: transparent; }
+}
+
+.highlight-flash {
+  animation: highlight-flash 2s ease-out;
+}
+
+/* ========================================
+   Global Transition Classes
+   ======================================== */
+
 /* Smooth transitions for hover states */
 .btn,
 .agent-tab,

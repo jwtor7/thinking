@@ -17,6 +17,8 @@ import { getAgentBadgeColors, getSessionColorByFolder, getSessionColorByHash } f
 import { getSessionDisplayName } from './sessions.ts';
 import { applyToolsFilter, updateToolsCount } from '../ui/filters.ts';
 import { updateTabBadge } from '../ui/views.ts';
+import { saveSessionPlanAssociation } from '../storage/persistence.ts';
+import { debug } from '../utils/debug.ts';
 import type { ToolStartEvent, ToolEndEvent } from '../types.ts';
 
 // ============================================
@@ -46,11 +48,39 @@ function processEscapes(str: string): string {
 export interface ToolsCallbacks {
   getCurrentAgentContext: () => string;
   getAgentDisplayName: (agentId: string) => string;
-  parseTodoWriteInput: (input: string | undefined, sessionId: string | undefined) => void;
-  detectPlanAccess: (input: string, sessionId: string) => void;
   detectSendMessage: (input: string | undefined, agentId: string | undefined, timestamp: string) => void;
   appendAndTrim: (container: HTMLElement, element: HTMLElement) => void;
   smartScroll: (container: HTMLElement) => void;
+}
+
+// ============================================
+// Plan Access Detection (moved from todos.ts)
+// ============================================
+
+/**
+ * Detect plan file access in tool input and create session-plan association.
+ * Looks for file paths matching ~/.claude/plans/*.md pattern.
+ */
+function detectPlanAccess(input: string, sessionId: string): void {
+  try {
+    const parsed = JSON.parse(input);
+    const filePath = parsed.file_path || parsed.path || '';
+
+    const planPathMatch = filePath.match(/\.claude\/plans\/([^/]+\.md)$/);
+    if (planPathMatch) {
+      state.sessionPlanMap.set(sessionId, filePath);
+      saveSessionPlanAssociation(sessionId, filePath);
+      debug(`[Dashboard] Session ${sessionId.slice(0, 8)} associated with plan: ${planPathMatch[1]}`);
+    }
+  } catch {
+    // If not valid JSON, try regex on the raw string
+    const planPathMatch = input.match(/\.claude\/plans\/[^"'\s]+\.md/);
+    if (planPathMatch) {
+      state.sessionPlanMap.set(sessionId, planPathMatch[0]);
+      saveSessionPlanAssociation(sessionId, planPathMatch[0]);
+      debug(`[Dashboard] Session ${sessionId.slice(0, 8)} associated with plan (regex): ${planPathMatch[0]}`);
+    }
+  }
 }
 
 let callbacks: ToolsCallbacks | null = null;
@@ -107,16 +137,10 @@ export function handleToolStart(event: ToolStartEvent): void {
     }
   }
 
-  // Parse TodoWrite at tool_start - this is when we have the input
-  // (tool_end events don't include the input, only the output)
-  if (toolName === 'TodoWrite') {
-    callbacks.parseTodoWriteInput(input, sessionId);
-  }
-
   // Detect plan file access (Read, Write, or Edit to ~/.claude/plans/)
   // and associate the plan with the current session
   if ((toolName === 'Read' || toolName === 'Write' || toolName === 'Edit') && input && sessionId) {
-    callbacks.detectPlanAccess(input, sessionId);
+    detectPlanAccess(input, sessionId);
   }
 
   // Detect SendMessage tool calls for inter-agent message tracking

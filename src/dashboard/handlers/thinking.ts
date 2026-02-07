@@ -124,6 +124,7 @@ export function handleThinking(event: ThinkingEvent): void {
   entry.dataset.session = sessionId || '';
   entry.dataset.content = content.toLowerCase(); // For filtering
   entry.dataset.timestamp = String(Date.now());
+  entry.dataset.eventTimestamp = event.timestamp; // For timeline click navigation
   // Track parent session for subagent filtering
   if (parentSessionId) {
     entry.dataset.parentSession = parentSessionId;

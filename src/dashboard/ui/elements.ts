@@ -14,7 +14,6 @@ export const elements = {
   viewTabs: document.getElementById('view-tabs'),
   thinkingPanel: document.querySelector('.panel-thinking') as HTMLElement,
   toolsPanel: document.querySelector('.panel-tools') as HTMLElement,
-  todoPanel: document.querySelector('.panel-todo') as HTMLElement,
   planPanel: document.querySelector('.panel-plan') as HTMLElement,
   thinkingContent: document.getElementById('thinking-content')!,
   thinkingCount: document.getElementById('thinking-count')!,
@@ -29,8 +28,6 @@ export const elements = {
   hooksCount: document.getElementById('hooks-count'),
   hooksFilter: document.getElementById('hooks-filter') as HTMLSelectElement | null,
   hooksCollapseBtn: document.querySelector('.panel-hooks .panel-collapse-btn') as HTMLButtonElement,
-  todoContent: document.getElementById('todo-content')!,
-  todoCount: document.getElementById('todo-count')!,
   planContent: document.getElementById('plan-content')!,
   planMeta: document.getElementById('plan-meta')!,
   planOpenBtn: document.getElementById('plan-open-btn') as HTMLButtonElement,
@@ -49,7 +46,6 @@ export const elements = {
   connectionOverlayRetry: document.getElementById('connection-overlay-retry')!,
   panels: document.querySelector('.panels') as HTMLElement,
   thinkingCollapseBtn: document.querySelector('.panel-thinking .panel-collapse-btn') as HTMLButtonElement,
-  todoCollapseBtn: document.querySelector('.panel-todo .panel-collapse-btn') as HTMLButtonElement,
   toolsCollapseBtn: document.querySelector('.panel-tools .panel-collapse-btn') as HTMLButtonElement,
   planCollapseBtn: document.querySelector('.panel-plan .panel-collapse-btn') as HTMLButtonElement,
   // Session context menu
@@ -84,12 +80,18 @@ export const elements = {
   timelineFilterClear: document.getElementById('timeline-filter-clear'),
   timelineCollapseBtn: document.querySelector('.panel-timeline .panel-collapse-btn') as HTMLButtonElement,
   timelineTypeChips: document.getElementById('timeline-type-chips'),
+  timelineSessionChips: document.getElementById('timeline-session-chips'),
   // Activity pulse indicator
   activityPulse: document.getElementById('activity-pulse'),
   activityPulseDot: document.querySelector('.activity-pulse-dot'),
   activityPulseRate: document.querySelector('.activity-pulse-rate'),
   // Duration histogram
   durationHistogram: document.getElementById('tool-duration-histogram'),
+  // Agents panel elements
+  agentsPanel: document.querySelector('.panel-agents') as HTMLElement,
+  agentsSidebar: document.getElementById('agents-sidebar'),
+  agentsDetail: document.getElementById('agents-detail'),
+  agentsCollapseBtn: document.querySelector('.panel-agents .panel-collapse-btn') as HTMLButtonElement,
   // Stats bar
   statsBar: document.getElementById('stats-bar'),
 };

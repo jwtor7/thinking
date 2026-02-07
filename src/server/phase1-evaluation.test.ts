@@ -330,8 +330,8 @@ describe('Phase 1.4: Basic HTML Dashboard Shell', () => {
     expect(content).toContain('id="connection-status"');
     expect(content).toContain('id="thinking-content"');
     expect(content).toContain('id="tools-content"');
-    // Agent panel was replaced with todo panel in current implementation
-    expect(content).toContain('id="todo-content"');
+    // Agents panel replaces todo panel
+    expect(content).toContain('id="agents-sidebar"');
     expect(content).toContain('id="plan-content"');
     // Agent tabs were replaced with view-tabs (created dynamically in app.ts)
     // Keyboard hints were removed from static footer (commit d944ada)

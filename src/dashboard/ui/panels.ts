@@ -14,7 +14,7 @@ import { resetPanelFlex, rebuildResizers } from './resizer.ts';
 /**
  * Panel names that can be collapsed
  */
-export type PanelName = 'thinking' | 'todo' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline';
+export type PanelName = 'thinking' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline' | 'agents';
 
 /**
  * Callbacks for panel operations
@@ -48,13 +48,13 @@ export function initPanels(cbs: PanelCallbacks): void {
 function getPanelElements(): Record<PanelName, { panel: HTMLElement | null; btn: HTMLButtonElement | null }> {
   return {
     thinking: { panel: elements.thinkingPanel, btn: elements.thinkingCollapseBtn },
-    todo: { panel: elements.todoPanel, btn: elements.todoCollapseBtn },
     tools: { panel: elements.toolsPanel, btn: elements.toolsCollapseBtn },
     hooks: { panel: elements.hooksPanel, btn: elements.hooksCollapseBtn },
     plan: { panel: elements.planPanel, btn: elements.planCollapseBtn },
     team: { panel: elements.teamPanel, btn: elements.teamCollapseBtn },
     tasks: { panel: elements.tasksPanel, btn: elements.tasksCollapseBtn },
     timeline: { panel: elements.timelinePanel, btn: elements.timelineCollapseBtn },
+    agents: { panel: elements.agentsPanel, btn: elements.agentsCollapseBtn },
   };
 }
 
@@ -71,10 +71,8 @@ function getShortcutKey(panelName: PanelName): string | null {
       return 'T';
     case 'tools':
       return 'O';
-    case 'todo':
-      return 'D';
     case 'hooks':
-      return null; // No keyboard shortcut for hooks panel
+      return null;
     case 'plan':
       return null; // Shift+P is used for panel selector
     case 'team':
@@ -83,6 +81,8 @@ function getShortcutKey(panelName: PanelName): string | null {
       return 'K';
     case 'timeline':
       return 'L';
+    case 'agents':
+      return 'A';
   }
 }
 

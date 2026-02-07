@@ -21,13 +21,11 @@ import { debug } from './utils/debug.ts';
 import {
   MAX_ENTRIES,
   SCROLL_THRESHOLD,
-  STORAGE_KEY_TODOS,
 } from './config.ts';
 
 import { elements } from './ui/elements.ts';
 
 import {
-  restoreTodosFromStorage,
   restorePanelCollapseState,
   restorePanelVisibility,
   loadSessionPlanAssociations,
@@ -85,7 +83,7 @@ import {
 import { initDurationHistogram, resetHistogram } from './ui/duration-histogram.ts';
 import { initTooltip } from './ui/tooltip.ts';
 import { initSearchOverlay } from './ui/search-overlay.ts';
-import { initStatsBar, renderStats, resetStats } from './ui/stats-bar.ts';
+import { initStatsBar, renderStats, resetStats, setStatsSource } from './ui/stats-bar.ts';
 import {
   initPlans,
   displayPlan,
@@ -101,18 +99,11 @@ import {
   handleContextMenuOpen,
   handleContextMenuReveal,
 } from './handlers/plans.ts';
-import {
-  initTodos,
-  detectPlanAccess,
-  parseTodoWriteInput,
-  updateTodosForCurrentSession,
-  clearSessionTodos,
-  renderTodoPanel,
-} from './handlers/todos.ts';
 import { initHooks } from './handlers/hooks.ts';
 import { initTeam, handleMessageSent } from './handlers/team.ts';
 import { initTasks } from './handlers/tasks.ts';
 import { initTimeline, resetTypeChips } from './handlers/timeline.ts';
+import { initAgentsView, resetAgentsView } from './handlers/agents-view.ts';
 import {
   initExportModal,
   updateExportButtonState,
@@ -148,12 +139,12 @@ function focusActivePanel(view: ViewType): void {
   const panelMap: Record<string, string> = {
     thinking: 'thinking-content',
     tools: 'tools-content',
-    todo: 'todo-content',
     hooks: 'hooks-content',
     plan: 'plan-content',
     team: 'team-content',
     tasks: 'tasks-content',
     timeline: 'timeline-entries',
+    agents: 'agents-detail',
   };
 
   const panelId = panelMap[view];
@@ -255,18 +246,6 @@ function clearAllPanels(): void {
   // Clear status bar session indicator
   updateStatusBarSession();
 
-  // Reset todos (both session-specific map and current display)
-  state.sessionTodos.clear();
-  state.todos = [];
-
-  // Clear persisted todos from localStorage
-  try {
-    localStorage.removeItem(STORAGE_KEY_TODOS);
-    debug('[Dashboard] Cleared todos from localStorage');
-  } catch (error) {
-    console.warn('[Dashboard] Failed to clear todos from localStorage:', error);
-  }
-
   // Clear team/task state
   teamState.teams.clear();
   teamState.teamTasks.clear();
@@ -277,7 +256,6 @@ function clearAllPanels(): void {
   elements.eventCount.textContent = 'Events: 0';
   elements.thinkingCount.textContent = '0';
   elements.toolsCount.textContent = '0';
-  elements.todoCount.textContent = '0';
   if (elements.hooksCount) {
     elements.hooksCount.textContent = '0';
   }
@@ -299,7 +277,6 @@ function clearAllPanels(): void {
   // Clear panel contents with enhanced empty states
   elements.thinkingContent.innerHTML = getEmptyStateHTML('thinking');
   elements.toolsContent.innerHTML = getEmptyStateHTML('tools');
-  elements.todoContent.innerHTML = getEmptyStateHTML('todo');
   if (elements.hooksContent) {
     elements.hooksContent.innerHTML = getEmptyStateHTML('hooks');
   }
@@ -309,6 +286,9 @@ function clearAllPanels(): void {
 
   // Reset stats bar
   resetStats();
+
+  // Reset agents view
+  resetAgentsView();
 
   // Show feedback toast
   showToast('Panels cleared', 'info');
@@ -467,7 +447,6 @@ if (elements.sessionContextMenuReveal) {
 // Restore persisted state from localStorage before connecting
 restorePanelCollapseState();
 restorePanelVisibility();
-restoreTodosFromStorage();
 loadSessionPlanAssociations();
 
 // Initialize theme system - load preference and apply theme
@@ -475,16 +454,12 @@ const savedTheme = loadThemePreference();
 initThemeToggle(savedTheme);
 
 // Update UI with restored state
-if (state.todos.length > 0) {
-  renderTodoPanel();
-}
 if (state.sessions.size > 0) {
   updateSessionFilter();
 }
 
 // Hide session-specific panels on initial load when "All" is selected
 if (state.selectedSession === 'all') {
-  elements.todoPanel?.classList.add('session-hidden');
   elements.planPanel?.classList.add('session-hidden');
 }
 
@@ -499,8 +474,6 @@ initThinking({
 initTools({
   getCurrentAgentContext,
   getAgentDisplayName,
-  parseTodoWriteInput,
-  detectPlanAccess,
   detectSendMessage: (input: string | undefined, agentId: string | undefined, timestamp: string) => {
     if (!input) return;
     try {
@@ -531,23 +504,16 @@ initSessions({
   displayPlan,
   displayEmptyPlan,
   displaySessionPlanEmpty,
-  clearSessionTodos,
-  renderTodoPanel,
-  updateTodosForCurrentSession,
   showToast,
   updateExportButtonState,
   clearAllPanels,
+  setStatsSource,
 });
 
 initPlans({
   findActiveAgent,
   showToast,
   announceStatus,
-});
-
-initTodos({
-  showToast,
-  updateSessionFilter,
 });
 
 initHooks({
@@ -580,6 +546,8 @@ initTimeline({
   appendAndTrim,
   smartScroll,
 });
+
+initAgentsView();
 
 initDurationHistogram();
 

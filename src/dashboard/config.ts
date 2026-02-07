@@ -15,7 +15,6 @@ export const MAX_ENTRIES = 500; // Max entries per panel to prevent memory issue
 export const SCROLL_THRESHOLD = 50; // Pixels from bottom to consider "at bottom"
 
 // Session state storage keys
-export const STORAGE_KEY_TODOS = 'thinking-monitor-session-todos';
 export const STORAGE_KEY_PANEL_COLLAPSE = 'thinking-monitor-panel-collapse-state';
 export const STORAGE_KEY_PANEL_VISIBILITY = 'thinking-monitor-panel-visibility';
 export const STORAGE_KEY_THEME = 'thinking-monitor-theme';

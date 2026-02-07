@@ -61,24 +61,6 @@
           </div>
         </section>
 
-        <!-- TODO Panel -->
-        <section class="panel panel-todo" aria-labelledby="todo-panel-title">
-          <header class="panel-header">
-            <button class="panel-collapse-btn" data-panel="todo" aria-expanded="true" aria-label="Collapse Todo panel" title="Collapse panel (Shift+D)">
-              <span class="panel-collapse-icon">&#9660;</span>
-            </button>
-            <h2 class="panel-title" id="todo-panel-title">TODO</h2>
-            <span class="panel-badge" id="todo-count">0</span>
-          </header>
-          <div class="panel-content" id="todo-content">
-            <div class="empty-state">
-              <div class="empty-state-icon">&#128203;</div>
-              <p class="empty-state-title">No active tasks</p>
-              <p class="empty-state-subtitle">Tasks appear when Claude uses TodoWrite to track work items.</p>
-            </div>
-          </div>
-        </section>
-
         <!-- Tool Activity Panel -->
         <section class="panel panel-tools" aria-labelledby="tools-panel-title">
           <header class="panel-header">
@@ -237,11 +219,41 @@
             </div>
           </header>
           <div id="timeline-type-chips" class="timeline-type-chips"></div>
+          <div id="timeline-session-chips" class="timeline-session-chips"></div>
           <div class="panel-content" id="timeline-entries">
             <div class="empty-state">
               <div class="empty-state-icon">&#128337;</div>
               <p class="empty-state-title">No events yet</p>
               <p class="empty-state-subtitle">A chronological feed of all events: thinking, tools, hooks, agents, and more.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Agents Panel -->
+        <section class="panel panel-agents panel-hidden" aria-labelledby="agents-panel-title">
+          <header class="panel-header">
+            <button class="panel-collapse-btn" data-panel="agents" aria-expanded="true" aria-label="Collapse Agents panel" title="Collapse panel (Shift+A)">
+              <span class="panel-collapse-icon">&#9660;</span>
+            </button>
+            <h2 class="panel-title" id="agents-panel-title">AGENTS</h2>
+            <div class="panel-header-controls">
+              <span class="panel-badge" id="agents-view-count">0</span>
+            </div>
+          </header>
+          <div class="panel-content agents-layout" id="agents-content">
+            <div class="agents-sidebar" id="agents-sidebar">
+              <div class="empty-state">
+                <div class="empty-state-icon">&#129302;</div>
+                <p class="empty-state-title">No agents</p>
+                <p class="empty-state-subtitle">Sub-agents will appear here when Claude spawns them.</p>
+              </div>
+            </div>
+            <div class="agents-detail" id="agents-detail">
+              <div class="empty-state">
+                <div class="empty-state-icon">&#129504;</div>
+                <p class="empty-state-title">Select an agent</p>
+                <p class="empty-state-subtitle">Click an agent in the sidebar to view its thinking.</p>
+              </div>
             </div>
           </div>
         </section>

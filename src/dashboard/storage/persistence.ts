@@ -2,17 +2,16 @@
  * LocalStorage Persistence Module
  *
  * Functions for persisting and restoring dashboard state to localStorage.
- * Handles session todos, panel collapse states, and session-plan associations.
+ * Handles panel collapse states, panel visibility, and session-plan associations.
  *
- * Note: Some functions (restoreTodosFromStorage, restorePanelCollapseState)
- * modify DOM elements directly through the elements reference. These should
- * be called after DOM is ready.
+ * Note: Some functions (restorePanelCollapseState) modify DOM elements
+ * directly through the elements reference. These should be called after
+ * DOM is ready.
  */
 
-import { TodoItem, StoredPlanAssociation, ThemeId, PanelVisibility } from '../types.ts';
+import { StoredPlanAssociation, ThemeId, PanelVisibility } from '../types.ts';
 import { debug } from '../utils/debug.ts';
 import {
-  STORAGE_KEY_TODOS,
   STORAGE_KEY_PANEL_COLLAPSE,
   STORAGE_KEY_PANEL_VISIBILITY,
   STORAGE_KEY_THEME,
@@ -22,14 +21,13 @@ import {
   PLAN_ASSOCIATION_STORAGE_KEY,
 } from '../config.ts';
 import { state } from '../state.ts';
-import { getSessionColorByHash } from '../ui/colors.ts';
 import { elements } from '../ui/elements.ts';
 
 // ============================================
 // Panel Types (local to this module)
 // ============================================
 
-type PanelName = 'thinking' | 'todo' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline';
+type PanelName = 'thinking' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline' | 'agents';
 
 /**
  * Panel elements mapping for collapse state restoration.
@@ -38,94 +36,14 @@ type PanelName = 'thinking' | 'todo' | 'tools' | 'hooks' | 'plan' | 'team' | 'ta
 function getPanelElements(): Record<PanelName, { panel: HTMLElement | null; btn: HTMLButtonElement | null }> {
   return {
     thinking: { panel: elements.thinkingPanel, btn: elements.thinkingCollapseBtn },
-    todo: { panel: elements.todoPanel, btn: elements.todoCollapseBtn },
     tools: { panel: elements.toolsPanel, btn: elements.toolsCollapseBtn },
     hooks: { panel: elements.hooksPanel, btn: elements.hooksCollapseBtn },
     plan: { panel: elements.planPanel, btn: elements.planCollapseBtn },
     team: { panel: elements.teamPanel, btn: elements.teamCollapseBtn },
     tasks: { panel: elements.tasksPanel, btn: elements.tasksCollapseBtn },
     timeline: { panel: elements.timelinePanel, btn: elements.timelineCollapseBtn },
+    agents: { panel: elements.agentsPanel, btn: elements.agentsCollapseBtn },
   };
-}
-
-// ============================================
-// Session Todos Persistence
-// ============================================
-
-/**
- * Save session todos to localStorage for persistence across refreshes.
- * Converts the Map to a serializable format.
- */
-export function saveTodosToStorage(): void {
-  try {
-    // Convert Map to array of [sessionId, todos] entries for JSON serialization
-    const entries: Array<[string, TodoItem[]]> = Array.from(state.sessionTodos.entries());
-    localStorage.setItem(STORAGE_KEY_TODOS, JSON.stringify(entries));
-    debug(`[Dashboard] Saved ${entries.length} session(s) of todos to localStorage`);
-  } catch (error) {
-    console.warn('[Dashboard] Failed to save todos to localStorage:', error);
-  }
-}
-
-/**
- * Restore session todos from localStorage on page load.
- * Reconstructs the Map from the stored array format.
- *
- * Note: This function modifies both state and DOM elements (elements.todoCount).
- * Should be called after DOM is ready.
- */
-export function restoreTodosFromStorage(): void {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY_TODOS);
-    if (!stored) {
-      debug('[Dashboard] No stored todos found in localStorage');
-      return;
-    }
-
-    const entries: Array<[string, TodoItem[]]> = JSON.parse(stored);
-    if (!Array.isArray(entries)) {
-      console.warn('[Dashboard] Invalid stored todos format, clearing');
-      localStorage.removeItem(STORAGE_KEY_TODOS);
-      return;
-    }
-
-    // Reconstruct the sessionTodos map
-    state.sessionTodos = new Map(entries);
-    debug(`[Dashboard] Restored ${state.sessionTodos.size} session(s) of todos from localStorage`);
-
-    // If there's exactly one session, auto-select it to display its todos
-    if (state.sessionTodos.size === 1) {
-      const [sessionId, todos] = entries[0];
-      state.currentSessionId = sessionId;
-      state.selectedSession = sessionId;
-      state.todos = todos;
-      elements.todoCount.textContent = String(todos.length);
-
-      // Also restore the session in the sessions map for UI consistency
-      if (!state.sessions.has(sessionId)) {
-        state.sessions.set(sessionId, {
-          id: sessionId,
-          startTime: new Date().toISOString(),
-          active: false, // Will be updated when we reconnect
-          color: getSessionColorByHash(sessionId),
-        });
-      }
-    } else if (state.sessionTodos.size > 1) {
-      // Multiple sessions - restore session entries for filter UI
-      for (const [sessionId] of entries) {
-        if (!state.sessions.has(sessionId)) {
-          state.sessions.set(sessionId, {
-            id: sessionId,
-            startTime: new Date().toISOString(),
-            active: false,
-            color: getSessionColorByHash(sessionId),
-          });
-        }
-      }
-    }
-  } catch (error) {
-    console.warn('[Dashboard] Failed to restore todos from localStorage:', error);
-  }
 }
 
 // ============================================
@@ -172,7 +90,7 @@ export function restorePanelCollapseState(): void {
           panel.classList.add('collapsed');
           btn.setAttribute('aria-expanded', 'false');
           btn.setAttribute('aria-label', `Expand ${panelName} panel`);
-          const shortcutKey = panelName === 'thinking' ? 'T' : panelName === 'tools' ? 'O' : panelName === 'todo' ? 'D' : 'P';
+          const shortcutKey = panelName === 'thinking' ? 'T' : panelName === 'tools' ? 'O' : panelName === 'agents' ? 'A' : 'P';
           btn.title = `Expand panel (Shift+${shortcutKey})`;
         }
       }
@@ -358,19 +276,19 @@ export function loadThemePreference(): ThemeId {
  */
 const DEFAULT_PANEL_VISIBILITY: PanelVisibility = {
   thinking: true,
-  todo: true,
   tools: true,
   hooks: true,
   plan: true,
   team: true,
   tasks: true,
   timeline: true,
+  agents: true,
 };
 
 /**
  * Valid panel names for validation.
  */
-const VALID_PANEL_NAMES: (keyof PanelVisibility)[] = ['thinking', 'todo', 'tools', 'hooks', 'plan', 'team', 'tasks', 'timeline'];
+const VALID_PANEL_NAMES: (keyof PanelVisibility)[] = ['thinking', 'tools', 'hooks', 'plan', 'team', 'tasks', 'timeline', 'agents'];
 
 /**
  * Check if a value is a valid panel name.

@@ -174,8 +174,8 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
-- **v1.0.10** (2026-02-07 13:43) — Removed "All" multi-panel view; default is now Thinking. Removed two-agent workflow, added model selection guidance.
-- **v1.0.9** (2026-02-07 13:10) — Smart tool previews in timeline, concise type badges, search keyboard navigation, MCP tool name shortening, keyboard help modal, debug logging system, focus trapping (8 patch releases, 1034 tests)
-- **v1.0.0** (2026-02-07) — First public release: platform support docs, repo made public
+- **v1.1.0** (2026-02-07) — Session-aware dashboard: Agents view for sub-agent thinking, timeline session chips, clickable timeline entries, per-session stats bar, team/tasks session filtering, improved timeline labels. Todo view removed.
+- **v1.0.10** (2026-02-07) — Removed "All" multi-panel view; default is now Thinking. Removed two-agent workflow, added model selection guidance.
+- **v1.0.9** (2026-02-07) — Smart tool previews in timeline, concise type badges, search keyboard navigation, MCP tool name shortening, keyboard help modal, debug logging system, focus trapping (8 patch releases, 1034 tests)
 
 *[Full changelog →](./CHANGELOG.md)*

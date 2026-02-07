@@ -26,9 +26,6 @@
 /* Content: Thinking entries, tool entries, agent tree */
 @import url('./content.css');
 
-/* Todos: Todo panel specific styles */
-@import url('./todos.css');
-
 /* Hooks: Hook entry styles */
 @import url('./hooks.css');
 

@@ -140,8 +140,8 @@ describe('Phase 4: Dashboard Polish', () => {
       // 4. Markdown rendering escapes before processing
       expect(appTsContent).toMatch(/let html = escapeHtml\(content\)/);
 
-      // 5. Todo panel escapes content
-      expect(appTsContent).toContain('escapeHtml(displayText)');
+      // 5. Agents view escapes content
+      expect(appTsContent).toContain('escapeHtml(entry.content)');
 
       // 6. The escapeHtml function uses the secure DOM-based method
       const escapeHtmlMatch = appTsContent.match(
@@ -341,11 +341,11 @@ describe('Phase 4: Dashboard Polish', () => {
       expect(appTsContent).toContain('handleKeydown');
     });
 
-    it('should support t/o/d/p for view switching', () => {
-      // View tabs: Thinking/Tools/Todo/Plan/etc.
+    it('should support t/o/a/p for view switching', () => {
+      // View tabs: Thinking/Tools/Agents/Plan/etc.
       expect(appTsContent).toContain("case 't':");
       expect(appTsContent).toContain("case 'o':");
-      expect(appTsContent).toContain("case 'd':");
+      expect(appTsContent).toContain("case 'a':");
       expect(appTsContent).toContain("case 'p':");
       expect(appTsContent).toContain("selectView('thinking')");
       expect(appTsContent).toContain("selectView('tools')");
@@ -687,7 +687,7 @@ describe('Panel Collapse Feature', () => {
     it('should have collapse buttons in panel headers', () => {
       expect(indexHtmlContent).toContain('panel-collapse-btn');
       expect(indexHtmlContent).toContain('data-panel="thinking"');
-      expect(indexHtmlContent).toContain('data-panel="todo"');
+      expect(indexHtmlContent).toContain('data-panel="agents"');
       expect(indexHtmlContent).toContain('data-panel="tools"');
       expect(indexHtmlContent).toContain('data-panel="plan"');
     });
@@ -748,7 +748,7 @@ describe('Panel Collapse Feature', () => {
       expect(appTsContent).toContain('event.shiftKey');
       expect(appTsContent).toContain("togglePanelCollapse('thinking')");
       expect(appTsContent).toContain("togglePanelCollapse('tools')");
-      expect(appTsContent).toContain("togglePanelCollapse('todo')");
+      expect(appTsContent).toContain("togglePanelCollapse('agents')");
       // Note: Shift+P is now used for togglePanelSelector instead of togglePanelCollapse('plan')
       expect(appTsContent).toContain('togglePanelSelector');
     });

@@ -78,10 +78,26 @@ function renderTaskBoard(): void {
 
   if (!pendingCol || !progressCol || !completedCol) return;
 
-  // Gather all tasks from all teams
+  // Gather tasks, filtered by session if one is selected
   const allTasks: TaskInfo[] = [];
-  for (const tasks of teamState.teamTasks.values()) {
-    allTasks.push(...tasks);
+  if (state.selectedSession === 'all') {
+    for (const tasks of teamState.teamTasks.values()) {
+      allTasks.push(...tasks);
+    }
+  } else {
+    // Find team(s) belonging to this session
+    for (const [teamName, sessionId] of teamState.teamSessionMap) {
+      if (sessionId === state.selectedSession) {
+        const tasks = teamState.teamTasks.get(teamName);
+        if (tasks) allTasks.push(...tasks);
+      }
+    }
+    // If no team mapped to session, show all as fallback
+    if (allTasks.length === 0) {
+      for (const tasks of teamState.teamTasks.values()) {
+        allTasks.push(...tasks);
+      }
+    }
   }
 
   const pending = allTasks.filter(t => t.status === 'pending');
@@ -153,6 +169,13 @@ function renderTaskBoard(): void {
       });
     });
   }
+}
+
+/**
+ * Re-render task board when session filter changes.
+ */
+export function filterTasksBySession(): void {
+  renderTaskBoard();
 }
 
 // ============================================

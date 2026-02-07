@@ -46,3 +46,25 @@
   font-family: var(--font-family-mono);
   opacity: 0.8;
 }
+
+/* ========================================
+   Timeline Session Filter Chips
+   ======================================== */
+
+.timeline-session-chips {
+  display: flex;
+  gap: 4px;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.timeline-session-chips:empty {
+  display: none;
+}
+
+.timeline-session-chip {
+  font-size: 10px;
+}

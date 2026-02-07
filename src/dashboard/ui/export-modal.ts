@@ -72,7 +72,6 @@ let parentDirectory: string | null = null;
 const exportOptions: ExportOptions = {
   includeThinking: true,
   includeTools: true,
-  includeTodos: true,
   includeHooks: true,
 };
 
@@ -141,7 +140,6 @@ function createModal(): HTMLElement {
   const optionItems = [
     { id: 'thinking', label: 'Thinking blocks', key: 'includeThinking' as const },
     { id: 'tools', label: 'Tool calls', key: 'includeTools' as const },
-    { id: 'todos', label: 'Todos', key: 'includeTodos' as const },
     { id: 'hooks', label: 'Hooks', key: 'includeHooks' as const },
   ];
 
@@ -420,8 +418,6 @@ function updateSessionInfo(): void {
       : '.tool-entry'
   ).length;
 
-  const todoCount = state.todos.length;
-
   const hookCount = document.querySelectorAll(
     sessionId && sessionId !== 'all'
       ? `.hook-entry[data-session="${sessionId}"]`
@@ -433,7 +429,6 @@ function updateSessionInfo(): void {
   html += '<div class="export-stat-items">';
   html += `<span class="export-stat">${thinkingCount} thinking blocks</span>`;
   html += `<span class="export-stat">${toolCount} tool calls</span>`;
-  html += `<span class="export-stat">${todoCount} todos</span>`;
   html += `<span class="export-stat">${hookCount} hooks</span>`;
   html += '</div>';
   html += '</div>';

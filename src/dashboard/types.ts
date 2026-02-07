@@ -89,15 +89,11 @@ export interface AppState {
   // Context menu state
   contextMenuFilePath: string | null;
   // Active view tab for navigation
-  activeView: 'thinking' | 'tools' | 'todo' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline';
+  activeView: 'thinking' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline' | 'agents';
   // Per-agent event filtering - null means show all agents
   selectedAgentId: string | null;
-  // Todo tracking - maps session ID to todos for that session
-  sessionTodos: SessionTodosMap;
   // Session-plan associations - maps session ID to the plan path that session uses
   sessionPlanMap: Map<string, string>;
-  // Current session's todos (derived from sessionTodos based on currentSessionId)
-  todos: TodoItem[];
   // Panel collapse states - maps panel name to collapsed boolean
   panelCollapseState: Record<string, boolean>;
   // Panel visibility states - which panels are shown/hidden
@@ -114,13 +110,28 @@ export interface AppState {
  */
 export interface PanelVisibility {
   thinking: boolean;
-  todo: boolean;
   tools: boolean;
   hooks: boolean;
   plan: boolean;
   team: boolean;
   tasks: boolean;
   timeline: boolean;
+  agents: boolean;
+}
+
+// ============================================
+// Stats Types
+// ============================================
+
+/**
+ * Stats state for tracking per-session and global metrics.
+ */
+export interface StatsState {
+  toolCounts: Map<string, number>;
+  durations: number[];
+  thinkingCount: number;
+  hookDecisions: { allow: number; deny: number; ask: number };
+  eventTimestamps: number[];
 }
 
 // ============================================
@@ -217,20 +228,3 @@ export interface ToolInfo {
   element?: HTMLElement;
 }
 
-// ============================================
-// Todo Types
-// ============================================
-
-/**
- * Individual todo item with status tracking
- */
-export interface TodoItem {
-  content: string;
-  status: 'pending' | 'in_progress' | 'completed';
-  activeForm: string;
-}
-
-/**
- * Map of session ID to todo items for that session
- */
-export type SessionTodosMap = Map<string, TodoItem[]>;

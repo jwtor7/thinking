@@ -40,6 +40,8 @@ export interface TeamState {
   teamTasks: Map<string, TaskInfo[]>;
   /** Chronological message log */
   teamMessages: MessageSentEvent[];
+  /** teamName -> sessionId mapping for session scoping */
+  teamSessionMap: Map<string, string>;
 }
 
 /**
@@ -49,6 +51,7 @@ export const teamState: TeamState = {
   teams: new Map(),
   teamTasks: new Map(),
   teamMessages: [],
+  teamSessionMap: new Map(),
 };
 
 /**
@@ -92,28 +95,26 @@ export const state: AppState = {
   contextMenuFilePath: null,
   activeView: 'thinking',
   selectedAgentId: null,
-  sessionTodos: new Map(),
   sessionPlanMap: new Map(),
-  todos: [],
   panelCollapseState: {
     thinking: false,
-    todo: false,
     tools: false,
     hooks: false,
     plan: false,
     team: false,
     tasks: false,
     timeline: false,
+    agents: false,
   },
   panelVisibility: {
     thinking: true,
-    todo: true,
     tools: true,
     hooks: true,
     plan: true,
     team: true,
     tasks: true,
     timeline: true,
+    agents: true,
   },
 };
 

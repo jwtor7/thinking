@@ -2,28 +2,35 @@
  * Session Stats Bar
  *
  * Always-visible metrics bar showing real-time aggregated session data.
+ * Supports per-session stats: selecting a session shows stats for that session only.
  * Updates on a 2-second interval to avoid DOM thrash.
  */
 
 import { elements } from './elements.ts';
 import { getDurationClass, formatDuration, shortenToolName } from '../utils/formatting.ts';
 import type { StrictMonitorEvent } from '../types.ts';
+import type { StatsState } from '../types.ts';
 
-interface StatsState {
-  toolCounts: Map<string, number>;
-  durations: number[];
-  thinkingCount: number;
-  hookDecisions: { allow: number; deny: number; ask: number };
-  eventTimestamps: number[];
+const MAX_SESSION_STATS = 50;
+
+function createStatsState(): StatsState {
+  return {
+    toolCounts: new Map(),
+    durations: [],
+    thinkingCount: 0,
+    hookDecisions: { allow: 0, deny: 0, ask: 0 },
+    eventTimestamps: [],
+  };
 }
 
-const stats: StatsState = {
-  toolCounts: new Map(),
-  durations: [],
-  thinkingCount: 0,
-  hookDecisions: { allow: 0, deny: 0, ask: 0 },
-  eventTimestamps: [],
-};
+/** Global stats (all sessions combined) */
+const globalStats: StatsState = createStatsState();
+
+/** Per-session stats */
+const sessionStats: Map<string, StatsState> = new Map();
+
+/** Which stats source to render: 'all' for global, or a sessionId */
+let currentStatsSource = 'all';
 
 let cellElements: {
   topTools: HTMLElement | null;
@@ -73,10 +80,26 @@ export function initStatsBar(): void {
 }
 
 /**
- * Accumulate stats from an incoming event.
- * Called for every event from the dispatcher.
+ * Get or create a per-session stats state.
  */
-export function updateStats(event: StrictMonitorEvent): void {
+function getSessionStats(sessionId: string): StatsState {
+  let stats = sessionStats.get(sessionId);
+  if (!stats) {
+    // Evict oldest if at capacity
+    if (sessionStats.size >= MAX_SESSION_STATS) {
+      const firstKey = sessionStats.keys().next().value;
+      if (firstKey) sessionStats.delete(firstKey);
+    }
+    stats = createStatsState();
+    sessionStats.set(sessionId, stats);
+  }
+  return stats;
+}
+
+/**
+ * Accumulate stats from an event into a StatsState.
+ */
+function accumulateStats(stats: StatsState, event: StrictMonitorEvent): void {
   stats.eventTimestamps.push(Date.now());
 
   switch (event.type) {
@@ -100,10 +123,32 @@ export function updateStats(event: StrictMonitorEvent): void {
 }
 
 /**
- * Render stats to the DOM.
- * Called on a 2-second interval to avoid excessive updates.
+ * Accumulate stats from an incoming event.
+ * Called for every event from the dispatcher.
  */
-export function renderStats(): void {
+export function updateStats(event: StrictMonitorEvent, sessionId?: string): void {
+  // Always accumulate into global stats
+  accumulateStats(globalStats, event);
+
+  // Also accumulate into per-session stats if sessionId is provided
+  if (sessionId) {
+    accumulateStats(getSessionStats(sessionId), event);
+  }
+}
+
+/**
+ * Switch which stats source to display.
+ * Called when session selection changes.
+ */
+export function setStatsSource(sessionId: string): void {
+  currentStatsSource = sessionId;
+  renderStats();
+}
+
+/**
+ * Render stats from a given StatsState to the DOM.
+ */
+function renderStatsFromState(stats: StatsState): void {
   // Top 5 tools
   if (cellElements.topTools) {
     const sorted = [...stats.toolCounts.entries()]
@@ -165,14 +210,33 @@ export function renderStats(): void {
 }
 
 /**
+ * Render stats to the DOM.
+ * Called on a 2-second interval to avoid excessive updates.
+ */
+export function renderStats(): void {
+  if (currentStatsSource === 'all') {
+    renderStatsFromState(globalStats);
+  } else {
+    const stats = sessionStats.get(currentStatsSource);
+    if (stats) {
+      renderStatsFromState(stats);
+    } else {
+      renderStatsFromState(createStatsState());
+    }
+  }
+}
+
+/**
  * Reset all stats (called from clearAllPanels).
  */
 export function resetStats(): void {
-  stats.toolCounts.clear();
-  stats.durations = [];
-  stats.thinkingCount = 0;
-  stats.hookDecisions = { allow: 0, deny: 0, ask: 0 };
-  stats.eventTimestamps = [];
+  globalStats.toolCounts.clear();
+  globalStats.durations = [];
+  globalStats.thinkingCount = 0;
+  globalStats.hookDecisions = { allow: 0, deny: 0, ask: 0 };
+  globalStats.eventTimestamps = [];
+  sessionStats.clear();
+  currentStatsSource = 'all';
   renderStats();
 }
 

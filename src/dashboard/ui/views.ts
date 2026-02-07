@@ -12,7 +12,7 @@ import type { PanelName } from './panels.ts';
 /**
  * View type definition
  */
-export type ViewType = 'thinking' | 'tools' | 'todo' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline';
+export type ViewType = 'thinking' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline' | 'agents';
 
 /**
  * Callbacks for view navigation events
@@ -54,8 +54,8 @@ export function initViewTabs(): void {
     { id: 'team', label: 'Team', shortcut: 'm' },
     { id: 'tasks', label: 'Tasks', shortcut: 'k' },
     { id: 'timeline', label: 'Timeline', shortcut: 'l' },
+    { id: 'agents', label: 'Agents', shortcut: 'a' },
     { id: 'plan', label: 'Plan', shortcut: 'p' },
-    { id: 'todo', label: 'Todo', shortcut: 'd' },
   ];
 
   views.forEach((view) => {
@@ -135,26 +135,20 @@ export function updateViewTabs(): void {
 export function updateSessionViewTabs(isAllSessions: boolean): void {
   if (!elements.viewTabs) return;
 
-  const todoTab = elements.viewTabs.querySelector('[data-view="todo"]') as HTMLElement | null;
   const planTab = elements.viewTabs.querySelector('[data-view="plan"]') as HTMLElement | null;
 
   if (isAllSessions) {
-    // Hide Todo and Plan tabs (session-specific)
-    if (todoTab) todoTab.style.display = 'none';
+    // Hide Plan tab (session-specific)
     if (planTab) planTab.style.display = 'none';
 
-    // If currently on Todo or Plan view, switch to All view
-    if (state.activeView === 'todo' || state.activeView === 'plan') {
+    // If currently on Plan view, switch to thinking view
+    if (state.activeView === 'plan') {
       selectView('thinking');
     }
   } else {
-    // Show Todo and Plan tabs
-    if (todoTab) todoTab.style.display = '';
+    // Show Plan tab
     if (planTab) planTab.style.display = '';
   }
-
-  // Team and Tasks tabs are always visible once events arrive (not session-specific)
-  // They auto-show/hide based on whether data exists via showTeamPanel/showTasksPanel callbacks
 }
 
 /**
@@ -165,7 +159,7 @@ export function applyViewFilter(): void {
   if (!panels) return;
 
   // Remove any existing view-specific classes
-  panels.classList.remove('view-thinking', 'view-tools', 'view-todo', 'view-hooks', 'view-plan', 'view-team', 'view-tasks', 'view-timeline');
+  panels.classList.remove('view-thinking', 'view-tools', 'view-hooks', 'view-plan', 'view-team', 'view-tasks', 'view-timeline', 'view-agents');
 
   // Add the current view class
   panels.classList.add(`view-${state.activeView}`);
@@ -192,12 +186,12 @@ export function applyViewFilter(): void {
 
   applyVisibility(elements.thinkingPanel, pv.thinking && state.activeView === 'thinking');
   applyVisibility(elements.toolsPanel, pv.tools && state.activeView === 'tools');
-  applyVisibility(elements.todoPanel, pv.todo && state.activeView === 'todo');
   applyVisibility(elements.hooksPanel, pv.hooks && state.activeView === 'hooks');
   applyVisibility(elements.planPanel, pv.plan && state.activeView === 'plan');
   applyVisibility(elements.teamPanel, pv.team && state.activeView === 'team');
   applyVisibility(elements.tasksPanel, pv.tasks && state.activeView === 'tasks');
   applyVisibility(elements.timelinePanel, pv.timeline && state.activeView === 'timeline');
+  applyVisibility(elements.agentsPanel, pv.agents && state.activeView === 'agents');
 
   // Always single-view — ensure the active panel is expanded
   panels.classList.add('single-view');
@@ -208,12 +202,12 @@ export function applyViewFilter(): void {
     const panelElements: Record<PanelName, HTMLElement | null> = {
       thinking: elements.thinkingPanel,
       tools: elements.toolsPanel,
-      todo: elements.todoPanel,
       hooks: elements.hooksPanel,
       plan: elements.planPanel,
       team: elements.teamPanel,
       tasks: elements.tasksPanel,
       timeline: elements.timelinePanel,
+      agents: elements.agentsPanel,
     };
     const panel = panelElements[panelName];
     if (panel) {
