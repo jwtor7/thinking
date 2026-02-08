@@ -131,7 +131,7 @@ describe('Event Dispatcher - Static Analysis', () => {
   describe('Handler Function Calls', () => {
     it('should call handleConnectionStatus for connection_status events', () => {
       expect(dispatcherContent).toContain(
-        "case 'connection_status':\n      handleConnectionStatus(event);"
+        "case 'connection_status':\n        handleConnectionStatus(event);"
       );
     });
 

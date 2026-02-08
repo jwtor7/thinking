@@ -200,13 +200,13 @@ describe('redactSecrets', () => {
 
   describe('Private keys', () => {
     it('should redact private key headers', () => {
-      const input = '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg...';
+      const input = '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg...\n-----END PRIVATE KEY-----';
       const result = redactSecrets(input);
       expect(result).toContain('[REDACTED]');
     });
 
     it('should redact RSA private key headers', () => {
-      const input = '-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCA...';
+      const input = '-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCA...\n-----END RSA PRIVATE KEY-----';
       const result = redactSecrets(input);
       expect(result).toContain('[REDACTED]');
     });

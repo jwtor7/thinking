@@ -33,6 +33,9 @@ SecurityReport*.md
 REFACTOR-PLAN*.md
 TEST_EVALUATION_REPORT*.md
 
+# Audit reports
+audit/
+
 # Personal session logs
 .claude/logs/
 
