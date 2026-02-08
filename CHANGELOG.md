@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-02-07 — v1.1.4
+
+### Fixed
+- **Timeline events used wrong timestamps** — Plan and team/task events on reconnect now use their original detection timestamps (file mtime for plans, detection time for teams) instead of the current server send time. Fixes all events appearing to occur at the exact same moment.
+- **Plan and Team events showed "unknown" session** — Timeline now resolves `sessionId` for plan and team/task events via existing `sessionPlanMap` and `teamSessionMap` lookups, showing correct session context instead of leaving events unattributed.
+
+---
+
 ## 2026-02-07 — v1.1.3
 
 ### Fixed

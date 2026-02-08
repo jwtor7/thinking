@@ -5,7 +5,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.1.3-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.4-purple)](./CHANGELOG.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 [![GitHub Stars](https://img.shields.io/github/stars/jwtor7/thinking?style=social)](https://github.com/jwtor7/thinking)
 
@@ -174,6 +174,7 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
+- **v1.1.4** (2026-02-07 22:10) — Fixed timeline events showing wrong timestamps and unattributed plan/team events; now uses original detection timestamps and resolves session context.
 - **v1.1.3** (2026-02-07 16:01) — Fixed team events rendering for wrong session: `handleTeamUpdate`, `handleTeammateIdle`, and `handleMessageSent` now check session context before rendering.
 - **v1.1.2** (2026-02-07) — Hidden Team/Tasks panels for "All Sessions" to prevent stale data when no specific session is selected.
 - **v1.1.1** (2026-02-07 14:59) — Fixed 7 dashboard audit issues: session chip UUID labels, duplicate dropdown names, all-disabled filter persistence, uncategorized session events, stale session auto-select, silent chip override, thinking entry eviction protection.
