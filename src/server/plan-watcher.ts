@@ -12,13 +12,15 @@
 
 import { watch, type FSWatcher } from 'node:fs';
 import { readFile, stat, readdir } from 'node:fs/promises';
-import { join, basename, resolve } from 'node:path';
+import { join, basename } from 'node:path';
 import { homedir } from 'node:os';
 import type { PlanUpdateEvent, PlanDeleteEvent, PlanListEvent } from './types.ts';
 import { truncatePayload } from './types.ts';
 import { redactSecrets } from './secrets.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
 import { logger } from './logger.ts';
+import { hashContent } from './change-detection.ts';
+import { isPathWithin } from './path-validation.ts';
 
 /** Tracked plan file state */
 interface TrackedPlan {
@@ -34,29 +36,7 @@ interface TrackedPlan {
  */
 export function isValidPlanPath(filePath: string): boolean {
   const plansDir = join(homedir(), '.claude', 'plans');
-  const resolvedPath = resolve(filePath);
-  const resolvedPlansDir = resolve(plansDir);
-
-  // Ensure the path is within ~/.claude/plans/
-  if (!resolvedPath.startsWith(resolvedPlansDir + '/') && resolvedPath !== resolvedPlansDir) {
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Simple hash function for detecting content changes.
- * Uses a basic string hash - not cryptographic, just for change detection.
- */
-function simpleHash(content: string): string {
-  let hash = 0;
-  for (let i = 0; i < content.length; i++) {
-    const char = content.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return hash.toString(16);
+  return isPathWithin(filePath, plansDir);
 }
 
 /**
@@ -236,7 +216,7 @@ export class PlanWatcher {
 
       const content = await readFile(filePath, 'utf-8');
       const filename = basename(filePath);
-      const contentHash = simpleHash(content);
+      const contentHash = hashContent(content);
 
       this.trackedPlans.set(filePath, {
         path: filePath,
@@ -266,7 +246,7 @@ export class PlanWatcher {
       const stats = await stat(filePath);
       const content = await readFile(filePath, 'utf-8');
       const filename = basename(filePath);
-      const contentHash = simpleHash(content);
+      const contentHash = hashContent(content);
 
       const tracked = this.trackedPlans.get(filePath);
 

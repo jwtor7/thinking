@@ -487,7 +487,10 @@ describe('Security: Path Traversal Prevention', () => {
 
     // Check for path traversal protection
     expect(content).toContain('resolve(');
-    expect(content).toContain('startsWith(this.dashboardDir)');
+    expect(
+      content.includes('startsWith(this.dashboardDir)') ||
+      content.includes('isPathWithin(')
+    ).toBe(true);
     expect(content).toContain('Path traversal attempt');
     expect(content).toContain('403');
   });

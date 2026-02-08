@@ -4,7 +4,7 @@
  * Centralized state for the Thinking Monitor dashboard.
  */
 
-import { AppState, AgentContextStack, SubagentMappingInfo, TeamMemberInfo, TaskInfo, MessageSentEvent } from './types.ts';
+import type { AppState, AgentContextStack, SubagentMappingInfo, TeamMemberInfo, TaskInfo, MessageSentEvent } from './types.ts';
 
 /**
  * Subagent tracking state.
@@ -60,6 +60,11 @@ export const teamState: TeamState = {
  */
 export const activityTracker = {
   timestamps: [] as number[],
+  /**
+   * Head pointer for O(1) amortized pruning of old timestamps.
+   * Avoids expensive Array.shift() in the activity loop.
+   */
+  headIndex: 0,
   eventsPerSec: 0,
 };
 

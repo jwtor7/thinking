@@ -254,6 +254,9 @@ export class EventReceiver {
    */
   private processToolTiming(event: MonitorEvent): MonitorEvent {
     if (event.type === 'tool_start' && 'toolCallId' in event && typeof event.toolCallId === 'string') {
+      if (this.toolStartTimes.has(event.toolCallId)) {
+        logger.warn(`[EventReceiver] Duplicate tool_start for toolCallId=${event.toolCallId}; resetting start time`);
+      }
       // Cap pending tools to prevent unbounded memory growth
       if (this.toolStartTimes.size >= this.MAX_PENDING_TOOLS) {
         // Evict oldest entry
@@ -269,6 +272,10 @@ export class EventReceiver {
       if (startTime) {
         const durationMs = Date.now() - startTime;
         this.toolStartTimes.delete(toolCallId);
+        if (durationMs < 0) {
+          logger.warn(`[EventReceiver] Ignoring negative tool duration for toolCallId=${toolCallId}`);
+          return event;
+        }
         // Add duration to event (override null/undefined from hook)
         if (!('durationMs' in event) || event.durationMs === undefined || event.durationMs === null) {
           return { ...event, durationMs };

@@ -45,8 +45,20 @@ describe('redactSecrets', () => {
       expect(result).toBe('Using [REDACTED]');
     });
 
+    it('should redact OpenAI project keys', () => {
+      const input = 'OPENAI_KEY=sk-proj-abcDEF0123456789_xyzABCDEFGHIJKLMNOP';
+      const result = redactSecrets(input);
+      expect(result).toBe('OPENAI_KEY=[REDACTED]');
+    });
+
     it('should redact Anthropic API keys', () => {
       const input = 'Key: sk-ant-api03-abcdefghijklmnopqrstuvwxyz1234567890';
+      const result = redactSecrets(input);
+      expect(result).toBe('Key: [REDACTED]');
+    });
+
+    it('should redact Anthropic API keys with -ant-v2 suffix', () => {
+      const input = 'Key: sk-ant-api03-abcdefghijklmnopqrstuvwxyz1234567890-ant-v2';
       const result = redactSecrets(input);
       expect(result).toBe('Key: [REDACTED]');
     });
@@ -79,6 +91,24 @@ describe('redactSecrets', () => {
       const input = 'NPM_TOKEN=npm_abcdefghijklmnopqrstuvwxyz123456';
       const result = redactSecrets(input);
       expect(result).toBe('NPM_TOKEN=[REDACTED]');
+    });
+
+    it('should redact Databricks tokens', () => {
+      const input = 'DATABRICKS_TOKEN=dapi1234567890abcdefghijklmnopqrstuv';
+      const result = redactSecrets(input);
+      expect(result).toBe('DATABRICKS_TOKEN=[REDACTED]');
+    });
+
+    it('should redact Supabase secret keys', () => {
+      const input = 'SUPABASE_SECRET=sb_secret_abcdefghijklmnopqrstuvwxyz0123456789';
+      const result = redactSecrets(input);
+      expect(result).toBe('SUPABASE_SECRET=[REDACTED]');
+    });
+
+    it('should redact Supabase service role key assignments', () => {
+      const input = 'SUPABASE_SERVICE_ROLE_KEY=supabase_service_role_abcdefghijklmnopqrstuvwxyz123456';
+      const result = redactSecrets(input);
+      expect(result).toBe('SUPABASE_SERVICE_ROLE_KEY=[REDACTED]');
     });
   });
 
@@ -170,15 +200,27 @@ describe('redactSecrets', () => {
 
   describe('Private keys', () => {
     it('should redact private key headers', () => {
-      const input = '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg...';
+      const input = '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg...\n-----END PRIVATE KEY-----';
       const result = redactSecrets(input);
       expect(result).toContain('[REDACTED]');
     });
 
     it('should redact RSA private key headers', () => {
-      const input = '-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCA...';
+      const input = '-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCA...\n-----END RSA PRIVATE KEY-----';
       const result = redactSecrets(input);
       expect(result).toContain('[REDACTED]');
+    });
+
+    it('should redact full private key blocks including body and footer', () => {
+      const input = [
+        '-----BEGIN PRIVATE KEY-----',
+        'MIIEvQIBADANBgkqhkiG9w0BAQEFAASC...',
+        '-----END PRIVATE KEY-----',
+      ].join('\n');
+      const result = redactSecrets(input);
+      expect(result).toBe('[REDACTED]');
+      expect(result).not.toContain('MIIEvQIB');
+      expect(result).not.toContain('END PRIVATE KEY');
     });
   });
 

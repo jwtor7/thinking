@@ -368,7 +368,10 @@ elements.planSelectorBtn.addEventListener('click', (e) => {
 document.addEventListener('click', (e) => {
   if (state.planSelectorOpen) {
     const target = e.target as HTMLElement;
-    if (!elements.planSelectorBtn.contains(target) && !elements.planSelectorDropdown.contains(target)) {
+    if (
+      !elements.planSelectorBtn?.contains(target) &&
+      !elements.planSelectorDropdown?.contains(target)
+    ) {
       closePlanSelector();
     }
   }
@@ -418,7 +421,7 @@ elements.contextMenuReveal.addEventListener('click', handleContextMenuReveal);
 // Close context menu when clicking outside
 document.addEventListener('click', (e) => {
   const target = e.target as HTMLElement;
-  if (!elements.planContextMenu.contains(target)) {
+  if (!elements.planContextMenu?.contains(target)) {
     hidePlanContextMenu();
   }
   // Also close session context menu
@@ -636,14 +639,30 @@ setInterval(() => {
   renderStats();
 
   const now = Date.now();
+  const cutoff = now - ACTIVITY_WINDOW_MS;
 
-  // Remove timestamps older than the window
-  while (activityTracker.timestamps.length > 0 && activityTracker.timestamps[0] < now - ACTIVITY_WINDOW_MS) {
-    activityTracker.timestamps.shift();
+  // Remove timestamps older than the window using an index pointer.
+  // This avoids O(n^2) behavior from repeated Array.shift() calls.
+  while (
+    activityTracker.headIndex < activityTracker.timestamps.length &&
+    activityTracker.timestamps[activityTracker.headIndex] < cutoff
+  ) {
+    activityTracker.headIndex++;
   }
 
+  // Periodically compact consumed prefix to cap memory.
+  if (
+    activityTracker.headIndex > 512 &&
+    activityTracker.headIndex > activityTracker.timestamps.length / 2
+  ) {
+    activityTracker.timestamps.splice(0, activityTracker.headIndex);
+    activityTracker.headIndex = 0;
+  }
+
+  const activeEventCount = activityTracker.timestamps.length - activityTracker.headIndex;
+
   // Calculate events per second
-  activityTracker.eventsPerSec = activityTracker.timestamps.length / (ACTIVITY_WINDOW_MS / 1000);
+  activityTracker.eventsPerSec = activeEventCount / (ACTIVITY_WINDOW_MS / 1000);
 
   // Update DOM
   const pulseEl = document.getElementById('activity-pulse');
@@ -651,7 +670,9 @@ setInterval(() => {
   const rateEl = pulseEl?.querySelector('.activity-pulse-rate') as HTMLElement | null;
 
   if (pulseEl && dotEl && rateEl) {
-    const lastTimestamp = activityTracker.timestamps[activityTracker.timestamps.length - 1] || 0;
+    const lastTimestamp = activeEventCount > 0
+      ? activityTracker.timestamps[activityTracker.timestamps.length - 1] || 0
+      : 0;
     const isIdle = now - lastTimestamp > ACTIVITY_IDLE_THRESHOLD_MS;
 
     if (isIdle) {

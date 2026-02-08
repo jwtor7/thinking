@@ -184,11 +184,24 @@ export function filterTasksBySession(): void {
 
 /**
  * Handle a task_update event.
+ *
+ * Claude Code removes task JSON files from disk once all tasks are completed,
+ * so the server may broadcast an empty list. We retain previously-completed
+ * tasks in memory so they stay visible on the dashboard.
  */
 export function handleTaskUpdate(event: TaskUpdateEvent): void {
   if (!callbacks) return;
 
-  teamState.teamTasks.set(event.teamId, event.tasks);
+  const prev = teamState.teamTasks.get(event.teamId);
+  if (prev) {
+    const incomingIds = new Set(event.tasks.map(t => t.id));
+    const retainedCompleted = prev.filter(
+      t => t.status === 'completed' && !incomingIds.has(t.id)
+    );
+    teamState.teamTasks.set(event.teamId, [...event.tasks, ...retainedCompleted]);
+  } else {
+    teamState.teamTasks.set(event.teamId, event.tasks);
+  }
 
   callbacks.showTasksPanel();
   renderTaskBoard();

@@ -18,7 +18,7 @@
  */
 
 import { readFile, stat, readdir } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { homedir } from 'node:os';
 import type {
   TeamUpdateEvent,
@@ -29,6 +29,8 @@ import type {
 import { redactSecrets } from './secrets.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
 import { logger } from './logger.ts';
+import { hashContent, hashContentParts } from './change-detection.ts';
+import { isPathWithinAny } from './path-validation.ts';
 
 /** Polling interval for checking file updates (ms) */
 const POLL_INTERVAL_MS = 2000;
@@ -50,35 +52,12 @@ interface TrackedTaskDir {
 }
 
 /**
- * Simple hash function for detecting content changes.
- * Not cryptographic - just for change detection.
- */
-function simpleHash(content: string): string {
-  let hash = 0;
-  for (let i = 0; i < content.length; i++) {
-    const char = content.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return hash.toString(16);
-}
-
-/**
  * Validates that a path is within ~/.claude/teams/ or ~/.claude/tasks/.
  */
 function isValidTeamPath(filePath: string): boolean {
-  const teamsDir = resolve(join(homedir(), '.claude', 'teams'));
-  const tasksDir = resolve(join(homedir(), '.claude', 'tasks'));
-  const resolvedPath = resolve(filePath);
-
-  if (resolvedPath.includes('..')) {
-    return false;
-  }
-
-  const isUnderTeams = resolvedPath.startsWith(teamsDir + '/') || resolvedPath === teamsDir;
-  const isUnderTasks = resolvedPath.startsWith(tasksDir + '/') || resolvedPath === tasksDir;
-
-  return isUnderTeams || isUnderTasks;
+  const teamsDir = join(homedir(), '.claude', 'teams');
+  const tasksDir = join(homedir(), '.claude', 'tasks');
+  return isPathWithinAny(filePath, [teamsDir, tasksDir]);
 }
 
 /**
@@ -205,7 +184,7 @@ export class TeamWatcher {
 
         try {
           const content = await readFile(configPath, 'utf-8');
-          const contentHash = simpleHash(content);
+          const contentHash = hashContent(content);
           const existing = this.trackedTeams.get(teamName);
 
           if (!existing || existing.contentHash !== contentHash) {
@@ -268,29 +247,45 @@ export class TeamWatcher {
 
         try {
           const taskFiles = await readdir(taskDirPath, { withFileTypes: true });
-          const jsonFiles = taskFiles.filter(f => f.isFile() && f.name.endsWith('.json'));
+          const jsonFiles = taskFiles
+            .filter((f) => f.isFile() && f.name.endsWith('.json'))
+            .sort((a, b) => a.name.localeCompare(b.name));
 
-          // Build composite hash from all task files
-          let compositeContent = '';
+          // Hash includes file names and content in sorted order for deterministic
+          // change detection across filesystems with different readdir ordering.
+          const hashParts: string[] = [];
           const tasks: TaskInfo[] = [];
 
-          for (const taskFile of jsonFiles) {
-            const taskPath = join(taskDirPath, taskFile.name);
-            if (!isValidTeamPath(taskPath)) continue;
-
-            try {
-              const content = await readFile(taskPath, 'utf-8');
-              compositeContent += content;
-              const task = this.parseTaskFile(content);
-              if (task) {
-                tasks.push(task);
+          const taskFileResults = await Promise.all(
+            jsonFiles.map(async (taskFile) => {
+              const taskPath = join(taskDirPath, taskFile.name);
+              if (!isValidTeamPath(taskPath)) {
+                return null;
               }
-            } catch {
-              // Skip unreadable task files
+
+              try {
+                const content = await readFile(taskPath, 'utf-8');
+                return { name: taskFile.name, content };
+              } catch {
+                // Skip unreadable task files
+                return null;
+              }
+            })
+          );
+
+          for (const result of taskFileResults) {
+            if (!result) {
+              continue;
+            }
+
+            hashParts.push(result.name, result.content);
+            const task = this.parseTaskFile(result.content);
+            if (task) {
+              tasks.push(task);
             }
           }
 
-          const contentHash = simpleHash(compositeContent);
+          const contentHash = hashContentParts(hashParts);
           const existing = this.trackedTaskDirs.get(teamId);
 
           if (!existing || existing.contentHash !== contentHash) {

@@ -448,4 +448,55 @@ describe('WebSocket message validation', () => {
       }
     });
   });
+
+  describe('Rate limiting', () => {
+    it('should close a client that exceeds message rate limit', async () => {
+      const { port, cleanup } = await createTestServer();
+      try {
+        const ws = await connectAndWaitForStatus(port);
+        const closePromise = waitForClose(ws, 5000);
+
+        // Burst >100 messages in the same second
+        for (let i = 0; i < 101; i++) {
+          ws.send(JSON.stringify({ type: 'plan_request', path: `/tmp/p${i}.md` }));
+        }
+
+        const { code, reason } = await closePromise;
+        expect(code).toBe(1008);
+        expect(reason).toContain('Rate limit exceeded');
+      } finally {
+        await cleanup();
+      }
+    });
+  });
+
+  describe('Connection limiting', () => {
+    it('should reject the 11th concurrent connection', async () => {
+      const { port, cleanup } = await createTestServer();
+      const clients: WebSocket[] = [];
+      try {
+        // Open 10 clients (limit)
+        for (let i = 0; i < 10; i++) {
+          clients.push(await connectAndWaitForStatus(port));
+        }
+
+        // 11th should be closed by server
+        const overflow = new WebSocket(`ws://127.0.0.1:${port}`);
+        clients.push(overflow);
+
+        const { code, reason } = await waitForClose(overflow, 5000);
+        expect(code).toBe(1013);
+        expect(reason).toContain('too many connections');
+      } finally {
+        for (const ws of clients) {
+          try {
+            ws.close();
+          } catch {
+            // Ignore close failures in tests
+          }
+        }
+        await cleanup();
+      }
+    });
+  });
 });
