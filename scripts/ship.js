@@ -31,15 +31,37 @@ function sleep(ms) {
   return new Promise((resolveDelay) => setTimeout(resolveDelay, ms));
 }
 
+function findProcessOnPort(port) {
+  try {
+    const { execSync } = require('node:child_process');
+    const output = execSync(`lsof -ti :${port}`, { encoding: 'utf8' }).trim();
+    if (output) {
+      return output.split('\n').map((p) => Number.parseInt(p, 10)).filter(Number.isInteger);
+    }
+  } catch {
+    // No process on port
+  }
+  return [];
+}
+
 async function stopExistingProcess() {
-  if (!existsSync(pidFile)) {
-    return;
+  let existingPid = null;
+
+  // Check PID file first
+  if (existsSync(pidFile)) {
+    existingPid = Number.parseInt(readFileSync(pidFile, 'utf8').trim(), 10);
+    if (!isRunning(existingPid)) {
+      unlinkSync(pidFile);
+      existingPid = null;
+    }
   }
 
-  const existingPid = Number.parseInt(readFileSync(pidFile, 'utf8').trim(), 10);
-  if (!isRunning(existingPid)) {
-    unlinkSync(pidFile);
-    return;
+  // Fallback: check if something is already holding the port
+  if (!existingPid) {
+    const portPids = findProcessOnPort(3355);
+    if (portPids.length === 0) return;
+    existingPid = portPids[0];
+    console.log(`Found orphaned process on port 3355 (pid: ${existingPid})`);
   }
 
   console.log(`Stopping existing server process (${existingPid})...`);

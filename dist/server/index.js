@@ -21,7 +21,7 @@ function isClientRequest(obj) {
 }
 function getVersion() {
   if (true) {
-    return "1.2.2";
+    return "1.2.3";
   }
   try {
     const packagePath = join(process.cwd(), "package.json");

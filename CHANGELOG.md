@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-02-08 — v1.2.3
+
+#### 15:39
+### Fixed
+- **ship.js orphaned process detection** — Added `lsof` port check as fallback when no PID file exists, enabling detection and cleanup of old bash-era server processes that predate the PID-file system
+
+### Added
+- **Thinking Monitor.app macOS app bundle** — Created Spotlight-launchable app in /Applications with custom brain icon (Swift-generated .icns), runs `pnpm ship` and opens Safari dashboard
+- **think zsh alias** — Added `think` alias in ~/.zshrc for quick dashboard launch
+
+---
+
 ## 2026-02-08 — v1.2.2
 
 ### Changed
