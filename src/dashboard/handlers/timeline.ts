@@ -4,7 +4,7 @@
  * Provides a unified chronological view of all events across panels.
  */
 
-import { state, subagentState } from '../state.ts';
+import { state, subagentState, teamState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { formatTime, shortenToolName, summarizeInput } from '../utils/formatting.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
@@ -501,10 +501,31 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
     }
   }
 
+  // Resolve sessionId for plan/team events that lack one
+  let resolvedSessionId = event.sessionId;
+  if (!resolvedSessionId) {
+    if (event.type === 'plan_update' || event.type === 'plan_delete') {
+      const planPath = (event as any).path;
+      if (planPath) {
+        for (const [sessId, assocPath] of state.sessionPlanMap) {
+          if (assocPath === planPath || assocPath.endsWith(planPath)) {
+            resolvedSessionId = sessId;
+            break;
+          }
+        }
+      }
+    } else if (event.type === 'team_update' || event.type === 'task_update') {
+      const teamName = (event as any).teamName || (event as any).teamId;
+      if (teamName) {
+        resolvedSessionId = teamState.teamSessionMap.get(teamName);
+      }
+    }
+  }
+
   // Track per-session count and update/create session chip
-  if (event.sessionId) {
-    sessionCounts.set(event.sessionId, (sessionCounts.get(event.sessionId) || 0) + 1);
-    addOrUpdateSessionChip(event.sessionId);
+  if (resolvedSessionId) {
+    sessionCounts.set(resolvedSessionId, (sessionCounts.get(resolvedSessionId) || 0) + 1);
+    addOrUpdateSessionChip(resolvedSessionId);
   }
 
   // Update badge count
@@ -521,15 +542,15 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
   let agentLabel: string;
   let agentTooltip: string;
   if (agentId === 'main') {
-    const session = state.sessions.get(event.sessionId || '');
-    agentLabel = getSessionDisplayName(session?.workingDirectory, event.sessionId);
+    const session = state.sessions.get(resolvedSessionId || '');
+    agentLabel = getSessionDisplayName(session?.workingDirectory, resolvedSessionId);
     agentTooltip = session?.workingDirectory
-      ? `${session.workingDirectory}\nSession: ${event.sessionId || ''}`
-      : `Session: ${event.sessionId || ''}`;
+      ? `${session.workingDirectory}\nSession: ${resolvedSessionId || ''}`
+      : `Session: ${resolvedSessionId || ''}`;
   } else {
     const subagent = subagentState.subagents.get(agentId);
     agentLabel = subagent?.agentName || (agentId.length > 12 ? agentId.slice(0, 12) + '...' : agentId);
-    agentTooltip = `Agent: ${subagent?.agentName || agentId}\nStatus: ${subagent?.status || 'unknown'}\nSession: ${event.sessionId || ''}`;
+    agentTooltip = `Agent: ${subagent?.agentName || agentId}\nStatus: ${subagent?.status || 'unknown'}\nSession: ${resolvedSessionId || ''}`;
   }
   const agentBadgeColors = getAgentBadgeColors(agentId === 'main' ? agentLabel : agentId);
 
@@ -545,7 +566,7 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
   entry.className = `timeline-entry timeline-${typeClass} new`;
   entry.dataset.timestamp = String(Date.now());
   entry.dataset.type = event.type;
-  entry.dataset.session = event.sessionId || '';
+  entry.dataset.session = resolvedSessionId || '';
   entry.dataset.filterText = filterText;
   entry.dataset.category = category;
 
@@ -571,7 +592,7 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
   }
 
   // Apply session filter
-  if (state.selectedSession !== 'all' && event.sessionId && event.sessionId !== state.selectedSession) {
+  if (state.selectedSession !== 'all' && resolvedSessionId && resolvedSessionId !== state.selectedSession) {
     entry.style.display = 'none';
   }
 

@@ -370,7 +370,7 @@ export class PlanWatcher {
 
     const event: PlanUpdateEvent = {
       type: 'plan_update',
-      timestamp: new Date().toISOString(),
+      timestamp: lastModified ? new Date(lastModified).toISOString() : new Date().toISOString(),
       path,
       filename,
       content: safeContent,
@@ -483,7 +483,7 @@ export class PlanWatcher {
 
       return {
         type: 'plan_update',
-        timestamp: new Date().toISOString(),
+        timestamp: new Date(tracked.lastModified).toISOString(),
         path: tracked.path,
         filename: tracked.filename,
         content: safeContent,
@@ -521,7 +521,7 @@ export class PlanWatcher {
 
       return {
         type: 'plan_update',
-        timestamp: new Date().toISOString(),
+        timestamp: new Date(mostRecent.lastModified).toISOString(),
         path: mostRecent.path,
         filename: mostRecent.filename,
         content: safeContent,

@@ -38,6 +38,7 @@ interface TrackedTeam {
   teamName: string;
   contentHash: string;
   members: TeamMemberInfo[];
+  detectedAt: string;
 }
 
 /** Tracked task directory state */
@@ -45,6 +46,7 @@ interface TrackedTaskDir {
   teamId: string;
   contentHash: string;
   tasks: TaskInfo[];
+  detectedAt: string;
 }
 
 /**
@@ -140,7 +142,7 @@ export class TeamWatcher {
     for (const team of this.trackedTeams.values()) {
       events.push({
         type: 'team_update',
-        timestamp: new Date().toISOString(),
+        timestamp: team.detectedAt,
         teamName: team.teamName,
         members: team.members,
       });
@@ -156,7 +158,7 @@ export class TeamWatcher {
     for (const taskDir of this.trackedTaskDirs.values()) {
       events.push({
         type: 'task_update',
-        timestamp: new Date().toISOString(),
+        timestamp: taskDir.detectedAt,
         teamId: taskDir.teamId,
         tasks: taskDir.tasks,
       });
@@ -212,6 +214,7 @@ export class TeamWatcher {
               teamName,
               contentHash,
               members,
+              detectedAt: existing?.detectedAt || new Date().toISOString(),
             });
 
             this.broadcastTeamUpdate(teamName, members);
@@ -295,6 +298,7 @@ export class TeamWatcher {
               teamId,
               contentHash,
               tasks,
+              detectedAt: existing?.detectedAt || new Date().toISOString(),
             });
 
             this.broadcastTaskUpdate(teamId, tasks);
