@@ -249,8 +249,6 @@ function clearAllPanels(): void {
   // Clear team/task state
   teamState.teams.clear();
   teamState.teamTasks.clear();
-  teamState.teamSessionMap.clear();
-  teamState.taskSessionMap.clear();
   teamState.teamMessages = [];
   state.selectedAgentId = null;
 

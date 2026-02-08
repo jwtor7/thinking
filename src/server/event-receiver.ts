@@ -36,8 +36,6 @@ export class EventReceiver {
   private rateLimiter: RateLimiter;
   /** Track tool start times for duration calculation */
   private toolStartTimes: Map<string, number> = new Map();
-  /** Interval handle for stale tool cleanup */
-  private toolStartCleanupInterval: ReturnType<typeof setInterval> | null = null;
   /** Max age for pending tool starts (5 minutes) */
   private readonly TOOL_START_TTL_MS = 5 * 60 * 1000;
   /** Maximum number of pending tool starts to track */
@@ -59,7 +57,7 @@ export class EventReceiver {
     });
     this.subagentMapper = new SubagentMapper();
     // Periodically clean up stale tool start times
-    this.toolStartCleanupInterval = setInterval(() => this.cleanupStaleToolStarts(), 60000);
+    setInterval(() => this.cleanupStaleToolStarts(), 60000);
   }
 
   /**
@@ -80,11 +78,6 @@ export class EventReceiver {
   destroy(): void {
     this.rateLimiter.destroy();
     this.subagentMapper.destroy();
-    if (this.toolStartCleanupInterval) {
-      clearInterval(this.toolStartCleanupInterval);
-      this.toolStartCleanupInterval = null;
-    }
-    this.toolStartTimes.clear();
   }
 
   /**

@@ -22,6 +22,9 @@ export function handleEvent(event: StrictMonitorEvent): void {
   state.eventCount++;
   elements.eventCount.textContent = `Events: ${state.eventCount}`;
 
+  // Add to timeline (before dispatch to specific handler)
+  addTimelineEntry(event);
+
   // Update stats bar (pass sessionId for per-session tracking)
   updateStats(event, event.sessionId);
 
@@ -122,10 +125,6 @@ export function handleEvent(event: StrictMonitorEvent): void {
       type: event.type,
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-  } finally {
-    // Add to timeline after handlers so derived mappings (team/task -> session)
-    // are available for timeline session attribution.
-    addTimelineEntry(event);
   }
 }
 

@@ -42,8 +42,6 @@ export interface TeamState {
   teamMessages: MessageSentEvent[];
   /** teamName -> sessionId mapping for session scoping */
   teamSessionMap: Map<string, string>;
-  /** task teamId -> sessionId mapping for task session scoping */
-  taskSessionMap: Map<string, string>;
 }
 
 /**
@@ -54,7 +52,6 @@ export const teamState: TeamState = {
   teamTasks: new Map(),
   teamMessages: [],
   teamSessionMap: new Map(),
-  taskSessionMap: new Map(),
 };
 
 /**

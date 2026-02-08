@@ -10,7 +10,7 @@
  * 2. Handler Imports - each handler is imported from correct module
  * 3. Session Tracking - trackSession called for events with sessionId
  * 4. Session Activity Updates - updateSessionActivity called for specific events
- * 5. Timeline Integration - addTimelineEntry called after dispatch
+ * 5. Timeline Integration - addTimelineEntry called before dispatch
  * 6. Event Counter - state.eventCount and elements.eventCount updated
  * 7. Exhaustive Switch - never type check in default case
  * 8. Connection Status - handleConnectionStatus uses serverVersion with fallback
@@ -209,11 +209,10 @@ describe('Event Dispatcher - Static Analysis', () => {
       expect(dispatcherContent).toContain("import { addTimelineEntry } from './timeline.ts'");
     });
 
-    it('should call addTimelineEntry after switch dispatch', () => {
-      const switchIdx = dispatcherContent.indexOf('switch (event.type)');
-      const timelineIdx = dispatcherContent.indexOf('addTimelineEntry(event)');
-      expect(switchIdx).toBeGreaterThanOrEqual(0);
-      expect(timelineIdx).toBeGreaterThan(switchIdx);
+    it('should call addTimelineEntry before switch dispatch', () => {
+      // Verify addTimelineEntry is called before the switch statement
+      const beforeSwitch = dispatcherContent.split('switch (event.type)')[0];
+      expect(beforeSwitch).toContain('addTimelineEntry(event)');
     });
 
     it('should pass event to addTimelineEntry', () => {
@@ -436,13 +435,10 @@ describe('Event Dispatcher - Static Analysis', () => {
       expect(dispatcherContent).toContain('*/');
     });
 
-    it('should add timeline after dispatch', () => {
-      const switchIdx = dispatcherContent.indexOf('switch (event.type)');
-      const timelineIdx = dispatcherContent.indexOf('addTimelineEntry(event)');
-      const debugIdx = dispatcherContent.indexOf('debug(');
-      expect(switchIdx).toBeGreaterThanOrEqual(0);
-      expect(timelineIdx).toBeGreaterThan(switchIdx);
-      expect(debugIdx).toBeGreaterThanOrEqual(0);
+    it('should add timeline before dispatch', () => {
+      const beforeSwitch = dispatcherContent.split('switch (event.type)')[0];
+      expect(beforeSwitch).toContain('addTimelineEntry(event)');
+      expect(beforeSwitch).toContain('debug(');
     });
   });
 
@@ -458,12 +454,11 @@ describe('Event Dispatcher - Static Analysis', () => {
       const sessionTrackIdx = handlerBody.indexOf('trackSession');
       const switchIdx = handlerBody.indexOf('switch');
 
-      // Verify order: count -> log -> session track -> switch -> timeline
+      // Verify order: count -> timeline -> log -> session track -> switch
       expect(countIdx).toBeGreaterThanOrEqual(0);
-      expect(logIdx).toBeGreaterThan(countIdx);
-      expect(sessionTrackIdx).toBeGreaterThanOrEqual(logIdx);
+      expect(timelineIdx).toBeGreaterThan(countIdx);
+      expect(logIdx).toBeGreaterThan(timelineIdx);
       expect(switchIdx).toBeGreaterThan(sessionTrackIdx);
-      expect(timelineIdx).toBeGreaterThan(switchIdx);
     });
   });
 });

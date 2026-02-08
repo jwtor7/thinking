@@ -100,8 +100,6 @@ describe('TeamWatcher', () => {
       'hash-detection',
       'stop-test',
       'temp-team',
-      'root-delete-team',
-      'root-delete-tasks',
       'no-config',
       'skip-invalid',
     ];
@@ -592,48 +590,6 @@ describe('TeamWatcher', () => {
       events = mockHub.broadcastedEvents.filter((e) => e.type === 'team_update') as TeamUpdateEvent[];
       const deleteEvent = events.find((e) => e.teamName === teamName && e.members.length === 0);
       expect(deleteEvent).toBeDefined();
-    });
-
-    it('should broadcast team removals when teams root directory is deleted', async () => {
-      const teamName = 'root-delete-team';
-      const teamPath = join(teamsDir, teamName);
-      await mkdir(teamPath, { recursive: true });
-      await writeFile(
-        join(teamPath, 'config.json'),
-        JSON.stringify({ members: [{ name: 'Alice', agentId: 'a1', agentType: 'general' }] })
-      );
-
-      await teamWatcher.start();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      mockHub.clear();
-      await rm(teamsDir, { recursive: true, force: true });
-      await new Promise((resolve) => setTimeout(resolve, 2500));
-
-      const events = mockHub.broadcastedEvents.filter((e) => e.type === 'team_update') as TeamUpdateEvent[];
-      const removal = events.find((e) => e.teamName === teamName && e.members.length === 0);
-      expect(removal).toBeDefined();
-    });
-
-    it('should broadcast task removals when tasks root directory is deleted', async () => {
-      const teamId = 'root-delete-tasks';
-      const taskDirPath = join(tasksDir, teamId);
-      await mkdir(taskDirPath, { recursive: true });
-      await writeFile(
-        join(taskDirPath, 'task.json'),
-        JSON.stringify({ id: 'task-1', subject: 'Test task', status: 'pending', blocks: [], blockedBy: [] })
-      );
-
-      await teamWatcher.start();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      mockHub.clear();
-      await rm(tasksDir, { recursive: true, force: true });
-      await new Promise((resolve) => setTimeout(resolve, 2500));
-
-      const events = mockHub.broadcastedEvents.filter((e) => e.type === 'task_update') as TaskUpdateEvent[];
-      const removal = events.find((e) => e.teamId === teamId && e.tasks.length === 0);
-      expect(removal).toBeDefined();
     });
 
     it('should handle config file without content path validation error', async () => {

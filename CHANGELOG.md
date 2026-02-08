@@ -1,19 +1,5 @@
 # Changelog
 
-## 2026-02-08 — v1.2.1
-
-### Fixed
-- **EventReceiver interval cleanup** — `EventReceiver.destroy()` now clears its stale tool-start cleanup interval and in-memory pending tool map to avoid timer leaks across instances
-- **Session-scoped task filtering** — Removed fallback that showed all tasks when session mapping was missing; task board now only shows tasks mapped to the selected session
-- **Timeline session attribution ordering** — Timeline entries are now added after event-specific handlers so team/task session mappings are available for the first entry
-- **Team/task root deletion signaling** — `TeamWatcher` now emits empty `team_update`/`task_update` removal events when `~/.claude/teams` or `~/.claude/tasks` disappears
-
-### Changed
-- **Dashboard session mapping model** — Added `taskSessionMap` to track task-directory-to-session associations, including cleanup in panel reset flow
-- **Test coverage updates** — Added EventReceiver lifecycle test and new TeamWatcher root-directory removal tests; updated dispatcher static-analysis expectations for timeline ordering
-
----
-
 ## 2026-02-07 — v1.2.0
 
 ### Added

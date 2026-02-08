@@ -129,13 +129,9 @@ export function handleTeamUpdate(event: TeamUpdateEvent): void {
 
   // Map team to session: prefer event.sessionId, fall back to subagent name matching
   resolveTeamSession(teamName, event.sessionId, event.members);
-  const mappedSessionId = teamState.teamSessionMap.get(teamName);
-  if (mappedSessionId && teamState.teamTasks.has(teamName)) {
-    teamState.taskSessionMap.set(teamName, mappedSessionId);
-  }
 
   // Only render if this team belongs to the currently selected session
-  const teamSession = mappedSessionId;
+  const teamSession = teamState.teamSessionMap.get(teamName);
   if (state.selectedSession === 'all') {
     // Team panel is hidden for "All Sessions" — skip rendering
     return;
