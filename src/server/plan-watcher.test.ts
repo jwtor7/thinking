@@ -12,6 +12,7 @@ import { tmpdir, homedir } from 'node:os';
 import { PlanWatcher, isValidPlanPath } from './plan-watcher.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
 import type { PlanUpdateEvent, PlanDeleteEvent, MonitorEvent } from './types.ts';
+import { hashContent } from './change-detection.ts';
 
 // Mock WebSocketHub for testing
 class MockWebSocketHub implements Pick<WebSocketHub, 'broadcast' | 'getClientCount'> {
@@ -350,9 +351,8 @@ describe('Content Change Detection', () => {
     const content1 = '# Plan v1';
     const content2 = '# Plan v2';
 
-    // Simple hash should be different for different content
-    const hash1 = simpleHash(content1);
-    const hash2 = simpleHash(content2);
+    const hash1 = hashContent(content1);
+    const hash2 = hashContent(content2);
 
     expect(hash1).not.toBe(hash2);
   });
@@ -360,23 +360,12 @@ describe('Content Change Detection', () => {
   it('should detect identical content', () => {
     const content = '# Same Plan';
 
-    const hash1 = simpleHash(content);
-    const hash2 = simpleHash(content);
+    const hash1 = hashContent(content);
+    const hash2 = hashContent(content);
 
     expect(hash1).toBe(hash2);
   });
 });
-
-// Helper function copied from plan-watcher.ts for testing
-function simpleHash(content: string): string {
-  let hash = 0;
-  for (let i = 0; i < content.length; i++) {
-    const char = content.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return hash.toString(16);
-}
 
 describe('Integration with Types', () => {
   it('should use correct event types', async () => {

@@ -18,11 +18,12 @@
  */
 
 import { spawn } from 'node:child_process';
-import { normalize, resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { logger } from './logger.ts';
 import { CONFIG } from './types.ts';
+import { isPathWithin, normalizeAbsolutePath } from './path-validation.ts';
 
 /**
  * The allowed base directory for file operations.
@@ -42,25 +43,12 @@ const ALLOWED_BASE_DIR = resolve(homedir(), '.claude');
  * @returns true if path is within ~/.claude/, false otherwise
  */
 export function isAllowedPath(filePath: string): boolean {
-  // Empty or non-string paths are not allowed
-  if (!filePath || typeof filePath !== 'string') {
+  const normalizedPath = normalizeAbsolutePath(filePath);
+  if (!normalizedPath) {
     return false;
   }
 
-  // Non-absolute paths are not allowed
-  if (!filePath.startsWith('/')) {
-    return false;
-  }
-
-  // Resolve to absolute normalized path (handles .., ., etc.)
-  const normalizedPath = resolve(normalize(filePath));
-
-  // Check if the normalized path starts with the allowed base directory
-  // We add a trailing slash to prevent matching ~/.claudeXXX directories
-  return (
-    normalizedPath === ALLOWED_BASE_DIR ||
-    normalizedPath.startsWith(ALLOWED_BASE_DIR + '/')
-  );
+  return isPathWithin(normalizedPath, ALLOWED_BASE_DIR);
 }
 
 /**
@@ -90,22 +78,7 @@ interface FileActionResponse {
  * We allow any absolute path that doesn't contain traversal patterns.
  */
 function isSafeRevealPath(filePath: string): boolean {
-  if (!filePath || typeof filePath !== 'string') {
-    return false;
-  }
-
-  // Must be absolute
-  if (!filePath.startsWith('/')) {
-    return false;
-  }
-
-  // No traversal patterns
-  const normalizedPath = resolve(normalize(filePath));
-  if (normalizedPath.includes('..')) {
-    return false;
-  }
-
-  return true;
+  return normalizeAbsolutePath(filePath) !== null;
 }
 
 /**
@@ -130,7 +103,7 @@ function validateRequest(body: unknown): string | null {
   }
 
   // Validate path is an absolute path (starts with /)
-  if (!req.path.startsWith('/')) {
+  if (!isAbsolute(req.path)) {
     return 'Invalid path. Must be an absolute path starting with /';
   }
 

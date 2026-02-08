@@ -236,9 +236,10 @@ export function handleSessionStart(event: SessionStartEvent): void {
   state.currentSessionId = sessionId;
   updateSessionFilter();
 
-  // Auto-select the newly started session if we're viewing "All Sessions"
+  // Keep "All Sessions" context stable when new sessions appear.
+  // Avoid forcing selection changes that would unexpectedly unhide session-only panels.
   if (state.selectedSession === 'all') {
-    selectSession(sessionId);
+    updateSessionPanelVisibility('all');
   }
 }
 

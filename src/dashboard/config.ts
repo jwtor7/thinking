@@ -32,6 +32,6 @@ export const STORAGE_KEY_TEAM_VISIBLE = 'thinking-monitor-team-visible';
 export const STORAGE_KEY_TASKS_VISIBLE = 'thinking-monitor-tasks-visible';
 
 // Agent context stack limits to prevent memory leaks
-export const MAX_AGENT_STACK_SIZE = 100; // Maximum number of agents in the stack
-export const AGENT_STACK_STALE_MS = 60 * 60 * 1000; // 1 hour - entries older than this are considered stale
+export const MAX_AGENT_STACK_SIZE = 50; // Maximum number of agents in the stack
+export const AGENT_STACK_STALE_MS = 5 * 60 * 1000; // 5 min - stale contexts are cleaned aggressively
 export const AGENT_STACK_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // Run cleanup every 5 minutes

@@ -10,6 +10,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, resolve } from 'node:path';
 import { CONFIG } from './types.ts';
 import { logger } from './logger.ts';
+import { isPathWithin } from './path-validation.ts';
 
 /** MIME type mapping for static files */
 const MIME_TYPES: Record<string, string> = {
@@ -113,7 +114,7 @@ export class StaticServer {
     const resolved = resolve(filePath);
 
     // Security: ensure the resolved path is within the dashboard directory
-    if (!resolved.startsWith(this.dashboardDir)) {
+    if (!isPathWithin(resolved, this.dashboardDir)) {
       logger.warn('[StaticServer] Path traversal attempt:', pathname);
       return null;
     }

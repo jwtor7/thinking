@@ -12,7 +12,7 @@
 
 import { watch, type FSWatcher, createReadStream } from 'node:fs';
 import { stat, readdir } from 'node:fs/promises';
-import { join, dirname, resolve } from 'node:path';
+import { join, dirname } from 'node:path';
 import * as readline from 'node:readline';
 import { homedir } from 'node:os';
 import type { ThinkingEvent } from './types.ts';
@@ -20,6 +20,7 @@ import { truncatePayload, CONFIG } from './types.ts';
 import { redactSecrets } from './secrets.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
 import { logger } from './logger.ts';
+import { isPathWithin } from './path-validation.ts';
 
 /** Transcript JSONL line structure (simplified for thinking extraction) */
 interface TranscriptLine {
@@ -85,20 +86,7 @@ export function extractWorkingDirectory(filePath: string): string | undefined {
  */
 export function isValidClaudePath(filePath: string): boolean {
   const claudeDir = join(homedir(), '.claude');
-  const resolvedPath = resolve(filePath);
-  const resolvedClaudeDir = resolve(claudeDir);
-
-  // Ensure the path is within ~/.claude/
-  if (!resolvedPath.startsWith(resolvedClaudeDir + '/') && resolvedPath !== resolvedClaudeDir) {
-    return false;
-  }
-
-  // Prevent directory traversal attacks
-  if (resolvedPath.includes('..')) {
-    return false;
-  }
-
-  return true;
+  return isPathWithin(filePath, claudeDir);
 }
 
 /**
@@ -111,6 +99,7 @@ export class TranscriptWatcher {
   private projectsWatcher: FSWatcher | null = null;
   private subDirWatchers: Map<string, FSWatcher> = new Map();
   private pollInterval: ReturnType<typeof setInterval> | null = null;
+  private watcherReconcileInterval: ReturnType<typeof setInterval> | null = null;
   private isShuttingDown = false;
   /**
    * Flag to track if we're in the initial scanning phase.
@@ -122,6 +111,8 @@ export class TranscriptWatcher {
    * Maps sessionId to workingDirectory (if known).
    */
   private announcedSessions: Map<string, string | undefined> = new Map();
+  /** Reconcile subdirectory watchers every 5 minutes to avoid stale watcher leaks. */
+  private static readonly WATCHER_RECONCILE_INTERVAL_MS = 5 * 60 * 1000;
 
   constructor(hub: WebSocketHub) {
     this.hub = hub;
@@ -228,6 +219,8 @@ export class TranscriptWatcher {
         this.pollTrackedFiles();
       }
     }, CONFIG.TRANSCRIPT_POLL_INTERVAL_MS);
+
+    this.startWatcherReconcileInterval();
 
     logger.info(`[TranscriptWatcher] Tracking ${this.trackedFiles.size} transcript files`);
   }
@@ -337,6 +330,41 @@ export class TranscriptWatcher {
         this.trackedFiles.delete(filePath);
       }
     }
+  }
+
+  /**
+   * Periodically reconcile watched subdirectories to clean up stale watchers.
+   * This prevents watcher leaks when filesystem events are missed.
+   */
+  private startWatcherReconcileInterval(): void {
+    if (this.watcherReconcileInterval) {
+      return;
+    }
+
+    this.watcherReconcileInterval = setInterval(() => {
+      if (this.isShuttingDown) {
+        return;
+      }
+
+      (async () => {
+        const watchedPaths = Array.from(this.subDirWatchers.keys());
+        for (const projectPath of watchedPaths) {
+          try {
+            const stats = await stat(projectPath);
+            if (!stats.isDirectory()) {
+              this.cleanupProjectDirectory(projectPath);
+            }
+          } catch {
+            this.cleanupProjectDirectory(projectPath);
+          }
+        }
+      })().catch((error) => {
+        logger.error(
+          '[TranscriptWatcher] Error reconciling subdirectory watchers:',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+      });
+    }, TranscriptWatcher.WATCHER_RECONCILE_INTERVAL_MS);
   }
 
   /**
@@ -470,6 +498,7 @@ export class TranscriptWatcher {
     const lines: string[] = [];
 
     return new Promise((resolve, reject) => {
+      let settled = false;
       const stream = createReadStream(filePath, {
         start: fromOffset,
         encoding: 'utf-8',
@@ -487,19 +516,45 @@ export class TranscriptWatcher {
       });
 
       rl.on('close', async () => {
+        if (settled) {
+          return;
+        }
+
         try {
           const stats = await stat(filePath);
+          settled = true;
           resolve({ lines, newOffset: stats.size });
         } catch (error) {
+          settled = true;
           reject(error);
         }
       });
 
       rl.on('error', (error) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        try {
+          rl.close();
+        } catch {
+          // Ignore close errors during error handling
+        }
+        stream.destroy();
         reject(error);
       });
 
       stream.on('error', (error) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        try {
+          rl.close();
+        } catch {
+          // Ignore close errors during error handling
+        }
+        stream.destroy();
         reject(error);
       });
     });
@@ -644,6 +699,11 @@ export class TranscriptWatcher {
   stop(): void {
     this.isShuttingDown = true;
     this.stopPolling();
+
+    if (this.watcherReconcileInterval) {
+      clearInterval(this.watcherReconcileInterval);
+      this.watcherReconcileInterval = null;
+    }
 
     // Close all file watchers
     for (const [, tracked] of this.trackedFiles) {

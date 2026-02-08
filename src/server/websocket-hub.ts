@@ -26,6 +26,10 @@ interface ConnectedClient {
   id: string;
   /** Counter for invalid messages received from this client */
   invalidMessageCount: number;
+  /** Message count in current rate-limit window */
+  messageCount: number;
+  /** Start timestamp for current message rate-limit window */
+  messageWindowStart: number;
   /** Whether the client responded to the last ping */
   isAlive: boolean;
 }
@@ -48,6 +52,14 @@ export class WebSocketHub {
   /** Ping interval for detecting stale connections (30s) */
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private static readonly PING_INTERVAL_MS = 30_000;
+  /** Maximum concurrent WebSocket clients */
+  private static readonly MAX_CONNECTIONS = 10;
+  /** Maximum messages per second per client */
+  private static readonly MAX_MESSAGES_PER_WINDOW = 100;
+  /** Rate-limit window duration in ms */
+  private static readonly MESSAGE_WINDOW_MS = 1_000;
+  /** Maximum inbound message size in bytes */
+  private static readonly MAX_MESSAGE_SIZE = 100 * 1024; // 100KB
 
   /**
    * Attach the WebSocket server to an existing HTTP server.
@@ -129,12 +141,21 @@ export class WebSocketHub {
    * Handle new WebSocket connection.
    */
   private handleConnection(ws: WebSocket, _req: IncomingMessage): void {
+    if (this.clients.size >= WebSocketHub.MAX_CONNECTIONS) {
+      logger.warn('[WebSocketHub] Rejected connection: max client limit reached');
+      ws.close(1013, 'Server busy: too many connections');
+      return;
+    }
+
     const clientId = this.generateClientId();
+    const now = Date.now();
     const client: ConnectedClient = {
       ws,
       connectedAt: new Date(),
       id: clientId,
       invalidMessageCount: 0,
+      messageCount: 0,
+      messageWindowStart: now,
       isAlive: true,
     };
 
@@ -172,18 +193,21 @@ export class WebSocketHub {
 
     // Handle incoming messages from clients
     ws.on('message', (data) => {
+      if (!this.checkMessageRateLimit(client)) {
+        ws.close(1008, 'Rate limit exceeded');
+        return;
+      }
+
+      const { rawLength, messageStr } = this.parseIncomingMessage(data, WebSocketHub.MAX_MESSAGE_SIZE);
+
       // Security: Reject oversized messages to prevent DoS
-      const MAX_MESSAGE_SIZE = 100 * 1024; // 100KB
-      // Check raw buffer size BEFORE string conversion to prevent memory spike
-      const rawLength = Buffer.isBuffer(data) ? data.length : Buffer.byteLength(data.toString());
-      if (rawLength > MAX_MESSAGE_SIZE) {
+      if (rawLength > WebSocketHub.MAX_MESSAGE_SIZE) {
         logger.warn(
           `[WebSocketHub] Rejected oversized message from ${client.id}: ${rawLength} bytes`
         );
         ws.close(1009, 'Message too large');
         return;
       }
-      const messageStr = data.toString();
 
       // Early JSON validation before processing
       let parsed: unknown;
@@ -203,6 +227,75 @@ export class WebSocketHub {
 
       this.handleClientMessage(client, parsed);
     });
+  }
+
+  /**
+   * Enforce per-client message rate limits.
+   * Returns false when the client exceeded the configured window limit.
+   */
+  private checkMessageRateLimit(client: ConnectedClient): boolean {
+    const now = Date.now();
+    if (now - client.messageWindowStart >= WebSocketHub.MESSAGE_WINDOW_MS) {
+      client.messageWindowStart = now;
+      client.messageCount = 0;
+    }
+
+    client.messageCount++;
+    if (client.messageCount > WebSocketHub.MAX_MESSAGES_PER_WINDOW) {
+      logger.warn(
+        `[WebSocketHub] Rate limit exceeded for ${client.id}: ${client.messageCount} msg/s`
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Parse incoming ws payload without unnecessary string conversions.
+   * For Buffer-like inputs, size is checked before UTF-8 conversion.
+   */
+  private parseIncomingMessage(
+    data: unknown,
+    maxSize: number
+  ): { rawLength: number; messageStr: string } {
+    if (Buffer.isBuffer(data)) {
+      if (data.length > maxSize) {
+        return { rawLength: data.length, messageStr: '' };
+      }
+      return { rawLength: data.length, messageStr: data.toString('utf-8') };
+    }
+
+    if (Array.isArray(data)) {
+      const rawLength = data.reduce((total, chunk) => total + chunk.length, 0);
+      if (rawLength > maxSize) {
+        return { rawLength, messageStr: '' };
+      }
+      const messageStr = Buffer.concat(data).toString('utf-8');
+      return { rawLength, messageStr };
+    }
+
+    if (data instanceof ArrayBuffer) {
+      const rawLength = data.byteLength;
+      if (rawLength > maxSize) {
+        return { rawLength, messageStr: '' };
+      }
+      const messageStr = Buffer.from(data).toString('utf-8');
+      return { rawLength, messageStr };
+    }
+
+    if (ArrayBuffer.isView(data)) {
+      const view = data as ArrayBufferView;
+      const rawLength = view.byteLength;
+      if (rawLength > maxSize) {
+        return { rawLength, messageStr: '' };
+      }
+      const messageStr = Buffer.from(view.buffer, view.byteOffset, view.byteLength).toString('utf-8');
+      return { rawLength, messageStr };
+    }
+
+    const messageStr = String(data ?? '');
+    return { rawLength: Buffer.byteLength(messageStr), messageStr };
   }
 
   /**

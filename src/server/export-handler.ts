@@ -12,7 +12,7 @@
 
 import { writeFile, mkdir, readdir, stat } from 'node:fs/promises';
 import { realpathSync } from 'node:fs';
-import { dirname, basename, normalize, resolve, isAbsolute, join } from 'node:path';
+import { dirname, basename, isAbsolute, join } from 'node:path';
 import { homedir } from 'node:os';
 import { spawn } from 'node:child_process';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -20,6 +20,7 @@ import { logger } from './logger.ts';
 import { CONFIG } from './types.ts';
 import { parse as parseUrl } from 'node:url';
 import { getOpenCommand } from './file-actions.ts';
+import { normalizeAbsolutePath } from './path-validation.ts';
 
 /**
  * Maximum content size for export (1MB).
@@ -34,17 +35,8 @@ const MAX_EXPORT_SIZE = 1024 * 1024;
  * @returns The normalized absolute path, or null if invalid
  */
 export function validateExportPath(filePath: string): string | null {
-  // Must be an absolute path
-  if (!filePath || !isAbsolute(filePath)) {
-    return null;
-  }
-
-  // Normalize to prevent traversal attacks
-  const normalizedPath = resolve(normalize(filePath));
-
-  // Ensure the normalized path doesn't escape via .. sequences
-  // (resolve/normalize should handle this, but double-check)
-  if (normalizedPath.includes('/../') || normalizedPath.endsWith('/..')) {
+  const normalizedPath = normalizeAbsolutePath(filePath);
+  if (!normalizedPath) {
     return null;
   }
 
@@ -337,25 +329,22 @@ export async function handleBrowseRequest(
     normalizedPath = homedir();
   }
 
-  // Normalize and resolve the path (prevents traversal attacks)
-  normalizedPath = resolve(normalize(normalizedPath));
-
-  // Validate path is absolute
-  if (!isAbsolute(normalizedPath)) {
+  const absolutePath = normalizeAbsolutePath(normalizedPath);
+  if (!absolutePath) {
     sendBrowseResponse(res, 400, { success: false, error: 'Path must be absolute' });
     return true;
   }
 
   try {
     // Check if path exists and is a directory
-    const pathStat = await stat(normalizedPath);
+    const pathStat = await stat(absolutePath);
     if (!pathStat.isDirectory()) {
       sendBrowseResponse(res, 400, { success: false, error: 'Path is not a directory' });
       return true;
     }
 
     // Read directory contents
-    const dirEntries = await readdir(normalizedPath, { withFileTypes: true });
+    const dirEntries = await readdir(absolutePath, { withFileTypes: true });
 
     // Filter and map entries
     const entries: Array<{ name: string; type: 'file' | 'directory' }> = [];
@@ -383,15 +372,15 @@ export async function handleBrowseRequest(
 
     // Calculate parent directory (always available unless at root)
     let parentPath: string | null = null;
-    const parentDir = dirname(normalizedPath);
-    if (parentDir !== normalizedPath) {
+    const parentDir = dirname(absolutePath);
+    if (parentDir !== absolutePath) {
       parentPath = parentDir;
     }
 
-    logger.debug(`[Browse] Listed ${entries.length} entries in: ${normalizedPath}`);
+    logger.debug(`[Browse] Listed ${entries.length} entries in: ${absolutePath}`);
     sendBrowseResponse(res, 200, {
       success: true,
-      path: normalizedPath,
+      path: absolutePath,
       parent: parentPath,
       entries,
     });
@@ -548,22 +537,15 @@ export async function handleRevealFileRequest(
     return true;
   }
 
-  // Validate path is absolute
-  if (!isAbsolute(filePath)) {
-    sendRevealFileResponse(res, 400, { success: false, error: 'Invalid path. Must be an absolute path' });
-    return true;
-  }
-
   // Security: Only allow .md files
   if (!filePath.endsWith('.md')) {
     sendRevealFileResponse(res, 400, { success: false, error: 'Invalid path. Only .md files are allowed' });
     return true;
   }
 
-  // Normalize path to prevent traversal
-  const normalizedPath = resolve(normalize(filePath));
-  if (normalizedPath.includes('/../') || normalizedPath.endsWith('/..')) {
-    sendRevealFileResponse(res, 400, { success: false, error: 'Invalid path. Path contains traversal sequences' });
+  const normalizedPath = normalizeAbsolutePath(filePath);
+  if (!normalizedPath) {
+    sendRevealFileResponse(res, 400, { success: false, error: 'Invalid path. Must be an absolute path' });
     return true;
   }
 

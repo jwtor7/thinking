@@ -56,9 +56,28 @@ const SECRET_PATTERNS: SecretPattern[] = [
     minLength: 20,
   },
   {
-    name: 'Anthropic API key',
-    pattern: /\b(sk-ant-[a-zA-Z0-9_-]{32,})\b/g,
+    name: 'OpenAI project key',
+    pattern: /\b(sk-proj-[a-zA-Z0-9_-]{20,})\b/g,
     minLength: 20,
+  },
+  {
+    name: 'Anthropic API key',
+    pattern: /\b(sk-ant(?:-[a-zA-Z0-9]+)?-[a-zA-Z0-9_-]{20,}(?:-ant-v2)?)\b/g,
+    minLength: 20,
+  },
+  {
+    name: 'Databricks token',
+    pattern: /\b(dapi[a-zA-Z0-9]{32,})\b/g,
+    minLength: 20,
+  },
+  {
+    name: 'Supabase secret key',
+    pattern: /\b(sb_secret_[a-zA-Z0-9_-]{20,})\b/g,
+    minLength: 20,
+  },
+  {
+    name: 'Supabase service role key assignment',
+    pattern: /\b((?:SUPABASE_SERVICE_ROLE_KEY|supabase_service_role_key|service_role_key)\s*[=:]\s*)["']?([a-zA-Z0-9._-]{20,})["']?/gi,
   },
   {
     name: 'GitHub token',
@@ -130,8 +149,8 @@ const SECRET_PATTERNS: SecretPattern[] = [
 
   // Private keys (PEM format)
   {
-    name: 'Private key header',
-    pattern: /(-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----)/g,
+    name: 'Private key block',
+    pattern: /(-----BEGIN\s+(?:[A-Z]+\s+)?PRIVATE\s+KEY-----[\s\S]*?-----END\s+(?:[A-Z]+\s+)?PRIVATE\s+KEY-----)/g,
   },
 
   // Generic hex strings that look like secrets (32+ chars)

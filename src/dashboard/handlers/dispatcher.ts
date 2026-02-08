@@ -39,85 +39,92 @@ export function handleEvent(event: StrictMonitorEvent): void {
     trackSession(event.sessionId, event.timestamp);
   }
 
-  switch (event.type) {
-    case 'connection_status':
-      handleConnectionStatus(event);
-      break;
-    case 'thinking':
-      handleThinking(event);
-      addAgentThinking(event);
-      // Update activity for thinking events
-      if (event.sessionId) {
-        updateSessionActivity(event.sessionId);
+  try {
+    switch (event.type) {
+      case 'connection_status':
+        handleConnectionStatus(event);
+        break;
+      case 'thinking':
+        handleThinking(event);
+        addAgentThinking(event);
+        // Update activity for thinking events
+        if (event.sessionId) {
+          updateSessionActivity(event.sessionId);
+        }
+        break;
+      case 'tool_start':
+        handleToolStart(event);
+        // Update activity for tool events
+        if (event.sessionId) {
+          updateSessionActivity(event.sessionId);
+        }
+        break;
+      case 'tool_end':
+        handleToolEnd(event);
+        // Update activity for tool events
+        if (event.sessionId) {
+          updateSessionActivity(event.sessionId);
+        }
+        break;
+      case 'agent_start':
+        handleAgentStart(event);
+        break;
+      case 'agent_stop':
+        handleAgentStop(event);
+        break;
+      case 'session_start':
+        handleSessionStart(event);
+        break;
+      case 'session_stop':
+        handleSessionStop(event);
+        break;
+      case 'plan_update':
+        handlePlanUpdate(event);
+        break;
+      case 'plan_delete':
+        handlePlanDelete(event);
+        break;
+      case 'plan_list':
+        handlePlanList(event);
+        break;
+      case 'hook_execution':
+        handleHookExecution(event);
+        // Update activity for hook events
+        if (event.sessionId) {
+          updateSessionActivity(event.sessionId);
+        }
+        break;
+      case 'subagent_mapping':
+        handleSubagentMapping(event);
+        // Update session filter to show subagent indicators
+        updateSessionFilter();
+        break;
+      case 'team_update':
+        handleTeamUpdate(event);
+        break;
+      case 'task_update':
+        handleTaskUpdate(event);
+        break;
+      case 'message_sent':
+        handleMessageSent(event);
+        break;
+      case 'teammate_idle':
+        handleTeammateIdle(event);
+        break;
+      case 'task_completed':
+        handleTaskCompleted(event);
+        break;
+      default: {
+        // This should never happen if StrictMonitorEvent is exhaustive
+        const exhaustiveCheck: never = event;
+        debug('[Dashboard] Unhandled event type:', (exhaustiveCheck as { type: string }).type);
       }
-      break;
-    case 'tool_start':
-      handleToolStart(event);
-      // Update activity for tool events
-      if (event.sessionId) {
-        updateSessionActivity(event.sessionId);
-      }
-      break;
-    case 'tool_end':
-      handleToolEnd(event);
-      // Update activity for tool events
-      if (event.sessionId) {
-        updateSessionActivity(event.sessionId);
-      }
-      break;
-    case 'agent_start':
-      handleAgentStart(event);
-      break;
-    case 'agent_stop':
-      handleAgentStop(event);
-      break;
-    case 'session_start':
-      handleSessionStart(event);
-      break;
-    case 'session_stop':
-      handleSessionStop(event);
-      break;
-    case 'plan_update':
-      handlePlanUpdate(event);
-      break;
-    case 'plan_delete':
-      handlePlanDelete(event);
-      break;
-    case 'plan_list':
-      handlePlanList(event);
-      break;
-    case 'hook_execution':
-      handleHookExecution(event);
-      // Update activity for hook events
-      if (event.sessionId) {
-        updateSessionActivity(event.sessionId);
-      }
-      break;
-    case 'subagent_mapping':
-      handleSubagentMapping(event);
-      // Update session filter to show subagent indicators
-      updateSessionFilter();
-      break;
-    case 'team_update':
-      handleTeamUpdate(event);
-      break;
-    case 'task_update':
-      handleTaskUpdate(event);
-      break;
-    case 'message_sent':
-      handleMessageSent(event);
-      break;
-    case 'teammate_idle':
-      handleTeammateIdle(event);
-      break;
-    case 'task_completed':
-      handleTaskCompleted(event);
-      break;
-    default: {
-      // This should never happen if StrictMonitorEvent is exhaustive
-      const exhaustiveCheck: never = event;
-      debug('[Dashboard] Unhandled event type:', (exhaustiveCheck as { type: string }).type);
     }
+  } catch (error) {
+    debug('[Dashboard] Error handling event:', {
+      type: event.type,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 }
 
