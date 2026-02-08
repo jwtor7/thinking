@@ -35,6 +35,11 @@ import { isPathWithinAny } from './path-validation.ts';
 /** Polling interval for checking file updates (ms) */
 const POLL_INTERVAL_MS = 2000;
 
+export interface TeamWatcherOptions {
+  teamsDir?: string;
+  tasksDir?: string;
+}
+
 /** Tracked team state */
 interface TrackedTeam {
   teamName: string;
@@ -52,15 +57,6 @@ interface TrackedTaskDir {
 }
 
 /**
- * Validates that a path is within ~/.claude/teams/ or ~/.claude/tasks/.
- */
-function isValidTeamPath(filePath: string): boolean {
-  const teamsDir = join(homedir(), '.claude', 'teams');
-  const tasksDir = join(homedir(), '.claude', 'tasks');
-  return isPathWithinAny(filePath, [teamsDir, tasksDir]);
-}
-
-/**
  * TeamWatcher monitors ~/.claude/teams/ and ~/.claude/tasks/ directories.
  */
 export class TeamWatcher {
@@ -72,10 +68,10 @@ export class TeamWatcher {
   private pollInterval: ReturnType<typeof setInterval> | null = null;
   private isShuttingDown = false;
 
-  constructor(hub: WebSocketHub) {
+  constructor(hub: WebSocketHub, options?: TeamWatcherOptions) {
     this.hub = hub;
-    this.teamsDir = join(homedir(), '.claude', 'teams');
-    this.tasksDir = join(homedir(), '.claude', 'tasks');
+    this.teamsDir = options?.teamsDir ?? join(homedir(), '.claude', 'teams');
+    this.tasksDir = options?.tasksDir ?? join(homedir(), '.claude', 'tasks');
   }
 
   /**
@@ -180,7 +176,7 @@ export class TeamWatcher {
         currentTeamNames.add(teamName);
         const configPath = join(this.teamsDir, teamName, 'config.json');
 
-        if (!isValidTeamPath(configPath)) continue;
+        if (!this.isValidPath(configPath)) continue;
 
         try {
           const content = await readFile(configPath, 'utf-8');
@@ -243,7 +239,7 @@ export class TeamWatcher {
         currentTeamIds.add(teamId);
         const taskDirPath = join(this.tasksDir, teamId);
 
-        if (!isValidTeamPath(taskDirPath)) continue;
+        if (!this.isValidPath(taskDirPath)) continue;
 
         try {
           const taskFiles = await readdir(taskDirPath, { withFileTypes: true });
@@ -259,7 +255,7 @@ export class TeamWatcher {
           const taskFileResults = await Promise.all(
             jsonFiles.map(async (taskFile) => {
               const taskPath = join(taskDirPath, taskFile.name);
-              if (!isValidTeamPath(taskPath)) {
+              if (!this.isValidPath(taskPath)) {
                 return null;
               }
 
@@ -375,6 +371,13 @@ export class TeamWatcher {
       return status;
     }
     return 'pending';
+  }
+
+  /**
+   * Validate that a path is inside the configured teams/tasks roots.
+   */
+  private isValidPath(filePath: string): boolean {
+    return isPathWithinAny(filePath, [this.teamsDir, this.tasksDir]);
   }
 
   /**

@@ -5,7 +5,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.2.1-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.2-purple)](./CHANGELOG.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 [![GitHub Stars](https://img.shields.io/github/stars/jwtor7/thinking?style=social)](https://github.com/jwtor7/thinking)
 
@@ -27,7 +27,6 @@ Claude Code is powerful, but opaque. You see the output, not the process. Thinki
 |-------|--------------|
 | **Thinking** | Live stream of Claude's reasoning with collapsible entries |
 | **Tools** | Every tool call with timing, inputs, and outputs |
-| **Todo** | Task progress (pending → in-progress → completed) |
 | **Plan** | Active plan files with quick-open and reveal |
 | **Team** | Agent teams with member grid, status indicators, inter-agent message timeline |
 | **Tasks** | Three-column kanban board (Pending / In Progress / Completed) with task cards |
@@ -109,8 +108,9 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 | Key | Action |
 |-----|--------|
-| `t` `o` `d` `p` `m` `k` `l` `h` | Switch view (Thinking, Tools, Todo, Plan, Team, Tasks, Timeline, Hooks) |
-| `Shift` + `t` `o` `d` `p` `m` `k` `l` | Collapse/expand panel |
+| `t` `o` `h` `m` `k` `l` `a` `p` | Switch view (Thinking, Tools, Hooks, Team, Tasks, Timeline, Agents, Plan) |
+| `Shift` + `t` `o` `h` `m` `k` `l` `a` | Collapse/expand panel |
+| `Shift+P` | Open panel visibility settings |
 | `c` | Clear all entries |
 | `s` | Toggle auto-scroll |
 | `/` | Focus search |
@@ -174,11 +174,10 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
+- **v1.2.2** (2026-02-08 15:16) — Replaced bash scripts with portable Node.js equivalents, made watchers path-configurable for test isolation, and aligned keyboard shortcuts and docs with current dashboard state.
 - **v1.2.1** (2026-02-08 14:32) — Fixed EventReceiver interval cleanup to prevent timer leaks when instances are destroyed and recreated; added co-located test for lifecycle behavior.
 - **v1.2.0** (2026-02-07 23:15) — Merged Codex refactoring: new path-validation and change-detection modules, JSON structured logging, expanded secret detection, WebSocket hardening, and fixed completed task retention on dashboard.
 - **v1.1.4** (2026-02-07 22:10) — Fixed timeline events showing wrong timestamps and unattributed plan/team events; now uses original detection timestamps and resolves session context.
 - **v1.1.3** (2026-02-07 16:01) — Fixed team events rendering for wrong session: `handleTeamUpdate`, `handleTeammateIdle`, and `handleMessageSent` now check session context before rendering.
-- **v1.1.2** (2026-02-07) — Hidden Team/Tasks panels for "All Sessions" to prevent stale data when no specific session is selected.
-- **v1.1.1** (2026-02-07 14:59) — Fixed 7 dashboard audit issues: session chip UUID labels, duplicate dropdown names, all-disabled filter persistence, uncategorized session events, stale session auto-select, silent chip override, thinking entry eviction protection.
 
 *[Full changelog →](./CHANGELOG.md)*

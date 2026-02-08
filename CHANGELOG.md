@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-02-08 — v1.2.2
+
+### Changed
+- **Replaced bash scripts with portable Node.js equivalents** — Replaced `bump-version.sh`, `ship` workflow bash scripts, and `dev` watch process with `scripts/bump-version.js`, `scripts/ship.js`, and `scripts/dev-watch.js` for cross-platform PID-file daemon management and process handling.
+- **Made TeamWatcher, PlanWatcher, and TranscriptWatcher path-configurable** — Added optional directory overrides to all three watchers for test isolation while preserving default `~/.claude` runtime behavior.
+- **Updated keyboard shortcuts and panel references in CLAUDE.md** — Corrected shortcuts to match current dashboard state (Tasks/Agents views, session-scoped tab wording).
+- **Fixed CLAUDE.md `pnpm start` description** — Removed incorrect note about "kills existing" processes.
+
+### Fixed
+- **EventReceiver lifecycle test** — Strengthened test to verify the exact interval handle is cleared in `destroy()`.
+
+---
+
 ## 2026-02-08 — v1.2.1
 
 ### Fixed

@@ -8,8 +8,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { tmpdir, homedir } from 'node:os';
-import { TranscriptWatcher, isValidClaudePath } from './transcript-watcher.ts';
+import { tmpdir } from 'node:os';
+import { TranscriptWatcher, isValidClaudePathWithinRoot } from './transcript-watcher.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
 import type { ThinkingEvent, MonitorEvent } from './types.ts';
 
@@ -31,34 +31,34 @@ class MockWebSocketHub implements Pick<WebSocketHub, 'broadcast' | 'getClientCou
 }
 
 describe('isValidClaudePath', () => {
-  const claudeDir = join(homedir(), '.claude');
+  const claudeDir = join(tmpdir(), 'thinking-claude-path-validation');
 
   it('should accept paths within ~/.claude/', () => {
-    expect(isValidClaudePath(join(claudeDir, 'projects'))).toBe(true);
-    expect(isValidClaudePath(join(claudeDir, 'projects', 'test-project'))).toBe(true);
-    expect(isValidClaudePath(join(claudeDir, 'projects', 'test.jsonl'))).toBe(true);
+    expect(isValidClaudePathWithinRoot(join(claudeDir, 'projects'), claudeDir)).toBe(true);
+    expect(isValidClaudePathWithinRoot(join(claudeDir, 'projects', 'test-project'), claudeDir)).toBe(true);
+    expect(isValidClaudePathWithinRoot(join(claudeDir, 'projects', 'test.jsonl'), claudeDir)).toBe(true);
   });
 
   it('should accept the ~/.claude/ directory itself', () => {
-    expect(isValidClaudePath(claudeDir)).toBe(true);
+    expect(isValidClaudePathWithinRoot(claudeDir, claudeDir)).toBe(true);
   });
 
   it('should reject paths outside ~/.claude/', () => {
-    expect(isValidClaudePath('/tmp/test')).toBe(false);
-    expect(isValidClaudePath('/etc/passwd')).toBe(false);
-    expect(isValidClaudePath('/Users/other/.claude/projects')).toBe(false);
-    expect(isValidClaudePath(homedir())).toBe(false);
+    expect(isValidClaudePathWithinRoot('/tmp/test', claudeDir)).toBe(false);
+    expect(isValidClaudePathWithinRoot('/etc/passwd', claudeDir)).toBe(false);
+    expect(isValidClaudePathWithinRoot('/Users/other/.claude/projects', claudeDir)).toBe(false);
+    expect(isValidClaudePathWithinRoot(join(claudeDir, '..'), claudeDir)).toBe(false);
   });
 
   it('should reject paths with directory traversal attempts', () => {
     // Note: resolve() normalizes these, but we check for '..' just in case
-    expect(isValidClaudePath(join(claudeDir, '..', 'etc', 'passwd'))).toBe(false);
+    expect(isValidClaudePathWithinRoot(join(claudeDir, '..', 'etc', 'passwd'), claudeDir)).toBe(false);
   });
 
   it('should handle relative paths correctly', () => {
     // Relative paths are resolved against cwd, which is unlikely to be in ~/.claude/
-    expect(isValidClaudePath('./test')).toBe(false);
-    expect(isValidClaudePath('../test')).toBe(false);
+    expect(isValidClaudePathWithinRoot('./test', claudeDir)).toBe(false);
+    expect(isValidClaudePathWithinRoot('../test', claudeDir)).toBe(false);
   });
 });
 
@@ -66,14 +66,22 @@ describe('TranscriptWatcher', () => {
   let mockHub: MockWebSocketHub;
   let watcher: TranscriptWatcher;
   let testDir: string;
+  let projectsDir: string;
 
   beforeEach(async () => {
     mockHub = new MockWebSocketHub();
-    watcher = new TranscriptWatcher(mockHub as unknown as WebSocketHub);
 
     // Create a temporary test directory
     testDir = join(tmpdir(), `transcript-watcher-test-${Date.now()}`);
     await mkdir(testDir, { recursive: true });
+
+    projectsDir = join(testDir, 'projects');
+    await mkdir(projectsDir, { recursive: true });
+
+    watcher = new TranscriptWatcher(mockHub as unknown as WebSocketHub, {
+      claudeDir: testDir,
+      projectsDir,
+    });
   });
 
   afterEach(async () => {
@@ -272,12 +280,12 @@ describe('File Tracking Logic', () => {
   });
 
   it('should handle file path validation', () => {
-    const claudeDir = join(homedir(), '.claude');
+    const claudeDir = join(tmpdir(), 'thinking-claude-path-validation');
     const validPath = join(claudeDir, 'projects', 'test-project', 'session.jsonl');
     const invalidPath = '/tmp/malicious.jsonl';
 
-    expect(isValidClaudePath(validPath)).toBe(true);
-    expect(isValidClaudePath(invalidPath)).toBe(false);
+    expect(isValidClaudePathWithinRoot(validPath, claudeDir)).toBe(true);
+    expect(isValidClaudePathWithinRoot(invalidPath, claudeDir)).toBe(false);
   });
 });
 

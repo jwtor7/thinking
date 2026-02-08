@@ -416,7 +416,7 @@ export function updateSessionFilter(): void {
 // ============================================
 
 /**
- * Toggle visibility of session-specific panels (TODO and PLAN).
+ * Toggle visibility of session-specific panels (Plan, Team, and Tasks).
  * These panels are hidden when "All" sessions is selected since they're session-specific.
  */
 function updateSessionPanelVisibility(sessionId: string): void {
@@ -439,7 +439,7 @@ function updateSessionPanelVisibility(sessionId: string): void {
 
 /**
  * Select a session to filter by.
- * Updates event filtering, todo display, and shows the session's associated plan.
+ * Updates event filtering, session-scoped panels, and the session's associated plan.
  */
 export function selectSession(sessionId: string): void {
   state.selectedSession = sessionId;
@@ -451,7 +451,7 @@ export function selectSession(sessionId: string): void {
   // Update visibility of session-specific panels
   updateSessionPanelVisibility(sessionId);
 
-  // Update view tab visibility (hide Todo/Plan tabs when "All" selected)
+  // Update view tab visibility (hide session-scoped tabs when "All" is selected)
   updateSessionViewTabs(isAllSessions);
 
   // Show the plan associated with this session (if any)

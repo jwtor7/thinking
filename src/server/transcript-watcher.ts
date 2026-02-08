@@ -22,6 +22,11 @@ import type { WebSocketHub } from './websocket-hub.ts';
 import { logger } from './logger.ts';
 import { isPathWithin } from './path-validation.ts';
 
+export interface TranscriptWatcherOptions {
+  projectsDir?: string;
+  claudeDir?: string;
+}
+
 /** Transcript JSONL line structure (simplified for thinking extraction) */
 interface TranscriptLine {
   type?: string;
@@ -86,6 +91,13 @@ export function extractWorkingDirectory(filePath: string): string | undefined {
  */
 export function isValidClaudePath(filePath: string): boolean {
   const claudeDir = join(homedir(), '.claude');
+  return isValidClaudePathWithinRoot(filePath, claudeDir);
+}
+
+/**
+ * Validates that a path is within the provided Claude root.
+ */
+export function isValidClaudePathWithinRoot(filePath: string, claudeDir: string): boolean {
   return isPathWithin(filePath, claudeDir);
 }
 
@@ -94,6 +106,7 @@ export function isValidClaudePath(filePath: string): boolean {
  */
 export class TranscriptWatcher {
   private hub: WebSocketHub;
+  private claudeDir: string;
   private projectsDir: string;
   private trackedFiles: Map<string, TrackedFile> = new Map();
   private projectsWatcher: FSWatcher | null = null;
@@ -114,16 +127,18 @@ export class TranscriptWatcher {
   /** Reconcile subdirectory watchers every 5 minutes to avoid stale watcher leaks. */
   private static readonly WATCHER_RECONCILE_INTERVAL_MS = 5 * 60 * 1000;
 
-  constructor(hub: WebSocketHub) {
+  constructor(hub: WebSocketHub, options?: TranscriptWatcherOptions) {
     this.hub = hub;
-    this.projectsDir = join(homedir(), '.claude', 'projects');
+    this.claudeDir = options?.claudeDir
+      ?? (options?.projectsDir ? dirname(options.projectsDir) : join(homedir(), '.claude'));
+    this.projectsDir = options?.projectsDir ?? join(this.claudeDir, 'projects');
   }
 
   /**
    * Start watching transcript files.
    */
   async start(): Promise<void> {
-    if (!isValidClaudePath(this.projectsDir)) {
+    if (!this.isValidPath(this.projectsDir)) {
       logger.error('[TranscriptWatcher] Invalid projects directory path');
       return;
     }
@@ -231,7 +246,7 @@ export class TranscriptWatcher {
   private async handleProjectChange(projectName: string): Promise<void> {
     const projectPath = join(this.projectsDir, projectName);
 
-    if (!isValidClaudePath(projectPath)) {
+    if (!this.isValidPath(projectPath)) {
       return;
     }
 
@@ -256,7 +271,7 @@ export class TranscriptWatcher {
       for (const entry of entries) {
         if (entry.isDirectory() && !entry.name.startsWith('.')) {
           const projectPath = join(this.projectsDir, entry.name);
-          if (isValidClaudePath(projectPath)) {
+          if (this.isValidPath(projectPath)) {
             await this.watchProjectDirectory(projectPath);
           }
         }
@@ -371,7 +386,7 @@ export class TranscriptWatcher {
    * Handle changes to a specific JSONL file.
    */
   private async handleFileChange(filePath: string): Promise<void> {
-    if (!isValidClaudePath(filePath)) {
+    if (!this.isValidPath(filePath)) {
       return;
     }
 
@@ -399,7 +414,7 @@ export class TranscriptWatcher {
   }
 
   private async trackFile(filePath: string): Promise<void> {
-    if (!isValidClaudePath(filePath) || this.trackedFiles.has(filePath)) {
+    if (!this.isValidPath(filePath) || this.trackedFiles.has(filePath)) {
       return;
     }
 
@@ -752,5 +767,12 @@ export class TranscriptWatcher {
    */
   isRunning(): boolean {
     return !this.isShuttingDown && (this.projectsWatcher !== null || this.pollInterval !== null);
+  }
+
+  /**
+   * Validate that a path is inside the configured Claude root.
+   */
+  private isValidPath(filePath: string): boolean {
+    return isValidClaudePathWithinRoot(filePath, this.claudeDir);
   }
 }

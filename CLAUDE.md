@@ -14,7 +14,7 @@ pnpm build
 # Build + restart as background daemon (use after code changes)
 pnpm ship
 
-# Start production server (kills existing, runs foreground)
+# Start production server (foreground)
 pnpm start
 
 # Type checking only

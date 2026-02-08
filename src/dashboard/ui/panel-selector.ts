@@ -2,7 +2,7 @@
  * Panel Selector Modal Component
  *
  * Modal UI for toggling panel visibility in the dashboard.
- * Allows users to show/hide individual panels (Thinking, Tools, Todo, Plan).
+ * Allows users to show/hide individual panels (Thinking, Tools, Hooks, Team, Tasks, Timeline, Agents, Plan).
  */
 
 import { state } from '../state.ts';

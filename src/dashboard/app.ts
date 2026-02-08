@@ -583,7 +583,7 @@ initExportModal({
 // Initialize view tabs navigation
 initViewTabs();
 
-// Hide Todo and Plan tabs on initial load when "All" sessions is selected
+// Hide session-scoped tabs on initial load when "All" sessions is selected
 if (state.selectedSession === 'all') {
   updateSessionViewTabs(true);
 }

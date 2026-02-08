@@ -8,8 +8,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { tmpdir, homedir } from 'node:os';
-import { PlanWatcher, isValidPlanPath } from './plan-watcher.ts';
+import { tmpdir } from 'node:os';
+import { PlanWatcher, isValidPlanPathWithinRoot } from './plan-watcher.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
 import type { PlanUpdateEvent, PlanDeleteEvent, MonitorEvent } from './types.ts';
 import { hashContent } from './change-detection.ts';
@@ -48,39 +48,36 @@ class MockWebSocketHub implements Pick<WebSocketHub, 'broadcast' | 'getClientCou
 }
 
 describe('isValidPlanPath', () => {
-  const plansDir = join(homedir(), '.claude', 'plans');
+  const plansDir = join(tmpdir(), 'thinking-plan-path-validation');
 
   it('should accept paths within ~/.claude/plans/', () => {
-    expect(isValidPlanPath(join(plansDir, 'test-plan.md'))).toBe(true);
-    expect(isValidPlanPath(join(plansDir, 'another-plan.md'))).toBe(true);
-    expect(isValidPlanPath(join(plansDir, 'nested', 'plan.md'))).toBe(true);
+    expect(isValidPlanPathWithinRoot(join(plansDir, 'test-plan.md'), plansDir)).toBe(true);
+    expect(isValidPlanPathWithinRoot(join(plansDir, 'another-plan.md'), plansDir)).toBe(true);
+    expect(isValidPlanPathWithinRoot(join(plansDir, 'nested', 'plan.md'), plansDir)).toBe(true);
   });
 
   it('should accept the ~/.claude/plans/ directory itself', () => {
-    expect(isValidPlanPath(plansDir)).toBe(true);
+    expect(isValidPlanPathWithinRoot(plansDir, plansDir)).toBe(true);
   });
 
   it('should reject paths outside ~/.claude/plans/', () => {
-    expect(isValidPlanPath('/tmp/test.md')).toBe(false);
-    expect(isValidPlanPath('/etc/passwd')).toBe(false);
-    expect(isValidPlanPath('/Users/other/.claude/plans/test.md')).toBe(false);
-    expect(isValidPlanPath(homedir())).toBe(false);
-    // Should reject ~/.claude/ (parent directory)
-    expect(isValidPlanPath(join(homedir(), '.claude'))).toBe(false);
-    // Should reject ~/.claude/projects/ (sibling directory)
-    expect(isValidPlanPath(join(homedir(), '.claude', 'projects'))).toBe(false);
+    expect(isValidPlanPathWithinRoot('/tmp/test.md', plansDir)).toBe(false);
+    expect(isValidPlanPathWithinRoot('/etc/passwd', plansDir)).toBe(false);
+    expect(isValidPlanPathWithinRoot('/Users/other/.claude/plans/test.md', plansDir)).toBe(false);
+    expect(isValidPlanPathWithinRoot(join(plansDir, '..'), plansDir)).toBe(false);
+    expect(isValidPlanPathWithinRoot(join(plansDir, '..', 'projects'), plansDir)).toBe(false);
   });
 
   it('should reject paths with directory traversal attempts', () => {
     // Note: resolve() normalizes these, but we check for '..' just in case
-    expect(isValidPlanPath(join(plansDir, '..', 'settings.json'))).toBe(false);
-    expect(isValidPlanPath(join(plansDir, '..', '..', 'etc', 'passwd'))).toBe(false);
+    expect(isValidPlanPathWithinRoot(join(plansDir, '..', 'settings.json'), plansDir)).toBe(false);
+    expect(isValidPlanPathWithinRoot(join(plansDir, '..', '..', 'etc', 'passwd'), plansDir)).toBe(false);
   });
 
   it('should handle relative paths correctly', () => {
     // Relative paths are resolved against cwd, which is unlikely to be in ~/.claude/plans/
-    expect(isValidPlanPath('./test.md')).toBe(false);
-    expect(isValidPlanPath('../test.md')).toBe(false);
+    expect(isValidPlanPathWithinRoot('./test.md', plansDir)).toBe(false);
+    expect(isValidPlanPathWithinRoot('../test.md', plansDir)).toBe(false);
   });
 });
 
@@ -88,14 +85,19 @@ describe('PlanWatcher', () => {
   let mockHub: MockWebSocketHub;
   let watcher: PlanWatcher;
   let testDir: string;
+  let plansDir: string;
 
   beforeEach(async () => {
     mockHub = new MockWebSocketHub();
-    watcher = new PlanWatcher(mockHub as unknown as WebSocketHub);
 
     // Create a temporary test directory
     testDir = join(tmpdir(), `plan-watcher-test-${Date.now()}`);
     await mkdir(testDir, { recursive: true });
+
+    plansDir = join(testDir, 'plans');
+    await mkdir(plansDir, { recursive: true });
+
+    watcher = new PlanWatcher(mockHub as unknown as WebSocketHub, { plansDir });
   });
 
   afterEach(async () => {
@@ -238,12 +240,12 @@ describe('File Tracking Logic', () => {
   });
 
   it('should handle file path validation', () => {
-    const plansDir = join(homedir(), '.claude', 'plans');
+    const plansDir = join(tmpdir(), 'thinking-plan-path-validation');
     const validPath = join(plansDir, 'active-plan.md');
     const invalidPath = '/tmp/malicious-plan.md';
 
-    expect(isValidPlanPath(validPath)).toBe(true);
-    expect(isValidPlanPath(invalidPath)).toBe(false);
+    expect(isValidPlanPathWithinRoot(validPath, plansDir)).toBe(true);
+    expect(isValidPlanPathWithinRoot(invalidPath, plansDir)).toBe(false);
   });
 });
 

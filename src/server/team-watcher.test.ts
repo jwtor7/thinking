@@ -12,10 +12,11 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { TeamWatcher } from './team-watcher.ts';
-import { mkdir, writeFile, rm, readdir } from 'node:fs/promises';
+import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
+import { tmpdir } from 'node:os';
 import type { MonitorEvent, TeamUpdateEvent, TaskUpdateEvent } from './types.ts';
+import type { WebSocketHub } from './websocket-hub.ts';
 
 /**
  * Mock WebSocketHub for testing event broadcasting.
@@ -41,25 +42,26 @@ class MockWebSocketHub {
 describe('TeamWatcher', () => {
   let mockHub: MockWebSocketHub;
   let teamWatcher: TeamWatcher;
+  let testRootDir: string;
   let teamsDir: string;
   let tasksDir: string;
 
   beforeEach(async () => {
-    // Use actual ~/.claude/teams and ~/.claude/tasks for path validation to work correctly
-    // These must exist under ~/.claude/ for isValidTeamPath to validate them
-    teamsDir = join(homedir(), '.claude', 'teams');
-    tasksDir = join(homedir(), '.claude', 'tasks');
+    testRootDir = join(tmpdir(), `team-watcher-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+    teamsDir = join(testRootDir, 'teams');
+    tasksDir = join(testRootDir, 'tasks');
 
-
-    // Create directory structure if it doesn't exist
+    // Create isolated directory structure per test
     await mkdir(teamsDir, { recursive: true });
     await mkdir(tasksDir, { recursive: true });
 
     mockHub = new MockWebSocketHub();
 
-    // Create TeamWatcher - it will use the real paths since they exist
-    // @ts-ignore - MockWebSocketHub has the broadcast method we need for testing
-    teamWatcher = new TeamWatcher(mockHub);
+    // Create TeamWatcher with temp roots so tests do not touch ~/.claude
+    teamWatcher = new TeamWatcher(mockHub as unknown as WebSocketHub, {
+      teamsDir,
+      tasksDir,
+    });
   });
 
   afterEach(async () => {
@@ -69,59 +71,8 @@ describe('TeamWatcher', () => {
     // Wait for polling to stop
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    // Clean up all test directories we created
-    const testPrefixes = [
-      'test-',
-      'engineering',
-      'broken',
-      'partial',
-      'invalid',
-      'empty',
-      'minimal',
-      'multi-tasks',
-      'task-progress',
-      'bad-status',
-      'dependencies',
-      'mixed-files',
-      'invalid-task-json',
-      'missing-id',
-      'secrets-team',
-      'subject-secrets',
-      'partial-secrets',
-      'lifecycle-team',
-      'state-team',
-      'state-tasks',
-      'clear-state',
-      'timestamp-team',
-      'structure-team',
-      'structure-tasks',
-      'change-detection',
-      'removal-tasks',
-      'hash-detection',
-      'stop-test',
-      'temp-team',
-      'no-config',
-      'skip-invalid',
-    ];
-
     try {
-      const teams = await readdir(teamsDir);
-      for (const team of teams) {
-        if (testPrefixes.some((prefix) => team.includes(prefix) || team.startsWith(prefix))) {
-          await rm(join(teamsDir, team), { recursive: true, force: true });
-        }
-      }
-    } catch {
-      // Ignore cleanup errors
-    }
-
-    try {
-      const tasks = await readdir(tasksDir);
-      for (const taskDir of tasks) {
-        if (testPrefixes.some((prefix) => taskDir.includes(prefix) || taskDir.startsWith(prefix))) {
-          await rm(join(tasksDir, taskDir), { recursive: true, force: true });
-        }
-      }
+      await rm(testRootDir, { recursive: true, force: true });
     } catch {
       // Ignore cleanup errors
     }

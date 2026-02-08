@@ -55,9 +55,9 @@ export function initKeyboard(cbs: KeyboardCallbacks): void {
  * - 's' - Toggle auto-scroll
  * - '/' - Focus thinking filter
  * - 'Escape' - Clear filters and blur
- * - Shift+T/O/D/H - Toggle panel collapse (Thinking/Tools/Todo/Hooks)
+ * - Shift+T/O/H/M/K/L/A - Toggle panel collapse (Thinking/Tools/Hooks/Team/Tasks/Timeline/Agents)
  * - Shift+P - Open panel selector modal
- * - T/O/D/H/P (without shift) - Select view (Thinking/Tools/Todo/Hooks/Plan)
+ * - T/O/H/M/K/L/A/P (without shift) - Select view (Thinking/Tools/Hooks/Team/Tasks/Timeline/Agents/Plan)
  * - Cmd/Ctrl+E - Export as Markdown
  * - Cmd/Ctrl+O - Open plan in default app
  * - Cmd/Ctrl+Shift+R - Reveal plan in Finder

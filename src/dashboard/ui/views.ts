@@ -1,7 +1,7 @@
 /**
  * View Navigation Management
  *
- * Handles switching between different dashboard views (thinking, tools, todo, plan, etc.)
+ * Handles switching between different dashboard views (thinking, tools, tasks, plan, etc.)
  * and managing the UI state for view-specific filtering and display.
  */
 
@@ -127,8 +127,8 @@ export function updateViewTabs(): void {
 
 /**
  * Update view tab visibility based on session selection.
- * Hides Todo and Plan tabs when "All sessions" is selected since they're session-specific.
- * If currently viewing Todo or Plan, auto-switches to "All" view.
+ * Hides Plan, Team, and Tasks tabs when "All sessions" is selected.
+ * If currently viewing a session-specific tab, auto-switches to Thinking.
  *
  * @param isAllSessions - True when "All" sessions is selected
  */

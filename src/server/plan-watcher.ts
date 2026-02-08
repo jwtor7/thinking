@@ -22,6 +22,10 @@ import { logger } from './logger.ts';
 import { hashContent } from './change-detection.ts';
 import { isPathWithin } from './path-validation.ts';
 
+export interface PlanWatcherOptions {
+  plansDir?: string;
+}
+
 /** Tracked plan file state */
 interface TrackedPlan {
   path: string;
@@ -36,6 +40,13 @@ interface TrackedPlan {
  */
 export function isValidPlanPath(filePath: string): boolean {
   const plansDir = join(homedir(), '.claude', 'plans');
+  return isValidPlanPathWithinRoot(filePath, plansDir);
+}
+
+/**
+ * Validates that a path is within the provided plans root.
+ */
+export function isValidPlanPathWithinRoot(filePath: string, plansDir: string): boolean {
   return isPathWithin(filePath, plansDir);
 }
 
@@ -53,16 +64,16 @@ export class PlanWatcher {
   /** Polling interval for checking file updates (ms) */
   private static readonly POLL_INTERVAL_MS = 2000;
 
-  constructor(hub: WebSocketHub) {
+  constructor(hub: WebSocketHub, options?: PlanWatcherOptions) {
     this.hub = hub;
-    this.plansDir = join(homedir(), '.claude', 'plans');
+    this.plansDir = options?.plansDir ?? join(homedir(), '.claude', 'plans');
   }
 
   /**
    * Start watching the plans directory.
    */
   async start(): Promise<void> {
-    if (!isValidPlanPath(this.plansDir)) {
+    if (!this.isValidPath(this.plansDir)) {
       logger.error('[PlanWatcher] Invalid plans directory path');
       return;
     }
@@ -161,7 +172,7 @@ export class PlanWatcher {
       for (const entry of entries) {
         if (entry.isFile() && entry.name.endsWith('.md')) {
           const filePath = join(this.plansDir, entry.name);
-          if (isValidPlanPath(filePath)) {
+          if (this.isValidPath(filePath)) {
             await this.trackPlanFile(filePath);
           }
         }
@@ -177,7 +188,7 @@ export class PlanWatcher {
   private handleFileEvent(_eventType: string, filename: string): void {
     const filePath = join(this.plansDir, filename);
 
-    if (!isValidPlanPath(filePath)) {
+    if (!this.isValidPath(filePath)) {
       return;
     }
 
@@ -204,7 +215,7 @@ export class PlanWatcher {
    * Start tracking a plan file.
    */
   private async trackPlanFile(filePath: string): Promise<void> {
-    if (!isValidPlanPath(filePath)) {
+    if (!this.isValidPath(filePath)) {
       return;
     }
 
@@ -238,7 +249,7 @@ export class PlanWatcher {
    * Process an update to a plan file.
    */
   private async processPlanUpdate(filePath: string): Promise<void> {
-    if (!isValidPlanPath(filePath)) {
+    if (!this.isValidPath(filePath)) {
       return;
     }
 
@@ -293,7 +304,7 @@ export class PlanWatcher {
           const filePath = join(this.plansDir, entry.name);
           currentFiles.add(filePath);
 
-          if (isValidPlanPath(filePath)) {
+          if (this.isValidPath(filePath)) {
             // Check if this is a new file or has been modified
             if (!this.trackedPlans.has(filePath)) {
               await this.trackPlanFile(filePath);
@@ -448,7 +459,7 @@ export class PlanWatcher {
    * Returns null if the plan is not tracked or cannot be read.
    */
   async getPlanContent(planPath: string): Promise<PlanUpdateEvent | null> {
-    if (!isValidPlanPath(planPath)) {
+    if (!this.isValidPath(planPath)) {
       return null;
     }
 
@@ -510,5 +521,12 @@ export class PlanWatcher {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Validate that a path is inside the configured plans root.
+   */
+  private isValidPath(filePath: string): boolean {
+    return isValidPlanPathWithinRoot(filePath, this.plansDir);
   }
 }
