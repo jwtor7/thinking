@@ -85,16 +85,11 @@ function renderTaskBoard(): void {
       allTasks.push(...tasks);
     }
   } else {
-    // Find team(s) belonging to this session
-    for (const [teamName, sessionId] of teamState.teamSessionMap) {
+    // Show only task directories explicitly mapped to the selected session.
+    // This avoids leaking tasks from other sessions when mapping is incomplete.
+    for (const [teamId, tasks] of teamState.teamTasks) {
+      const sessionId = teamState.taskSessionMap.get(teamId);
       if (sessionId === state.selectedSession) {
-        const tasks = teamState.teamTasks.get(teamName);
-        if (tasks) allTasks.push(...tasks);
-      }
-    }
-    // If no team mapped to session, show all as fallback
-    if (allTasks.length === 0) {
-      for (const tasks of teamState.teamTasks.values()) {
         allTasks.push(...tasks);
       }
     }
@@ -192,6 +187,18 @@ export function filterTasksBySession(): void {
 export function handleTaskUpdate(event: TaskUpdateEvent): void {
   if (!callbacks) return;
 
+  // Track task directory -> session mapping when available.
+  // task_update from TeamWatcher may not include sessionId, so we also
+  // reuse team mapping when keys happen to align.
+  if (event.sessionId) {
+    teamState.taskSessionMap.set(event.teamId, event.sessionId);
+  } else {
+    const mappedSessionId = teamState.teamSessionMap.get(event.teamId);
+    if (mappedSessionId) {
+      teamState.taskSessionMap.set(event.teamId, mappedSessionId);
+    }
+  }
+
   const prev = teamState.teamTasks.get(event.teamId);
   if (prev) {
     const incomingIds = new Set(event.tasks.map(t => t.id));
@@ -214,6 +221,9 @@ export function handleTaskCompleted(event: TaskCompletedEvent): void {
   if (!callbacks) return;
 
   const teamId = event.teamId || '';
+  if (teamId && event.sessionId) {
+    teamState.taskSessionMap.set(teamId, event.sessionId);
+  }
   const tasks = teamState.teamTasks.get(teamId);
   if (tasks) {
     const task = tasks.find(t => t.id === event.taskId);

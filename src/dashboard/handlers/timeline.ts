@@ -514,10 +514,15 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
           }
         }
       }
-    } else if (event.type === 'team_update' || event.type === 'task_update') {
-      const teamName = (event as any).teamName || (event as any).teamId;
+    } else if (event.type === 'team_update') {
+      const teamName = (event as any).teamName;
       if (teamName) {
         resolvedSessionId = teamState.teamSessionMap.get(teamName);
+      }
+    } else if (event.type === 'task_update') {
+      const teamId = (event as any).teamId;
+      if (teamId) {
+        resolvedSessionId = teamState.taskSessionMap.get(teamId) || teamState.teamSessionMap.get(teamId);
       }
     }
   }

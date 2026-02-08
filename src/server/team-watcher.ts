@@ -162,8 +162,11 @@ export class TeamWatcher {
     try {
       await stat(this.teamsDir);
     } catch {
-      // Directory doesn't exist yet, clear tracked teams if any
+      // Directory doesn't exist yet, clear tracked teams and notify clients.
       if (this.trackedTeams.size > 0) {
+        for (const [teamName] of this.trackedTeams) {
+          this.broadcastTeamUpdate(teamName, []);
+        }
         this.trackedTeams.clear();
       }
       return;
@@ -225,8 +228,11 @@ export class TeamWatcher {
     try {
       await stat(this.tasksDir);
     } catch {
-      // Directory doesn't exist yet, clear tracked tasks if any
+      // Directory doesn't exist yet, clear tracked tasks and notify clients.
       if (this.trackedTaskDirs.size > 0) {
+        for (const [teamId] of this.trackedTaskDirs) {
+          this.broadcastTaskUpdate(teamId, []);
+        }
         this.trackedTaskDirs.clear();
       }
       return;
