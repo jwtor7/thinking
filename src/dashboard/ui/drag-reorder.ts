@@ -118,15 +118,9 @@ function handleMouseMove(e: MouseEvent): void {
 
   // Move placeholder to new position
   if (insertBefore && insertBefore !== placeholder.nextElementSibling) {
-    // Skip any resizer before the insert target
-    let target: Element = insertBefore;
-    const prev = insertBefore.previousElementSibling;
-    if (prev?.classList.contains('resizer-vertical')) {
-      target = prev;
-    }
-    panelsContainer.insertBefore(placeholder, target);
+    panelsContainer.insertBefore(placeholder, insertBefore);
   } else if (!insertBefore) {
-    // Append to end (after last panel or resizer)
+    // Append to end
     panelsContainer.appendChild(placeholder);
   }
 }

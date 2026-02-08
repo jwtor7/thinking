@@ -113,7 +113,7 @@ export function togglePanelCollapse(panelName: PanelName): void {
   // This allows CSS to control panel sizes after resize
   resetPanelFlex(panel);
 
-  // Rebuild resizers to only show between visible panels
+  // Remove any stale resize handles after visibility changes
   rebuildResizers();
 
   // Persist to localStorage

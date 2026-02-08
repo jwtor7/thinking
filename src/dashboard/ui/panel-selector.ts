@@ -154,7 +154,7 @@ function handlePanelToggle(panelName: keyof PanelVisibility, visible: boolean): 
   // Apply view filter which respects both panel visibility and active view
   applyViewFilter();
 
-  // Rebuild resizers for visible panels
+  // Remove any stale resize handles in single-view mode
   rebuildResizers();
 
   // Persist to localStorage

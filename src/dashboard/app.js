@@ -1274,85 +1274,14 @@
   }
 
   // src/dashboard/ui/resizer.ts
-  var resizeState = {
-    isResizing: false,
-    startY: 0,
-    startHeights: [],
-    resizer: null,
-    targets: []
-  };
-  var MIN_PANEL_HEIGHT = 80;
-  function initResizers() {
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    document.addEventListener("resizer-start", ((e) => {
-      e.preventDefault();
-      const { clientY, resizer, topPanel, bottomPanel } = e.detail;
-      startResize(clientY, resizer, [topPanel, bottomPanel]);
-    }));
-    rebuildResizers();
-  }
-  function isPanelVisible(panel) {
-    return !panel.classList.contains("collapsed") && !panel.classList.contains("session-hidden");
-  }
   function removeAllResizers() {
-    const panelsContainer = elements.panels;
-    panelsContainer.querySelectorAll(".resizer-vertical").forEach((r) => r.remove());
+    elements.panels.querySelectorAll(".resizer-vertical").forEach((resizer) => resizer.remove());
+  }
+  function initResizers() {
+    removeAllResizers();
   }
   function rebuildResizers() {
     removeAllResizers();
-    const panelsContainer = elements.panels;
-    const allPanels = Array.from(panelsContainer.querySelectorAll(":scope > .panel"));
-    const visiblePanels = allPanels.filter(isPanelVisible);
-    if (visiblePanels.length < 2) return;
-    for (let i = 0; i < visiblePanels.length - 1; i++) {
-      const topPanel = visiblePanels[i];
-      const bottomPanel = visiblePanels[i + 1];
-      const resizer = document.createElement("div");
-      resizer.className = "resizer resizer-vertical";
-      resizer.setAttribute("aria-hidden", "true");
-      resizer.dataset.topPanel = topPanel.className;
-      resizer.dataset.bottomPanel = bottomPanel.className;
-      bottomPanel.before(resizer);
-      resizer.addEventListener("mousedown", createResizerMouseDownHandler(topPanel, bottomPanel, resizer));
-    }
-  }
-  function createResizerMouseDownHandler(topPanel, bottomPanel, resizer) {
-    return (e) => {
-      e.preventDefault();
-      startResize(e.clientY, resizer, [topPanel, bottomPanel]);
-    };
-  }
-  function startResize(startY, resizer, targets) {
-    resizeState.isResizing = true;
-    resizeState.startY = startY;
-    resizeState.resizer = resizer;
-    resizeState.targets = targets;
-    resizeState.startHeights = targets.map((el) => el.offsetHeight);
-    document.body.classList.add("resizing-vertical");
-    resizer.classList.add("active");
-  }
-  function handleMouseMove(e) {
-    if (!resizeState.isResizing) return;
-    const { startY, startHeights, targets } = resizeState;
-    const delta = e.clientY - startY;
-    const newHeight0 = Math.max(MIN_PANEL_HEIGHT, startHeights[0] + delta);
-    const newHeight1 = Math.max(MIN_PANEL_HEIGHT, startHeights[1] - delta);
-    if (isPanelVisible(targets[0]) && isPanelVisible(targets[1])) {
-      const total = newHeight0 + newHeight1;
-      const ratio0 = newHeight0 / total;
-      const ratio1 = newHeight1 / total;
-      targets[0].style.flex = `${ratio0} 1 0`;
-      targets[1].style.flex = `${ratio1} 1 0`;
-    }
-  }
-  function handleMouseUp() {
-    if (!resizeState.isResizing) return;
-    document.body.classList.remove("resizing-vertical");
-    resizeState.resizer?.classList.remove("active");
-    resizeState.isResizing = false;
-    resizeState.resizer = null;
-    resizeState.targets = [];
   }
   function resetPanelFlex(panel) {
     panel.style.flex = "";
@@ -1438,8 +1367,8 @@
   function initDragReorder() {
     const panelsContainer = elements.panels;
     panelsContainer.addEventListener("mousedown", handleMouseDown);
-    document.addEventListener("mousemove", handleMouseMove2);
-    document.addEventListener("mouseup", handleMouseUp2);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
   }
   function handleMouseDown(e) {
     const target = e.target;
@@ -1474,7 +1403,7 @@
     panel.style.pointerEvents = "none";
     document.body.classList.add("dragging-panel");
   }
-  function handleMouseMove2(e) {
+  function handleMouseMove(e) {
     if (!dragState.isDragging || !dragState.draggedPanel || !dragState.placeholder) return;
     const panel = dragState.draggedPanel;
     panel.style.top = `${e.clientY - dragState.offsetY}px`;
@@ -1491,17 +1420,12 @@
       }
     }
     if (insertBefore && insertBefore !== placeholder.nextElementSibling) {
-      let target = insertBefore;
-      const prev = insertBefore.previousElementSibling;
-      if (prev?.classList.contains("resizer-vertical")) {
-        target = prev;
-      }
-      panelsContainer.insertBefore(placeholder, target);
+      panelsContainer.insertBefore(placeholder, insertBefore);
     } else if (!insertBefore) {
       panelsContainer.appendChild(placeholder);
     }
   }
-  function handleMouseUp2() {
+  function handleMouseUp() {
     if (!dragState.isDragging || !dragState.draggedPanel || !dragState.placeholder) return;
     const panel = dragState.draggedPanel;
     const placeholder = dragState.placeholder;

@@ -622,62 +622,31 @@ describe('GFM Table Support', () => {
   });
 });
 
-describe('Resizable Panes', () => {
+describe('Pane Resize Handles', () => {
   describe('Resizer Module', () => {
-    it('should have initResizers function', () => {
-      expect(appTsContent).toContain('function initResizers');
-    });
-
-    it('should have initResizers called in app initialization', () => {
+    it('should keep initResizers called in app initialization', () => {
       expect(appTsContent).toContain('initResizers()');
     });
 
-    it('should create vertical resizers between panels', () => {
-      // Single-column layout only uses vertical resizers
-      expect(appTsContent).toContain('resizer-vertical');
-      expect(appTsContent).toContain('rebuildResizers');
+    it('should keep rebuildResizers for cleanup compatibility', () => {
+      expect(appTsContent).toContain('function rebuildResizers');
+      expect(appTsContent).toContain("querySelectorAll('.resizer-vertical')");
     });
 
-    it('should have minimum panel height constant', () => {
-      // Single-column layout only needs panel height minimum
-      expect(appTsContent).toContain('MIN_PANEL_HEIGHT');
+    it('should not create vertical resizer handle elements', () => {
+      expect(appTsContent).not.toContain("className = 'resizer resizer-vertical'");
     });
 
-    it('should handle mouse events for resizing', () => {
-      expect(appTsContent).toContain('handleMouseMove');
-      expect(appTsContent).toContain('handleMouseUp');
-      expect(appTsContent).toContain('mousedown');
-    });
-
-    it('should update flex for vertical resize', () => {
-      expect(appTsContent).toContain("style.flex");
-    });
-
-    it('should have resetPanelFlex function', () => {
+    it('should keep resetPanelFlex function', () => {
       expect(appTsContent).toContain('function resetPanelFlex');
       expect(appTsContent).toContain('resetPanelFlex(panel)');
     });
   });
 
   describe('Resizer CSS', () => {
-    it('should have vertical resizer styles', () => {
-      // Single-column layout only uses vertical resizers
-      expect(stylesCssContent).toContain('.resizer-vertical');
-      expect(stylesCssContent).toContain('cursor: row-resize');
-    });
-
-    it('should have body cursor styles during vertical resize', () => {
-      expect(stylesCssContent).toContain('body.resizing-vertical');
-    });
-
-    it('should dynamically rebuild resizers when panels collapse/expand', () => {
-      // Resizers are now dynamically rebuilt via JavaScript, not hidden via CSS
-      // Check that rebuildResizers is called when toggling panel collapse
-      expect(appTsContent).toContain('rebuildResizers');
-    });
-
-    it('should hide resizers on mobile', () => {
-      expect(stylesCssContent).toMatch(/768px[\s\S]*\.resizer-vertical[\s\S]*display:\s*none/);
+    it('should not define visible resizer handle styles', () => {
+      expect(stylesCssContent).not.toContain('.resizer-vertical {');
+      expect(stylesCssContent).not.toContain('body.resizing-vertical');
     });
   });
 });

@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-02-08 — v1.3.1
+
+#### 17:24
+### Changed
+- **Removed unused resizer functionality** — Simplified dashboard UI layer by removing resizable-panes logic, stale resize handlers, and related CSS; dashboard now operates in single-view mode with fixed panel heights
+- **Cleaned up duplicate event handlers** — Unified handleMouseMove/handleMouseUp naming in drag-reorder module to eliminate naming conflicts
+- **Simplified DOM insertion logic** — Removed resizer-aware insertion targeting in drag-reorder handler
+
+### Fixed
+- Added `output/` to `.gitignore` to exclude generated files from version control
+
+---
+
 ## 2026-02-08 — v1.3.0
 
 ### Added

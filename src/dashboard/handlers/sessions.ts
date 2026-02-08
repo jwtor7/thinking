@@ -433,7 +433,7 @@ function updateSessionPanelVisibility(sessionId: string): void {
     elements.tasksPanel.classList.toggle('session-hidden', isAllSessions);
   }
 
-  // Rebuild resizers to only show between visible panels
+  // Remove any stale resize handles after session visibility changes
   rebuildResizers();
 }
 

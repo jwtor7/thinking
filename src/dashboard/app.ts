@@ -599,7 +599,7 @@ initPanelCollapseButtons();
 // Apply restored panel visibility to DOM
 applyAllPanelVisibility();
 
-// Initialize resizable panes
+// Remove any stale resize handles (single-view mode)
 initResizers();
 
 // Initialize drag-to-reorder for collapsed panels
