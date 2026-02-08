@@ -5,7 +5,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.2.0-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.1-purple)](./CHANGELOG.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 [![GitHub Stars](https://img.shields.io/github/stars/jwtor7/thinking?style=social)](https://github.com/jwtor7/thinking)
 
@@ -174,6 +174,7 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
+- **v1.2.1** (2026-02-08 14:32) — Fixed EventReceiver interval cleanup to prevent timer leaks when instances are destroyed and recreated; added co-located test for lifecycle behavior.
 - **v1.2.0** (2026-02-07 23:15) — Merged Codex refactoring: new path-validation and change-detection modules, JSON structured logging, expanded secret detection, WebSocket hardening, and fixed completed task retention on dashboard.
 - **v1.1.4** (2026-02-07 22:10) — Fixed timeline events showing wrong timestamps and unattributed plan/team events; now uses original detection timestamps and resolves session context.
 - **v1.1.3** (2026-02-07 16:01) — Fixed team events rendering for wrong session: `handleTeamUpdate`, `handleTeammateIdle`, and `handleMessageSent` now check session context before rendering.

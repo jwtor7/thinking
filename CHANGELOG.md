@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-02-08 — v1.2.1
+
+### Fixed
+- **EventReceiver interval cleanup** — EventReceiver now properly stores the cleanup interval handle and clears it in `destroy()` to prevent timer leaks when instances are destroyed and recreated
+
+---
+
 ## 2026-02-07 — v1.2.0
 
 ### Added
