@@ -48,14 +48,14 @@ export function initViewTabs(): void {
   viewTabsContainer.className = 'view-tabs';
 
   const views: { id: ViewType; label: string; shortcut: string }[] = [
+    { id: 'timeline', label: 'Timeline', shortcut: 'l' },
     { id: 'thinking', label: 'Thinking', shortcut: 't' },
     { id: 'tools', label: 'Tools', shortcut: 'o' },
-    { id: 'hooks', label: 'Hooks', shortcut: 'h' },
-    { id: 'team', label: 'Team', shortcut: 'm' },
-    { id: 'tasks', label: 'Tasks', shortcut: 'k' },
-    { id: 'timeline', label: 'Timeline', shortcut: 'l' },
     { id: 'agents', label: 'Agents', shortcut: 'a' },
+    { id: 'hooks', label: 'Hooks', shortcut: 'h' },
     { id: 'plan', label: 'Plan', shortcut: 'p' },
+    { id: 'tasks', label: 'Tasks', shortcut: 'k' },
+    { id: 'team', label: 'Team', shortcut: 'm' },
   ];
 
   views.forEach((view) => {
@@ -128,7 +128,7 @@ export function updateViewTabs(): void {
 /**
  * Update view tab visibility based on session selection.
  * Hides Plan, Team, and Tasks tabs when "All sessions" is selected.
- * If currently viewing a session-specific tab, auto-switches to Thinking.
+ * If currently viewing a session-specific tab, auto-switches to Timeline.
  *
  * @param isAllSessions - True when "All" sessions is selected
  */
@@ -146,9 +146,9 @@ export function updateSessionViewTabs(isAllSessions: boolean): void {
     if (teamTab) teamTab.style.display = 'none';
     if (tasksTab) tasksTab.style.display = 'none';
 
-    // If currently on a session-specific view, switch to thinking view
+    // If currently on a session-specific view, switch to timeline view
     if (state.activeView === 'plan' || state.activeView === 'team' || state.activeView === 'tasks') {
-      selectView('thinking');
+      selectView('timeline');
     }
   } else {
     // Show session-specific tabs

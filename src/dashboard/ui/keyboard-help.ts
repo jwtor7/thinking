@@ -12,13 +12,14 @@ const SHORTCUT_GROUPS = [
   {
     title: 'Navigation',
     shortcuts: [
+      { keys: ['l'], desc: 'Timeline view' },
       { keys: ['t'], desc: 'Thinking view' },
       { keys: ['o'], desc: 'Tools view' },
+      { keys: ['a'], desc: 'Agents view' },
       { keys: ['h'], desc: 'Hooks view' },
-      { keys: ['m'], desc: 'Team view' },
-      { keys: ['k'], desc: 'Tasks view' },
-      { keys: ['l'], desc: 'Timeline view' },
       { keys: ['p'], desc: 'Plan view' },
+      { keys: ['k'], desc: 'Tasks view' },
+      { keys: ['m'], desc: 'Team view' },
     ],
   },
   {

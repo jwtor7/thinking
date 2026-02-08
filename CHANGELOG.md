@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-02-08 — v1.3.0
+
+### Added
+- **Timeline-first navigation** — Dashboard now defaults to Timeline view, prioritizing chronological context over single-panel thinking
+- **Keyboard shortcut hints** — Panel collapse buttons show shortcut key in tooltip for discoverability
+- **Navigation behavior tests** — 8 static analysis tests validating default view, tab order, session preservation, filter cleanup, and shortcut hints
+
+### Changed
+- **Default view** — Changed from Thinking to Timeline as the landing view
+- **Tab order** — Reordered to timeline-first across panel selector, views, and keyboard help
+- **Unified session filtering** — Extracted `applySessionFilter()` to replace duplicated `applyThinkingFilter()`/`applyToolsFilter()` logic
+- **Stale agent filter cleanup** — Session switching now clears incompatible agent filters to prevent empty panel views
+- **Session context preservation** — Clicking timeline thinking entries switches session context before navigating to Thinking view
+- **Extracted `getPanelShortcutKey()` helper** — Centralized shortcut key lookup, replacing hardcoded ternary chains
+
+---
+
 ## 2026-02-08 — v1.2.3
 
 #### 15:39

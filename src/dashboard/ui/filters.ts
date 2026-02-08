@@ -116,40 +116,11 @@ export function getShortSessionId(sessionId: string | undefined): string {
 // ============================================
 
 export function applyThinkingFilter(entry: HTMLElement): void {
-  const content = entry.dataset.content || '';
-  const matchesText = !state.thinkingFilter || content.includes(state.thinkingFilter.toLowerCase());
-
-  // Session matching: also include subagent thinking when parent session is selected
-  let sessionMatches = false;
-  if (state.selectedSession === 'all') {
-    sessionMatches = true;
-  } else if (entry.dataset.session === state.selectedSession) {
-    // Direct session match
-    sessionMatches = true;
-  } else if (entry.dataset.parentSession === state.selectedSession) {
-    // This is subagent thinking whose parent session is selected
-    sessionMatches = true;
-  } else {
-    // Check if this entry's agent is a subagent of the selected session
-    const agentId = entry.dataset.agent;
-    if (agentId) {
-      const subagent = subagentState.subagents.get(agentId);
-      if (subagent && subagent.parentSessionId === state.selectedSession) {
-        sessionMatches = true;
-      }
-    }
-  }
-
-  entry.style.display = (matchesText && sessionMatches) ? '' : 'none';
+  applySessionFilter(entry);
 }
 
 export function applyToolsFilter(entry: HTMLElement): void {
-  const toolName = entry.dataset.toolName || '';
-  const input = entry.dataset.input || '';
-  const filter = state.toolsFilter.toLowerCase();
-  const matchesText = !filter || toolName.includes(filter) || input.includes(filter);
-  const sessionMatches = state.selectedSession === 'all' || entry.dataset.session === state.selectedSession;
-  entry.style.display = (matchesText && sessionMatches) ? '' : 'none';
+  applySessionFilter(entry);
 }
 
 export function filterAllThinking(): void {
@@ -195,7 +166,7 @@ export function filterAllTools(): void {
  * Shows "filtered/total" format when a filter is active, otherwise just the total.
  */
 export function updateThinkingCount(): void {
-  const hasFilter = state.thinkingFilter || state.selectedSession !== 'all';
+  const hasFilter = state.thinkingFilter || state.selectedSession !== 'all' || state.selectedAgentId;
 
   if (hasFilter) {
     // Count visible entries
@@ -218,7 +189,7 @@ export function updateThinkingCount(): void {
  * Shows "filtered/total" format when a filter is active, otherwise just the total.
  */
 export function updateToolsCount(): void {
-  const hasFilter = state.toolsFilter || state.selectedSession !== 'all';
+  const hasFilter = state.toolsFilter || state.selectedSession !== 'all' || state.selectedAgentId;
 
   if (hasFilter) {
     // Count visible entries

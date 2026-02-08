@@ -5,7 +5,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.2.3-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.3.0-purple)](./CHANGELOG.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 [![GitHub Stars](https://img.shields.io/github/stars/jwtor7/thinking?style=social)](https://github.com/jwtor7/thinking)
 
@@ -108,8 +108,8 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 | Key | Action |
 |-----|--------|
-| `t` `o` `h` `m` `k` `l` `a` `p` | Switch view (Thinking, Tools, Hooks, Team, Tasks, Timeline, Agents, Plan) |
-| `Shift` + `t` `o` `h` `m` `k` `l` `a` | Collapse/expand panel |
+| `l` `t` `o` `a` `h` `p` `k` `m` | Switch view (Timeline, Thinking, Tools, Agents, Hooks, Plan, Tasks, Team) |
+| `Shift` + `l` `t` `o` `a` `h` `m` `k` | Collapse/expand panel (Timeline, Thinking, Tools, Agents, Hooks, Team, Tasks) |
 | `Shift+P` | Open panel visibility settings |
 | `c` | Clear all entries |
 | `s` | Toggle auto-scroll |
@@ -174,10 +174,10 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
+- **v1.3.0** (2026-02-08 16:59) — Timeline-first navigation: default view changed to Timeline, unified session filtering, stale agent filter cleanup on session switch, keyboard shortcut hints on collapse buttons, 8 new navigation behavior tests.
 - **v1.2.3** (2026-02-08 15:39) — Fixed orphaned process detection in ship.js via lsof port check fallback, created Thinking Monitor.app macOS app bundle, added `think` zsh alias for quick dashboard launching.
 - **v1.2.2** (2026-02-08 15:16) — Replaced bash scripts with portable Node.js equivalents, made watchers path-configurable for test isolation, and aligned keyboard shortcuts and docs with current dashboard state.
 - **v1.2.1** (2026-02-08 14:32) — Fixed EventReceiver interval cleanup to prevent timer leaks when instances are destroyed and recreated; added co-located test for lifecycle behavior.
 - **v1.2.0** (2026-02-07 23:15) — Merged Codex refactoring: new path-validation and change-detection modules, JSON structured logging, expanded secret detection, WebSocket hardening, and fixed completed task retention on dashboard.
-- **v1.1.4** (2026-02-07 22:10) — Fixed timeline events showing wrong timestamps and unattributed plan/team events; now uses original detection timestamps and resolves session context.
 
 *[Full changelog →](./CHANGELOG.md)*

@@ -47,7 +47,7 @@
     planList: [],
     planSelectorOpen: false,
     contextMenuFilePath: null,
-    activeView: "thinking",
+    activeView: "timeline",
     selectedAgentId: null,
     sessionPlanMap: /* @__PURE__ */ new Map(),
     panelCollapseState: {
@@ -211,6 +211,26 @@
       agents: { panel: elements.agentsPanel, btn: elements.agentsCollapseBtn }
     };
   }
+  function getPanelShortcutKey(panelName) {
+    switch (panelName) {
+      case "thinking":
+        return "T";
+      case "tools":
+        return "O";
+      case "hooks":
+        return "H";
+      case "team":
+        return "M";
+      case "tasks":
+        return "K";
+      case "timeline":
+        return "L";
+      case "agents":
+        return "A";
+      case "plan":
+        return null;
+    }
+  }
   function savePanelCollapseState() {
     try {
       localStorage.setItem(STORAGE_KEY_PANEL_COLLAPSE, JSON.stringify(state.panelCollapseState));
@@ -237,8 +257,8 @@
             panel.classList.add("collapsed");
             btn.setAttribute("aria-expanded", "false");
             btn.setAttribute("aria-label", `Expand ${panelName} panel`);
-            const shortcutKey = panelName === "thinking" ? "T" : panelName === "tools" ? "O" : panelName === "agents" ? "A" : "P";
-            btn.title = `Expand panel (Shift+${shortcutKey})`;
+            const shortcutKey = getPanelShortcutKey(panelName);
+            btn.title = shortcutKey ? `Expand panel (Shift+${shortcutKey})` : "Expand panel";
           }
         }
       }
@@ -1117,14 +1137,14 @@
     viewTabsContainer.id = "view-tabs";
     viewTabsContainer.className = "view-tabs";
     const views = [
+      { id: "timeline", label: "Timeline", shortcut: "l" },
       { id: "thinking", label: "Thinking", shortcut: "t" },
       { id: "tools", label: "Tools", shortcut: "o" },
-      { id: "hooks", label: "Hooks", shortcut: "h" },
-      { id: "team", label: "Team", shortcut: "m" },
-      { id: "tasks", label: "Tasks", shortcut: "k" },
-      { id: "timeline", label: "Timeline", shortcut: "l" },
       { id: "agents", label: "Agents", shortcut: "a" },
-      { id: "plan", label: "Plan", shortcut: "p" }
+      { id: "hooks", label: "Hooks", shortcut: "h" },
+      { id: "plan", label: "Plan", shortcut: "p" },
+      { id: "tasks", label: "Tasks", shortcut: "k" },
+      { id: "team", label: "Team", shortcut: "m" }
     ];
     views.forEach((view) => {
       const tab = document.createElement("button");
@@ -1184,7 +1204,7 @@
       if (teamTab) teamTab.style.display = "none";
       if (tasksTab) tasksTab.style.display = "none";
       if (state.activeView === "plan" || state.activeView === "team" || state.activeView === "tasks") {
-        selectView("thinking");
+        selectView("timeline");
       }
     } else {
       if (planTab) planTab.style.display = "";
@@ -2419,7 +2439,7 @@ Session: ${resolvedSessionId || ""}`;
   `;
     if (event.type === "thinking") {
       entry.addEventListener("click", () => {
-        navigateToThinkingEntry(event.timestamp);
+        navigateToThinkingEntry(event.timestamp, resolvedSessionId);
       });
     }
     if (state.selectedSession !== "all" && resolvedSessionId && resolvedSessionId !== state.selectedSession) {
@@ -2450,11 +2470,14 @@ Session: ${resolvedSessionId || ""}`;
     callbacks6.smartScroll(entriesContainer);
     setTimeout(() => entry.classList.remove("new"), 1e3);
   }
-  function navigateToThinkingEntry(eventTimestamp) {
+  function navigateToThinkingEntry(eventTimestamp, sessionId) {
+    if (sessionId && callbacks6) {
+      callbacks6.selectSession(sessionId);
+    }
     selectView("thinking");
     const thinkingContent = elements.thinkingContent;
     if (!thinkingContent) return;
-    requestAnimationFrame(() => {
+    const scrollToEntry = () => {
       const entries = Array.from(thinkingContent.querySelectorAll(".thinking-entry"));
       for (const entry of entries) {
         const el = entry;
@@ -2462,9 +2485,16 @@ Session: ${resolvedSessionId || ""}`;
           el.scrollIntoView({ behavior: "smooth", block: "center" });
           el.classList.add("highlight-flash");
           setTimeout(() => el.classList.remove("highlight-flash"), 2e3);
-          return;
+          return true;
         }
       }
+      return false;
+    };
+    requestAnimationFrame(() => {
+      if (scrollToEntry()) return;
+      requestAnimationFrame(() => {
+        scrollToEntry();
+      });
     });
   }
 
@@ -2691,6 +2721,10 @@ Session: ${resolvedSessionId || ""}`;
     rebuildResizers();
   }
   function selectSession(sessionId) {
+    const sessionChanged = state.selectedSession !== sessionId;
+    if (sessionChanged) {
+      state.selectedAgentId = null;
+    }
     state.selectedSession = sessionId;
     const isAllSessions = sessionId === "all";
     updateSessionFilter();
@@ -3122,33 +3156,10 @@ Session: ${id}` : `Session: ${id}`;
     return sessionId.slice(0, 8);
   }
   function applyThinkingFilter(entry) {
-    const content = entry.dataset.content || "";
-    const matchesText = !state.thinkingFilter || content.includes(state.thinkingFilter.toLowerCase());
-    let sessionMatches = false;
-    if (state.selectedSession === "all") {
-      sessionMatches = true;
-    } else if (entry.dataset.session === state.selectedSession) {
-      sessionMatches = true;
-    } else if (entry.dataset.parentSession === state.selectedSession) {
-      sessionMatches = true;
-    } else {
-      const agentId = entry.dataset.agent;
-      if (agentId) {
-        const subagent = subagentState.subagents.get(agentId);
-        if (subagent && subagent.parentSessionId === state.selectedSession) {
-          sessionMatches = true;
-        }
-      }
-    }
-    entry.style.display = matchesText && sessionMatches ? "" : "none";
+    applySessionFilter(entry);
   }
   function applyToolsFilter(entry) {
-    const toolName = entry.dataset.toolName || "";
-    const input = entry.dataset.input || "";
-    const filter = state.toolsFilter.toLowerCase();
-    const matchesText = !filter || toolName.includes(filter) || input.includes(filter);
-    const sessionMatches = state.selectedSession === "all" || entry.dataset.session === state.selectedSession;
-    entry.style.display = matchesText && sessionMatches ? "" : "none";
+    applySessionFilter(entry);
   }
   function filterAllThinking() {
     const entries = elements.thinkingContent.querySelectorAll(".thinking-entry");
@@ -3175,7 +3186,7 @@ Session: ${id}` : `Session: ${id}`;
     updateToolsCount();
   }
   function updateThinkingCount() {
-    const hasFilter = state.thinkingFilter || state.selectedSession !== "all";
+    const hasFilter = state.thinkingFilter || state.selectedSession !== "all" || state.selectedAgentId;
     if (hasFilter) {
       const entries = elements.thinkingContent.querySelectorAll(".thinking-entry");
       let visibleCount = 0;
@@ -3191,7 +3202,7 @@ Session: ${id}` : `Session: ${id}`;
     }
   }
   function updateToolsCount() {
-    const hasFilter = state.toolsFilter || state.selectedSession !== "all";
+    const hasFilter = state.toolsFilter || state.selectedSession !== "all" || state.selectedAgentId;
     if (hasFilter) {
       const entries = elements.toolsContent.querySelectorAll(".tool-entry");
       let visibleCount = 0;
@@ -3420,13 +3431,14 @@ Session: ${id}` : `Session: ${id}`;
     {
       title: "Navigation",
       shortcuts: [
+        { keys: ["l"], desc: "Timeline view" },
         { keys: ["t"], desc: "Thinking view" },
         { keys: ["o"], desc: "Tools view" },
+        { keys: ["a"], desc: "Agents view" },
         { keys: ["h"], desc: "Hooks view" },
-        { keys: ["m"], desc: "Team view" },
+        { keys: ["p"], desc: "Plan view" },
         { keys: ["k"], desc: "Tasks view" },
-        { keys: ["l"], desc: "Timeline view" },
-        { keys: ["p"], desc: "Plan view" }
+        { keys: ["m"], desc: "Team view" }
       ]
     },
     {
@@ -3736,7 +3748,7 @@ Session: ${id}` : `Session: ${id}`;
     timeline: "Timeline",
     agents: "Agents"
   };
-  var PANEL_ORDER = ["thinking", "tools", "hooks", "team", "tasks", "timeline", "agents", "plan"];
+  var PANEL_ORDER = ["timeline", "thinking", "tools", "agents", "hooks", "plan", "tasks", "team"];
   var modalElement = null;
   var isOpen2 = false;
   var previouslyFocused3 = null;
@@ -6325,7 +6337,8 @@ Session: ${escapeHtml(sessionLabel)}">
   });
   initTimeline({
     appendAndTrim,
-    smartScroll
+    smartScroll,
+    selectSession
   });
   initAgentsView();
   initDurationHistogram();
@@ -6414,6 +6427,6 @@ Session: ${escapeHtml(sessionLabel)}">
     }
   }, ACTIVITY_UPDATE_INTERVAL_MS);
   debug("[Dashboard] Thinking Monitor initialized");
-  debug("[Dashboard] Keyboard shortcuts: t/o/d/h/p=views, Shift+t/o/d=collapse, Shift+p=panel settings, c=clear, s=scroll, /=search, Esc=clear filters");
+  debug("[Dashboard] Keyboard shortcuts: l/t/o/a/h/p/k/m=views, Shift+T/O/A/H/M/K/L=collapse, Shift+P=panel settings, c=clear, s=scroll, /=search, Esc=clear filters");
   debug("[Dashboard] Plan shortcuts: Cmd+O=open, Cmd+Shift+R=reveal, Cmd+E=export, right-click=context menu");
 })();

@@ -75,6 +75,7 @@ import {
 import {
   initSessions,
   updateSessionFilter,
+  selectSession,
   initStatusBarSession,
   updateStatusBarSession,
   hideSessionContextMenu,
@@ -550,6 +551,7 @@ initTasks({
 initTimeline({
   appendAndTrim,
   smartScroll,
+  selectSession,
 });
 
 initAgentsView();
@@ -695,5 +697,5 @@ setInterval(() => {
 }, ACTIVITY_UPDATE_INTERVAL_MS);
 
 debug('[Dashboard] Thinking Monitor initialized');
-debug('[Dashboard] Keyboard shortcuts: t/o/d/h/p=views, Shift+t/o/d=collapse, Shift+p=panel settings, c=clear, s=scroll, /=search, Esc=clear filters');
+debug('[Dashboard] Keyboard shortcuts: l/t/o/a/h/p/k/m=views, Shift+T/O/A/H/M/K/L=collapse, Shift+P=panel settings, c=clear, s=scroll, /=search, Esc=clear filters');
 debug('[Dashboard] Plan shortcuts: Cmd+O=open, Cmd+Shift+R=reveal, Cmd+E=export, right-click=context menu');

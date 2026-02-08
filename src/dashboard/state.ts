@@ -98,7 +98,7 @@ export const state: AppState = {
   planList: [],
   planSelectorOpen: false,
   contextMenuFilePath: null,
-  activeView: 'thinking',
+  activeView: 'timeline',
   selectedAgentId: null,
   sessionPlanMap: new Map(),
   panelCollapseState: {

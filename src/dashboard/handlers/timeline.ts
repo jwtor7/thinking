@@ -110,6 +110,7 @@ const sessionChipElements: Map<string, HTMLElement> = new Map();
 export interface TimelineCallbacks {
   appendAndTrim: (container: HTMLElement, element: HTMLElement) => void;
   smartScroll: (container: HTMLElement) => void;
+  selectSession: (sessionId: string) => void;
 }
 
 let callbacks: TimelineCallbacks | null = null;
@@ -587,7 +588,7 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
   // Click handler for thinking entries: navigate to thinking view and scroll to entry
   if (event.type === 'thinking') {
     entry.addEventListener('click', () => {
-      navigateToThinkingEntry(event.timestamp);
+      navigateToThinkingEntry(event.timestamp, resolvedSessionId);
     });
   }
 
@@ -636,7 +637,12 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
  * Navigate from a timeline thinking entry to the corresponding entry in the Thinking view.
  * Switches to Thinking view, finds the matching entry by timestamp, scrolls to it, and highlights.
  */
-function navigateToThinkingEntry(eventTimestamp: string): void {
+function navigateToThinkingEntry(eventTimestamp: string, sessionId?: string): void {
+  // Match the timeline selection context in the thinking pane.
+  if (sessionId && callbacks) {
+    callbacks.selectSession(sessionId);
+  }
+
   // Switch to thinking view
   selectView('thinking');
 
@@ -644,8 +650,7 @@ function navigateToThinkingEntry(eventTimestamp: string): void {
   const thinkingContent = elements.thinkingContent;
   if (!thinkingContent) return;
 
-  // Use a small delay to allow the view switch to render
-  requestAnimationFrame(() => {
+  const scrollToEntry = (): boolean => {
     const entries = Array.from(thinkingContent.querySelectorAll('.thinking-entry'));
     for (const entry of entries) {
       const el = entry as HTMLElement;
@@ -653,8 +658,17 @@ function navigateToThinkingEntry(eventTimestamp: string): void {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         el.classList.add('highlight-flash');
         setTimeout(() => el.classList.remove('highlight-flash'), 2000);
-        return;
+        return true;
       }
     }
+    return false;
+  };
+
+  // Give the view/session filters a frame to settle before searching.
+  requestAnimationFrame(() => {
+    if (scrollToEntry()) return;
+    requestAnimationFrame(() => {
+      scrollToEntry();
+    });
   });
 }

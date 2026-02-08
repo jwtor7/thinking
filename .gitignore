@@ -36,8 +36,8 @@ TEST_EVALUATION_REPORT*.md
 # Audit reports
 audit/
 
-# Personal session logs
-.claude/logs/
+# Claude Code session data
+.claude/
 
 # Continuous improvement notes
 IMPROVEMENTS.md

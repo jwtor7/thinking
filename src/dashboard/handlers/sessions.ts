@@ -442,6 +442,12 @@ function updateSessionPanelVisibility(sessionId: string): void {
  * Updates event filtering, session-scoped panels, and the session's associated plan.
  */
 export function selectSession(sessionId: string): void {
+  const sessionChanged = state.selectedSession !== sessionId;
+  // Agent filter chips are session-scoped; clear stale agent filters on session switch.
+  if (sessionChanged) {
+    state.selectedAgentId = null;
+  }
+
   state.selectedSession = sessionId;
   const isAllSessions = sessionId === 'all';
 

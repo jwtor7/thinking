@@ -55,9 +55,9 @@ export function initKeyboard(cbs: KeyboardCallbacks): void {
  * - 's' - Toggle auto-scroll
  * - '/' - Focus thinking filter
  * - 'Escape' - Clear filters and blur
- * - Shift+T/O/H/M/K/L/A - Toggle panel collapse (Thinking/Tools/Hooks/Team/Tasks/Timeline/Agents)
+ * - Shift+L/T/O/A/H/M/K - Toggle panel collapse (Timeline/Thinking/Tools/Agents/Hooks/Team/Tasks)
  * - Shift+P - Open panel selector modal
- * - T/O/H/M/K/L/A/P (without shift) - Select view (Thinking/Tools/Hooks/Team/Tasks/Timeline/Agents/Plan)
+ * - L/T/O/A/H/P/K/M (without shift) - Select view (Timeline/Thinking/Tools/Agents/Hooks/Plan/Tasks/Team)
  * - Cmd/Ctrl+E - Export as Markdown
  * - Cmd/Ctrl+O - Open plan in default app
  * - Cmd/Ctrl+Shift+R - Reveal plan in Finder
@@ -135,7 +135,7 @@ export function handleKeydown(event: KeyboardEvent): void {
   // Don't process other shortcuts when keyboard help is open
   if (isKeyboardHelpOpen()) return;
 
-  // Panel collapse shortcuts (Shift + t/o/d) and panel selector (Shift + p)
+  // Panel collapse shortcuts (Shift + l/t/o/a/h/m/k) and panel selector (Shift + p)
   if (event.shiftKey && !event.ctrlKey && !event.metaKey) {
     switch (event.key.toLowerCase()) {
       case 't':
@@ -176,7 +176,7 @@ export function handleKeydown(event: KeyboardEvent): void {
     }
   }
 
-  // View navigation shortcuts (without Shift)
+  // View navigation shortcuts (without Shift, timeline-first order)
   if (!event.ctrlKey && !event.metaKey && !event.shiftKey) {
     switch (event.key.toLowerCase()) {
       case 't':

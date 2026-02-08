@@ -29,7 +29,7 @@ const PANEL_LABELS: Record<keyof PanelVisibility, string> = {
 /**
  * Order of panels in the selector UI.
  */
-const PANEL_ORDER: (keyof PanelVisibility)[] = ['thinking', 'tools', 'hooks', 'team', 'tasks', 'timeline', 'agents', 'plan'];
+const PANEL_ORDER: (keyof PanelVisibility)[] = ['timeline', 'thinking', 'tools', 'agents', 'hooks', 'plan', 'tasks', 'team'];
 
 /**
  * Modal element reference, created lazily on first open.

@@ -46,6 +46,31 @@ function getPanelElements(): Record<PanelName, { panel: HTMLElement | null; btn:
   };
 }
 
+/**
+ * Get keyboard shortcut key for a panel collapse toggle.
+ * Returns null when no shortcut is assigned.
+ */
+function getPanelShortcutKey(panelName: PanelName): string | null {
+  switch (panelName) {
+    case 'thinking':
+      return 'T';
+    case 'tools':
+      return 'O';
+    case 'hooks':
+      return 'H';
+    case 'team':
+      return 'M';
+    case 'tasks':
+      return 'K';
+    case 'timeline':
+      return 'L';
+    case 'agents':
+      return 'A';
+    case 'plan':
+      return null;
+  }
+}
+
 // ============================================
 // Panel Collapse State Persistence
 // ============================================
@@ -90,8 +115,8 @@ export function restorePanelCollapseState(): void {
           panel.classList.add('collapsed');
           btn.setAttribute('aria-expanded', 'false');
           btn.setAttribute('aria-label', `Expand ${panelName} panel`);
-          const shortcutKey = panelName === 'thinking' ? 'T' : panelName === 'tools' ? 'O' : panelName === 'agents' ? 'A' : 'P';
-          btn.title = `Expand panel (Shift+${shortcutKey})`;
+          const shortcutKey = getPanelShortcutKey(panelName as PanelName);
+          btn.title = shortcutKey ? `Expand panel (Shift+${shortcutKey})` : 'Expand panel';
         }
       }
     }
