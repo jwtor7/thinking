@@ -1,10 +1,24 @@
 # Changelog
 
-## 2026-02-07 — v1.1.4
+## 2026-02-07 — v1.2.0
+
+### Added
+- **Path validation module** — New `src/server/path-validation.ts` with symlink-aware path validation, extracted from `export-handler.ts` and `file-actions.ts`
+- **Change detection module** — New `src/server/change-detection.ts` with SHA-256 content hashing, extracted from `plan-watcher.ts` and `team-watcher.ts`
+- **JSON structured logging** — Logger now supports `LOG_FORMAT=json` for structured JSON output with `emit()` centralized function for all log events
+- **Expanded secret detection** — Added OpenAI project keys, Databricks tokens, Supabase keys; improved PEM private key detection to match full BEGIN/END blocks
+- **WebSocket hardening** — Message size limits and rate limiting added to `src/server/websocket-hub.ts`
+
+### Changed
+- **Logger refactored** — Centralized logging via `src/server/logger.ts` with improved Error-to-object serialization
+- **Dispatcher event routing** — `src/dashboard/handlers/dispatcher.ts` refactored with try/catch wrapping for robustness
+- **Activity tracker optimized** — `src/dashboard/app.ts` replaced O(n²) `Array.shift()` with index-pointer pattern for better performance
+- **WebSocket null-safety** — Added optional chaining to prevent crashes on edge case events
 
 ### Fixed
-- **Timeline events used wrong timestamps** — Plan and team/task events on reconnect now use their original detection timestamps (file mtime for plans, detection time for teams) instead of the current server send time. Fixes all events appearing to occur at the exact same moment.
-- **Plan and Team events showed "unknown" session** — Timeline now resolves `sessionId` for plan and team/task events via existing `sessionPlanMap` and `teamSessionMap` lookups, showing correct session context instead of leaving events unattributed.
+- **Test alignment** — Updated `src/server/secrets.test.ts` and `src/dashboard/handlers/dispatcher.test.ts` to match refactored code structure
+- **Completed task retention** — Tasks completed in Claude Code now persist on the dashboard even after task JSON files are cleaned up from disk; `handleCompletedTask` state updates are now independent of file presence
+- **Audit files organized** — Moved `REPO-REVIEW.md` and `DASHBOARD-AUDIT.md` into `audit/` folder, added `audit/` to `.gitignore`
 
 ---
 
