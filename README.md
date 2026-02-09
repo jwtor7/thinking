@@ -5,7 +5,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.3.2-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.3.3-purple)](./CHANGELOG.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 [![GitHub Stars](https://img.shields.io/github/stars/jwtor7/thinking?style=social)](https://github.com/jwtor7/thinking)
 
@@ -174,10 +174,10 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
+- **v1.3.3** (2026-02-09 15:40) — Improved stats bar tooltips: extracted text to constant, unified attribute handling, and fixed duration formatting for fractional milliseconds.
 - **v1.3.2** (2026-02-09 15:21) — Cleaned up session resolution code: extracted ALL_SESSIONS constant to eliminate magic string literals, simplified redundant session-change detection in selectSession().
 - **v1.3.1** (2026-02-08 17:24) — Removed unused resizer functionality and simplified dashboard UI layer; cleaned up duplicate event handlers; added output/ to .gitignore.
 - **v1.3.0** (2026-02-08 16:59) — Timeline-first navigation: default view changed to Timeline, unified session filtering, stale agent filter cleanup on session switch, keyboard shortcut hints on collapse buttons, 8 new navigation behavior tests.
 - **v1.2.3** (2026-02-08 15:39) — Fixed orphaned process detection in ship.js via lsof port check fallback, created Thinking Monitor.app macOS app bundle, added `think` zsh alias for quick dashboard launching.
-- **v1.2.2** (2026-02-08 15:16) — Replaced bash scripts with portable Node.js equivalents, made watchers path-configurable for test isolation, and aligned keyboard shortcuts and docs with current dashboard state.
 
 *[Full changelog →](./CHANGELOG.md)*

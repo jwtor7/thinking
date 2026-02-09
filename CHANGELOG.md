@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-02-09 — v1.3.3
+
+#### 15:40
+### Changed
+- **Extracted tooltip strings to constant** — Moved inline tooltip text in stats bar into `STAT_TOOLTIPS` object to reduce duplication and improve maintainability; now references single source of truth for tooltip content
+- **Unified tooltip attribute handling** — Refactored stats bar tooltip system to consistently use `data-stat-tooltip` attribute instead of mixed `title` attribute, enabling better tooltip formatting and consistency
+
+### Fixed
+- **Duration formatting for fractional milliseconds** — `formatDuration()` now rounds fractional milliseconds (e.g., 235.234ms → 235ms) instead of displaying raw float values, improving dashboard display consistency
+- Added test coverage for fractional millisecond rounding behavior
+
+---
+
 ## 2026-02-09 — v1.3.2
 
 #### 15:21

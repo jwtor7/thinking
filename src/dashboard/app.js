@@ -1,6 +1,7 @@
 "use strict";
 (() => {
   // src/dashboard/state.ts
+  var ALL_SESSIONS = "all";
   var subagentState = {
     subagents: /* @__PURE__ */ new Map(),
     sessionSubagents: /* @__PURE__ */ new Map(),
@@ -1461,7 +1462,7 @@
   }
   function formatDuration(ms) {
     if (ms < 1e3) {
-      return `${ms}ms`;
+      return `${Math.round(ms)}ms`;
     }
     const seconds = (ms / 1e3).toFixed(1);
     return `${seconds}s`;
@@ -2127,19 +2128,57 @@
     } catch {
     }
   }
+  function mergeSessionAliases(canonicalSessionId, displayLabel) {
+    const aliasIds = Array.from(sessionChipElements.keys()).filter((candidateId) => {
+      if (candidateId === canonicalSessionId) return false;
+      const candidateSession = state.sessions.get(candidateId);
+      const looksLikeAlias = !candidateSession?.workingDirectory;
+      if (!looksLikeAlias) return false;
+      return candidateId === displayLabel || canonicalSessionId.startsWith(candidateId) || candidateId.startsWith(canonicalSessionId);
+    });
+    if (aliasIds.length === 0) return;
+    for (const aliasId of aliasIds) {
+      const aliasChip = sessionChipElements.get(aliasId);
+      if (aliasChip) {
+        aliasChip.remove();
+      }
+      sessionChipElements.delete(aliasId);
+      const aliasCount = sessionCounts.get(aliasId) || 0;
+      if (aliasCount > 0) {
+        sessionCounts.set(canonicalSessionId, (sessionCounts.get(canonicalSessionId) || 0) + aliasCount);
+      }
+      sessionCounts.delete(aliasId);
+      const aliasEnabled = sessionFilterState.get(aliasId) === true;
+      if (aliasEnabled) {
+        sessionFilterState.set(canonicalSessionId, true);
+      }
+      sessionFilterState.delete(aliasId);
+      const entriesContainer = elements.timelineEntries;
+      if (entriesContainer) {
+        for (const child of Array.from(entriesContainer.children)) {
+          const el = child;
+          if (el.dataset.session === aliasId) {
+            el.dataset.session = canonicalSessionId;
+          }
+        }
+      }
+    }
+    saveSessionFilterState();
+  }
   function addOrUpdateSessionChip(sessionId) {
     const container = elements.timelineSessionChips;
     if (!container) return;
+    const session = state.sessions.get(sessionId);
+    const label = getSessionDisplayName(session?.workingDirectory, sessionId);
+    mergeSessionAliases(sessionId, label);
     if (sessionChipElements.has(sessionId)) {
       const chip2 = sessionChipElements.get(sessionId);
-      const session2 = state.sessions.get(sessionId);
-      const newLabel = getSessionDisplayName(session2?.workingDirectory, sessionId);
-      const color2 = session2?.color || "var(--color-text-muted)";
+      const color2 = session?.color || "var(--color-text-muted)";
       const countEl = chip2.querySelector(".chip-count");
       const currentCount = String(sessionCounts.get(sessionId) || 0);
       if (countEl) {
         countEl.textContent = currentCount;
-        chip2.childNodes[0].textContent = newLabel + " ";
+        chip2.childNodes[0].textContent = label + " ";
       }
       const isActive2 = sessionFilterState.get(sessionId) ?? false;
       if (isActive2) {
@@ -2151,8 +2190,6 @@
     if (!sessionFilterState.has(sessionId)) {
       sessionFilterState.set(sessionId, false);
     }
-    const session = state.sessions.get(sessionId);
-    const label = getSessionDisplayName(session?.workingDirectory, sessionId);
     const color = session?.color || "var(--color-text-muted)";
     const isActive = sessionFilterState.get(sessionId) ?? false;
     const chip = document.createElement("button");
@@ -2187,9 +2224,98 @@
   }
   function refreshSessionChips() {
     for (const sessionId of state.sessions.keys()) {
-      if (!sessionChipElements.has(sessionId)) {
-        addOrUpdateSessionChip(sessionId);
+      addOrUpdateSessionChip(sessionId);
+    }
+  }
+  function getSingleActiveSessionId() {
+    const activeSessions = Array.from(state.sessions.values()).filter((session) => session.active);
+    if (activeSessions.length === 1) {
+      return activeSessions[0].id;
+    }
+    return void 0;
+  }
+  function getDefaultTimelineSessionId() {
+    if (state.selectedSession !== ALL_SESSIONS && state.sessions.has(state.selectedSession)) {
+      return state.selectedSession;
+    }
+    const soleActive = getSingleActiveSessionId();
+    if (soleActive) {
+      return soleActive;
+    }
+    if (state.currentSessionId && state.sessions.has(state.currentSessionId)) {
+      return state.currentSessionId;
+    }
+    if (state.sessions.size === 1) {
+      return state.sessions.keys().next().value;
+    }
+    return void 0;
+  }
+  function resolveSessionFromPlanPath(planPath) {
+    if (!planPath) return void 0;
+    const normalizedPlanPath = planPath.replace(/\\/g, "/");
+    const planFilename = normalizedPlanPath.split("/").pop();
+    for (const [sessionId, assocPath] of state.sessionPlanMap) {
+      const normalizedAssocPath = assocPath.replace(/\\/g, "/");
+      const assocFilename = normalizedAssocPath.split("/").pop();
+      const matches = normalizedAssocPath === normalizedPlanPath || normalizedAssocPath.endsWith(normalizedPlanPath) || normalizedPlanPath.endsWith(normalizedAssocPath) || !!planFilename && planFilename === assocFilename;
+      if (matches) {
+        return resolveSessionId(sessionId);
       }
+    }
+    return void 0;
+  }
+  function resolveSessionFromTeamKey(teamKey) {
+    const normalizedKey = teamKey?.trim();
+    if (!normalizedKey) return void 0;
+    const directMapped = teamState.teamSessionMap.get(normalizedKey);
+    if (directMapped) {
+      return resolveSessionId(directMapped);
+    }
+    const folderMatches = Array.from(state.sessions.values()).filter((session) => getSessionFolderName(session.workingDirectory) === normalizedKey).map((session) => session.id);
+    if (folderMatches.length === 1) {
+      return folderMatches[0];
+    }
+    const mappedSessions = Array.from(new Set(
+      Array.from(teamState.teamSessionMap.values()).map((sessionId) => resolveSessionId(sessionId)).filter((sessionId) => !!sessionId)
+    ));
+    if (mappedSessions.length === 1) {
+      return mappedSessions[0];
+    }
+    return void 0;
+  }
+  function resolveEventSessionId(event) {
+    const explicitSessionId = resolveSessionId(event.sessionId);
+    if (explicitSessionId) {
+      return explicitSessionId;
+    }
+    switch (event.type) {
+      case "plan_update":
+      case "plan_delete":
+        return resolveSessionFromPlanPath(event.path) || getDefaultTimelineSessionId();
+      case "team_update":
+        return resolveSessionFromTeamKey(event.teamName) || getDefaultTimelineSessionId();
+      case "task_update":
+        return resolveSessionFromTeamKey(event.teamId) || getDefaultTimelineSessionId();
+      case "task_completed":
+        return resolveSessionFromTeamKey(event.teamId) || getDefaultTimelineSessionId();
+      case "teammate_idle":
+        return resolveSessionFromTeamKey(event.teamName) || getDefaultTimelineSessionId();
+      default:
+        return getDefaultTimelineSessionId();
+    }
+  }
+  function getEventContextLabel(event) {
+    switch (event.type) {
+      case "team_update":
+        return event.teamName;
+      case "task_update":
+        return event.teamId;
+      case "task_completed":
+        return event.teamId || event.taskSubject;
+      case "teammate_idle":
+        return event.teamName || event.teammateName;
+      default:
+        return void 0;
     }
   }
   function applyTimelineFilter() {
@@ -2197,20 +2323,29 @@
     if (!container) return;
     const filter = state.timelineFilter;
     let visible = 0;
+    const contextTypeCounts = /* @__PURE__ */ new Map();
+    for (const cat of Object.keys(TIMELINE_CATEGORIES)) {
+      contextTypeCounts.set(cat, 0);
+    }
+    const anySessionChipActive = Array.from(sessionFilterState.values()).some((v) => v);
+    const hasContextFilter = !!filter || anySessionChipActive || state.selectedSession !== ALL_SESSIONS;
     for (const child of Array.from(container.children)) {
       const el = child;
       if (!el.dataset.filterText) continue;
       const matchesText = !filter || el.dataset.filterText.includes(filter);
       const elCategory = el.dataset.category || "";
       const matchesType = !elCategory || typeFilterState.get(elCategory) !== false;
-      const anySessionChipActive = Array.from(sessionFilterState.values()).some((v) => v);
       let matchesSession;
       if (anySessionChipActive) {
         matchesSession = !el.dataset.session || sessionFilterState.get(el.dataset.session) === true;
       } else {
-        matchesSession = state.selectedSession === "all" || !el.dataset.session || el.dataset.session === state.selectedSession;
+        matchesSession = state.selectedSession === ALL_SESSIONS || !el.dataset.session || el.dataset.session === state.selectedSession;
       }
-      if (matchesText && matchesType && matchesSession) {
+      const matchesContext = matchesText && matchesSession;
+      if (matchesContext && elCategory) {
+        contextTypeCounts.set(elCategory, (contextTypeCounts.get(elCategory) || 0) + 1);
+      }
+      if (matchesContext && matchesType) {
         el.style.display = "";
         visible++;
       } else {
@@ -2220,13 +2355,22 @@
     if (elements.timelineCount) {
       const anyTypeDisabled = Array.from(typeFilterState.values()).some((v) => !v);
       const anySessionChipEnabled = Array.from(sessionFilterState.values()).some((v) => v);
-      const hasActiveFilter = !!filter || anyTypeDisabled || anySessionChipEnabled || state.selectedSession !== "all";
+      const hasActiveFilter = !!filter || anyTypeDisabled || anySessionChipEnabled || state.selectedSession !== ALL_SESSIONS;
       elements.timelineCount.textContent = hasActiveFilter ? `${visible}/${timelineCount}` : String(timelineCount);
       if (anySessionChipEnabled) {
         elements.timelineCount.title = "Filtered by session chips (overrides dropdown)";
       } else {
         elements.timelineCount.title = "";
       }
+    }
+    for (const [cat, chip] of chipElements) {
+      const countEl = chip.querySelector(".chip-count");
+      if (!countEl) continue;
+      const total = typeCounts.get(cat) || 0;
+      const contextual = contextTypeCounts.get(cat) || 0;
+      countEl.textContent = String(hasContextFilter ? contextual : total);
+      const categoryLabel = TIMELINE_CATEGORIES[cat]?.label || cat;
+      chip.title = hasContextFilter ? `${categoryLabel}: ${contextual} shown (${total} total)` : `${categoryLabel}: ${total}`;
     }
   }
   function getEventSummary(event) {
@@ -2294,25 +2438,7 @@
         if (countEl) countEl.textContent = String(typeCounts.get(category));
       }
     }
-    let resolvedSessionId = event.sessionId;
-    if (!resolvedSessionId) {
-      if (event.type === "plan_update" || event.type === "plan_delete") {
-        const planPath = event.path;
-        if (planPath) {
-          for (const [sessId, assocPath] of state.sessionPlanMap) {
-            if (assocPath === planPath || assocPath.endsWith(planPath)) {
-              resolvedSessionId = sessId;
-              break;
-            }
-          }
-        }
-      } else if (event.type === "team_update" || event.type === "task_update") {
-        const teamName = event.teamName || event.teamId;
-        if (teamName) {
-          resolvedSessionId = teamState.teamSessionMap.get(teamName);
-        }
-      }
-    }
+    const resolvedSessionId = resolveEventSessionId(event);
     if (resolvedSessionId) {
       sessionCounts.set(resolvedSessionId, (sessionCounts.get(resolvedSessionId) || 0) + 1);
       addOrUpdateSessionChip(resolvedSessionId);
@@ -2327,10 +2453,19 @@
     let agentLabel;
     let agentTooltip;
     if (agentId === "main") {
-      const session = state.sessions.get(resolvedSessionId || "");
-      agentLabel = getSessionDisplayName(session?.workingDirectory, resolvedSessionId);
-      agentTooltip = session?.workingDirectory ? `${session.workingDirectory}
+      const session = resolvedSessionId ? state.sessions.get(resolvedSessionId) : void 0;
+      const contextLabel = getEventContextLabel(event);
+      if (session || resolvedSessionId) {
+        agentLabel = getSessionDisplayName(session?.workingDirectory, resolvedSessionId);
+        agentTooltip = session?.workingDirectory ? `${session.workingDirectory}
 Session: ${resolvedSessionId || ""}` : `Session: ${resolvedSessionId || ""}`;
+      } else if (contextLabel) {
+        agentLabel = contextLabel;
+        agentTooltip = `Context: ${contextLabel}`;
+      } else {
+        agentLabel = "unknown";
+        agentTooltip = "Session: unknown";
+      }
     } else {
       const subagent = subagentState.subagents.get(agentId);
       agentLabel = subagent?.agentName || (agentId.length > 12 ? agentId.slice(0, 12) + "..." : agentId);
@@ -2366,15 +2501,6 @@ Session: ${resolvedSessionId || ""}`;
         navigateToThinkingEntry(event.timestamp, resolvedSessionId);
       });
     }
-    if (state.selectedSession !== "all" && resolvedSessionId && resolvedSessionId !== state.selectedSession) {
-      entry.style.display = "none";
-    }
-    if (state.timelineFilter && !filterText.includes(state.timelineFilter)) {
-      entry.style.display = "none";
-    }
-    if (category && typeFilterState.get(category) === false) {
-      entry.style.display = "none";
-    }
     const children = entriesContainer.children;
     while (children.length >= MAX_TIMELINE_ENTRIES) {
       let removed = false;
@@ -2391,6 +2517,7 @@ Session: ${resolvedSessionId || ""}`;
       }
     }
     entriesContainer.appendChild(entry);
+    applyTimelineFilter();
     callbacks6.smartScroll(entriesContainer);
     setTimeout(() => entry.classList.remove("new"), 1e3);
   }
@@ -2450,6 +2577,30 @@ Session: ${resolvedSessionId || ""}`;
     }
     return void 0;
   }
+  function resolveSessionId(sessionId) {
+    const normalized = sessionId?.trim();
+    if (!normalized) {
+      return void 0;
+    }
+    if (state.sessions.has(normalized)) {
+      return normalized;
+    }
+    const knownIds = Array.from(state.sessions.keys());
+    const prefixMatches = knownIds.filter(
+      (knownId) => knownId.startsWith(normalized) || normalized.startsWith(knownId)
+    );
+    if (prefixMatches.length === 1) {
+      return prefixMatches[0];
+    }
+    const folderMatches = knownIds.filter((knownId) => {
+      const knownSession = state.sessions.get(knownId);
+      return getSessionFolderName(knownSession?.workingDirectory) === normalized;
+    });
+    if (folderMatches.length === 1) {
+      return folderMatches[0];
+    }
+    return normalized;
+  }
   function updateSessionActivity(sessionId) {
     const session = state.sessions.get(sessionId);
     if (session) {
@@ -2482,21 +2633,22 @@ Session: ${resolvedSessionId || ""}`;
     }, 6e4);
   }
   function trackSession(sessionId, timestamp) {
-    if (!sessionId) return;
-    const isNewSession = !state.sessions.has(sessionId);
+    const canonicalSessionId = resolveSessionId(sessionId);
+    if (!canonicalSessionId) return;
+    const isNewSession = !state.sessions.has(canonicalSessionId);
     if (isNewSession) {
-      state.sessions.set(sessionId, {
-        id: sessionId,
+      state.sessions.set(canonicalSessionId, {
+        id: canonicalSessionId,
         startTime: timestamp,
         active: true,
-        color: getSessionColorByFolder("", sessionId),
+        color: getSessionColorByFolder("", canonicalSessionId),
         lastActivityTime: Date.now()
       });
-      debug(`[Dashboard] New session tracked: ${sessionId}`);
+      debug(`[Dashboard] New session tracked: ${canonicalSessionId}`);
       updateSessionFilter();
       refreshSessionChips();
     }
-    state.currentSessionId = sessionId;
+    state.currentSessionId = canonicalSessionId;
   }
   function handleSessionStart(event) {
     const sessionId = event.sessionId;
@@ -2513,8 +2665,10 @@ Session: ${resolvedSessionId || ""}`;
     });
     state.currentSessionId = sessionId;
     updateSessionFilter();
-    if (state.selectedSession === "all") {
-      updateSessionPanelVisibility("all");
+    refreshSessionChips();
+    applyTimelineFilter();
+    if (state.selectedSession === ALL_SESSIONS) {
+      updateSessionPanelVisibility(ALL_SESSIONS);
     }
   }
   function handleSessionStop(event) {
@@ -2556,7 +2710,7 @@ Session: ${resolvedSessionId || ""}`;
     let html = '<span class="session-filter-label">SESSION:</span>';
     html += `<button class="session-filter-clear-btn" title="Clear all panels" aria-label="Clear all panels">&#10005;</button>`;
     html += '<select class="session-dropdown" id="session-dropdown" aria-label="Select session">';
-    html += `<option value="all"${state.selectedSession === "all" ? " selected" : ""}>All Sessions (${state.sessions.size})</option>`;
+    html += `<option value="${ALL_SESSIONS}"${state.selectedSession === ALL_SESSIONS ? " selected" : ""}>All Sessions (${state.sessions.size})</option>`;
     const sortedSessions = Array.from(state.sessions.entries()).sort((a, b) => {
       const folderA = getSessionDisplayName(a[1].workingDirectory, a[0]);
       const folderB = getSessionDisplayName(b[1].workingDirectory, b[0]);
@@ -2586,7 +2740,7 @@ Session: ${resolvedSessionId || ""}`;
       html += `<option value="${escapeHtml(sessionId)}"${selected}>${statusIndicator} ${escapeHtml(disambiguated)}${subagentLabel}</option>`;
     }
     html += "</select>";
-    if (state.selectedSession !== "all") {
+    if (state.selectedSession !== ALL_SESSIONS) {
       const subagentIds = subagentState.sessionSubagents.get(state.selectedSession);
       if (subagentIds && subagentIds.size > 0) {
         html += '<div class="session-agent-chips">';
@@ -2632,7 +2786,7 @@ Session: ${resolvedSessionId || ""}`;
     });
   }
   function updateSessionPanelVisibility(sessionId) {
-    const isAllSessions = sessionId === "all";
+    const isAllSessions = sessionId === ALL_SESSIONS;
     if (elements.planPanel) {
       elements.planPanel.classList.toggle("session-hidden", isAllSessions);
     }
@@ -2645,31 +2799,32 @@ Session: ${resolvedSessionId || ""}`;
     rebuildResizers();
   }
   function selectSession(sessionId) {
-    const sessionChanged = state.selectedSession !== sessionId;
-    if (sessionChanged) {
+    const resolvedSessionId = sessionId === ALL_SESSIONS ? ALL_SESSIONS : resolveSessionId(sessionId) || sessionId;
+    if (state.selectedSession !== resolvedSessionId) {
       state.selectedAgentId = null;
     }
-    state.selectedSession = sessionId;
-    const isAllSessions = sessionId === "all";
+    state.selectedSession = resolvedSessionId;
+    const isAllSessions = resolvedSessionId === ALL_SESSIONS;
     updateSessionFilter();
     filterAllBySession();
-    updateSessionPanelVisibility(sessionId);
+    applyTimelineFilter();
+    updateSessionPanelVisibility(resolvedSessionId);
     updateSessionViewTabs(isAllSessions);
-    if (sessionId === "all") {
+    if (resolvedSessionId === ALL_SESSIONS) {
     } else {
-      const associatedPlanPath = state.sessionPlanMap.get(sessionId);
+      const associatedPlanPath = state.sessionPlanMap.get(resolvedSessionId);
       if (associatedPlanPath) {
         if (callbacks7) {
           callbacks7.displayPlan(associatedPlanPath);
         }
       } else {
         if (callbacks7) {
-          callbacks7.displaySessionPlanEmpty(sessionId);
+          callbacks7.displaySessionPlanEmpty(resolvedSessionId);
         }
       }
     }
     if (callbacks7) {
-      callbacks7.setStatsSource(sessionId);
+      callbacks7.setStatsSource(resolvedSessionId);
     }
     filterTeamBySession();
     filterTasksBySession();
@@ -4883,6 +5038,13 @@ Session: ${escapeHtml(sessionLabel)}">
 
   // src/dashboard/ui/stats-bar.ts
   var MAX_SESSION_STATS = 50;
+  var STAT_TOOLTIPS = {
+    topTools: "Most frequently used tools this session, ranked by call count",
+    avgP95: "Average and 95th percentile tool execution time. P95 = 95% of calls complete within this duration",
+    thinking: "Number of thinking/reasoning blocks Claude has produced this session",
+    hooks: "Hook execution results: allowed / denied / asked. Hooks run before and after tool calls",
+    rate: "Events per minute over the last 60 seconds (sliding window)"
+  };
   function createStatsState() {
     return {
       toolCounts: /* @__PURE__ */ new Map(),
@@ -4900,23 +5062,23 @@ Session: ${escapeHtml(sessionLabel)}">
     const container = elements.statsBar;
     if (!container) return;
     container.innerHTML = `
-    <div class="stat-cell" data-stat-tooltip="Most frequently used tools this session, ranked by call count" title="Most frequently used tools this session, ranked by call count">
+    <div class="stat-cell" data-stat-tooltip="${STAT_TOOLTIPS.topTools}">
       <span class="stat-label">Top Tools</span>
       <span class="stat-value" id="stat-top-tools">--</span>
     </div>
-    <div class="stat-cell" data-stat-tooltip="Average and 95th percentile tool execution time. P95 = 95% of calls complete within this duration" title="Average and 95th percentile tool execution time. P95 = 95% of calls complete within this duration">
+    <div class="stat-cell" data-stat-tooltip="${STAT_TOOLTIPS.avgP95}">
       <span class="stat-label">Avg / P95</span>
       <span class="stat-value" id="stat-avg-p95">--</span>
     </div>
-    <div class="stat-cell" data-stat-tooltip="Number of thinking/reasoning blocks Claude has produced this session" title="Number of thinking/reasoning blocks Claude has produced this session">
+    <div class="stat-cell" data-stat-tooltip="${STAT_TOOLTIPS.thinking}">
       <span class="stat-label">Thinking</span>
       <span class="stat-value" id="stat-thinking">0</span>
     </div>
-    <div class="stat-cell" data-stat-tooltip="Hook execution results: allowed / denied / asked. Hooks run before and after tool calls" title="Hook execution results: allowed / denied / asked. Hooks run before and after tool calls">
+    <div class="stat-cell" data-stat-tooltip="${STAT_TOOLTIPS.hooks}">
       <span class="stat-label">Hooks</span>
       <span class="stat-value" id="stat-hooks">0 / 0 / 0</span>
     </div>
-    <div class="stat-cell" data-stat-tooltip="Events per minute over the last 60 seconds (sliding window)" title="Events per minute over the last 60 seconds (sliding window)">
+    <div class="stat-cell" data-stat-tooltip="${STAT_TOOLTIPS.rate}">
       <span class="stat-label">Rate</span>
       <span class="stat-value" id="stat-rate">--</span>
     </div>
@@ -4974,15 +5136,19 @@ Session: ${escapeHtml(sessionLabel)}">
   }
   function renderStatsFromState(stats) {
     if (cellElements.topTools) {
+      const parent = cellElements.topTools.closest(".stat-cell");
       const sorted = [...stats.toolCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
       if (sorted.length > 0) {
         cellElements.topTools.textContent = sorted.map(([name, count]) => `${shortenToolName(name)}: ${count}`).join(" | ");
-        const parent = cellElements.topTools.closest(".stat-cell");
         if (parent) {
-          parent.setAttribute("title", sorted.map(([name, count]) => `${name}: ${count}`).join("\n"));
+          const fullNameSummary = sorted.map(([name, count]) => `${name}: ${count}`).join(" | ");
+          parent.setAttribute("data-stat-tooltip", `${STAT_TOOLTIPS.topTools}. ${fullNameSummary}`);
         }
       } else {
         cellElements.topTools.textContent = "--";
+        if (parent) {
+          parent.setAttribute("data-stat-tooltip", STAT_TOOLTIPS.topTools);
+        }
       }
     }
     if (cellElements.avgP95) {

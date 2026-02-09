@@ -19,7 +19,7 @@ export function formatTime(isoString: string): string {
 
 export function formatDuration(ms: number): string {
   if (ms < 1000) {
-    return `${ms}ms`;
+    return `${Math.round(ms)}ms`;
   }
   const seconds = (ms / 1000).toFixed(1);
   return `${seconds}s`;

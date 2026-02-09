@@ -12,6 +12,13 @@ import type { StrictMonitorEvent } from '../types.ts';
 import type { StatsState } from '../types.ts';
 
 const MAX_SESSION_STATS = 50;
+const STAT_TOOLTIPS = {
+  topTools: 'Most frequently used tools this session, ranked by call count',
+  avgP95: 'Average and 95th percentile tool execution time. P95 = 95% of calls complete within this duration',
+  thinking: 'Number of thinking/reasoning blocks Claude has produced this session',
+  hooks: 'Hook execution results: allowed / denied / asked. Hooks run before and after tool calls',
+  rate: 'Events per minute over the last 60 seconds (sliding window)',
+} as const;
 
 function createStatsState(): StatsState {
   return {
@@ -48,23 +55,23 @@ export function initStatsBar(): void {
   if (!container) return;
 
   container.innerHTML = `
-    <div class="stat-cell" data-stat-tooltip="Most frequently used tools this session, ranked by call count" title="Most frequently used tools this session, ranked by call count">
+    <div class="stat-cell" data-stat-tooltip="${STAT_TOOLTIPS.topTools}">
       <span class="stat-label">Top Tools</span>
       <span class="stat-value" id="stat-top-tools">--</span>
     </div>
-    <div class="stat-cell" data-stat-tooltip="Average and 95th percentile tool execution time. P95 = 95% of calls complete within this duration" title="Average and 95th percentile tool execution time. P95 = 95% of calls complete within this duration">
+    <div class="stat-cell" data-stat-tooltip="${STAT_TOOLTIPS.avgP95}">
       <span class="stat-label">Avg / P95</span>
       <span class="stat-value" id="stat-avg-p95">--</span>
     </div>
-    <div class="stat-cell" data-stat-tooltip="Number of thinking/reasoning blocks Claude has produced this session" title="Number of thinking/reasoning blocks Claude has produced this session">
+    <div class="stat-cell" data-stat-tooltip="${STAT_TOOLTIPS.thinking}">
       <span class="stat-label">Thinking</span>
       <span class="stat-value" id="stat-thinking">0</span>
     </div>
-    <div class="stat-cell" data-stat-tooltip="Hook execution results: allowed / denied / asked. Hooks run before and after tool calls" title="Hook execution results: allowed / denied / asked. Hooks run before and after tool calls">
+    <div class="stat-cell" data-stat-tooltip="${STAT_TOOLTIPS.hooks}">
       <span class="stat-label">Hooks</span>
       <span class="stat-value" id="stat-hooks">0 / 0 / 0</span>
     </div>
-    <div class="stat-cell" data-stat-tooltip="Events per minute over the last 60 seconds (sliding window)" title="Events per minute over the last 60 seconds (sliding window)">
+    <div class="stat-cell" data-stat-tooltip="${STAT_TOOLTIPS.rate}">
       <span class="stat-label">Rate</span>
       <span class="stat-value" id="stat-rate">--</span>
     </div>
@@ -151,18 +158,21 @@ export function setStatsSource(sessionId: string): void {
 function renderStatsFromState(stats: StatsState): void {
   // Top 5 tools
   if (cellElements.topTools) {
+    const parent = cellElements.topTools.closest('.stat-cell');
     const sorted = [...stats.toolCounts.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
     if (sorted.length > 0) {
       cellElements.topTools.textContent = sorted.map(([name, count]) => `${shortenToolName(name)}: ${count}`).join(' | ');
-      // Full names in tooltip
-      const parent = cellElements.topTools.closest('.stat-cell');
       if (parent) {
-        parent.setAttribute('title', sorted.map(([name, count]) => `${name}: ${count}`).join('\n'));
+        const fullNameSummary = sorted.map(([name, count]) => `${name}: ${count}`).join(' | ');
+        parent.setAttribute('data-stat-tooltip', `${STAT_TOOLTIPS.topTools}. ${fullNameSummary}`);
       }
     } else {
       cellElements.topTools.textContent = '--';
+      if (parent) {
+        parent.setAttribute('data-stat-tooltip', STAT_TOOLTIPS.topTools);
+      }
     }
   }
 

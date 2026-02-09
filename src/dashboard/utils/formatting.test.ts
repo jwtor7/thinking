@@ -137,6 +137,11 @@ describe('formatDuration', () => {
     it('should format 999ms', () => {
       expect(formatDuration(999)).toBe('999ms');
     });
+
+    it('should round fractional milliseconds to a whole number', () => {
+      expect(formatDuration(235.23442234)).toBe('235ms');
+      expect(formatDuration(324.6)).toBe('325ms');
+    });
   });
 
   describe('seconds (>= 1000ms)', () => {
