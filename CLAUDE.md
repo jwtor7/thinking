@@ -114,6 +114,10 @@ Tests are co-located with source files (`*.test.ts` next to the module they test
 - CORS origin validation on event endpoint
 - Path validation (only ~/.claude/ or temp directories)
 
+## Post-Ship Rebuild
+
+After `/shipit` pushes, always run `pnpm ship` to rebuild and restart the background daemon. The dashboard app launches from a pre-built bundle, so code changes aren't visible until the server is rebuilt.
+
 ## Versioning (MANDATORY)
 
 Every code change requires version bump. The bump script updates `package.json`, `src/server/types.ts`, and `CHANGELOG.md`:
