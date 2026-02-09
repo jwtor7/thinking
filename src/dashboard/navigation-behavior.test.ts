@@ -45,7 +45,7 @@ describe('Dashboard Navigation Behavior', () => {
   });
 
   it('should clear stale selected agent when session changes', () => {
-    expect(sessionsContent).toContain('const sessionChanged = state.selectedSession !== sessionId;');
+    expect(sessionsContent).toContain('if (state.selectedSession !== resolvedSessionId)');
     expect(sessionsContent).toContain('state.selectedAgentId = null;');
   });
 

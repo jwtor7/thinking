@@ -5,7 +5,7 @@
  * Sessions represent individual Claude Code CLI instances connected to the monitor.
  */
 
-import { state, subagentState } from '../state.ts';
+import { state, subagentState, ALL_SESSIONS } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { debug } from '../utils/debug.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
@@ -16,7 +16,7 @@ import { rebuildResizers } from '../ui/resizer.ts';
 import { updateSessionViewTabs } from '../ui/views.ts';
 import { filterTeamBySession } from './team.ts';
 import { filterTasksBySession } from './tasks.ts';
-import { refreshSessionChips } from './timeline.ts';
+import { applyTimelineFilter, refreshSessionChips } from './timeline.ts';
 import type { SessionStartEvent, SessionStopEvent } from '../types.ts';
 
 // ============================================
@@ -99,6 +99,39 @@ export function getSessionFolderName(workingDirectory?: string): string | undefi
     return parts[parts.length - 1] || undefined;
   }
   return undefined;
+}
+
+/**
+ * Normalize session identifiers to known canonical IDs when possible.
+ * Handles prefix IDs and folder-name aliases used by some event sources.
+ */
+export function resolveSessionId(sessionId?: string): string | undefined {
+  const normalized = sessionId?.trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (state.sessions.has(normalized)) {
+    return normalized;
+  }
+
+  const knownIds = Array.from(state.sessions.keys());
+  const prefixMatches = knownIds.filter(
+    (knownId) => knownId.startsWith(normalized) || normalized.startsWith(knownId)
+  );
+  if (prefixMatches.length === 1) {
+    return prefixMatches[0];
+  }
+
+  const folderMatches = knownIds.filter((knownId) => {
+    const knownSession = state.sessions.get(knownId);
+    return getSessionFolderName(knownSession?.workingDirectory) === normalized;
+  });
+  if (folderMatches.length === 1) {
+    return folderMatches[0];
+  }
+
+  return normalized;
 }
 
 // ============================================
@@ -187,26 +220,27 @@ export function stopDurationTimer(): void {
  * Updates the current session and triggers todo updates on session switch.
  */
 export function trackSession(sessionId: string, timestamp: string): void {
-  if (!sessionId) return;
+  const canonicalSessionId = resolveSessionId(sessionId);
+  if (!canonicalSessionId) return;
 
-  const isNewSession = !state.sessions.has(sessionId);
+  const isNewSession = !state.sessions.has(canonicalSessionId);
 
   if (isNewSession) {
     // No working directory yet - use session ID for color (will update on session_start)
-    state.sessions.set(sessionId, {
-      id: sessionId,
+    state.sessions.set(canonicalSessionId, {
+      id: canonicalSessionId,
       startTime: timestamp,
       active: true,
-      color: getSessionColorByFolder('', sessionId),
+      color: getSessionColorByFolder('', canonicalSessionId),
       lastActivityTime: Date.now(),
     });
-    debug(`[Dashboard] New session tracked: ${sessionId}`);
+    debug(`[Dashboard] New session tracked: ${canonicalSessionId}`);
     updateSessionFilter();
     refreshSessionChips();
   }
 
   // Update current session
-  state.currentSessionId = sessionId;
+  state.currentSessionId = canonicalSessionId;
 }
 
 // ============================================
@@ -235,11 +269,13 @@ export function handleSessionStart(event: SessionStartEvent): void {
 
   state.currentSessionId = sessionId;
   updateSessionFilter();
+  refreshSessionChips();
+  applyTimelineFilter();
 
   // Keep "All Sessions" context stable when new sessions appear.
   // Avoid forcing selection changes that would unexpectedly unhide session-only panels.
-  if (state.selectedSession === 'all') {
-    updateSessionPanelVisibility('all');
+  if (state.selectedSession === ALL_SESSIONS) {
+    updateSessionPanelVisibility(ALL_SESSIONS);
   }
 }
 
@@ -315,7 +351,7 @@ export function updateSessionFilter(): void {
 
   // Dropdown select
   html += '<select class="session-dropdown" id="session-dropdown" aria-label="Select session">';
-  html += `<option value="all"${state.selectedSession === 'all' ? ' selected' : ''}>All Sessions (${state.sessions.size})</option>`;
+  html += `<option value="${ALL_SESSIONS}"${state.selectedSession === ALL_SESSIONS ? ' selected' : ''}>All Sessions (${state.sessions.size})</option>`;
 
   // Sort sessions by folder name for grouping
   const sortedSessions = Array.from(state.sessions.entries()).sort((a, b) => {
@@ -356,7 +392,7 @@ export function updateSessionFilter(): void {
   html += '</select>';
 
   // Subagent chips (shown when a specific session is selected and has subagents)
-  if (state.selectedSession !== 'all') {
+  if (state.selectedSession !== ALL_SESSIONS) {
     const subagentIds = subagentState.sessionSubagents.get(state.selectedSession);
     if (subagentIds && subagentIds.size > 0) {
       html += '<div class="session-agent-chips">';
@@ -420,7 +456,7 @@ export function updateSessionFilter(): void {
  * These panels are hidden when "All" sessions is selected since they're session-specific.
  */
 function updateSessionPanelVisibility(sessionId: string): void {
-  const isAllSessions = sessionId === 'all';
+  const isAllSessions = sessionId === ALL_SESSIONS;
 
   // Hide session-specific panels when viewing all sessions
   if (elements.planPanel) {
@@ -442,30 +478,31 @@ function updateSessionPanelVisibility(sessionId: string): void {
  * Updates event filtering, session-scoped panels, and the session's associated plan.
  */
 export function selectSession(sessionId: string): void {
-  const sessionChanged = state.selectedSession !== sessionId;
+  const resolvedSessionId = sessionId === ALL_SESSIONS ? ALL_SESSIONS : (resolveSessionId(sessionId) || sessionId);
   // Agent filter chips are session-scoped; clear stale agent filters on session switch.
-  if (sessionChanged) {
+  if (state.selectedSession !== resolvedSessionId) {
     state.selectedAgentId = null;
   }
 
-  state.selectedSession = sessionId;
-  const isAllSessions = sessionId === 'all';
+  state.selectedSession = resolvedSessionId;
+  const isAllSessions = resolvedSessionId === ALL_SESSIONS;
 
   updateSessionFilter();
   filterAllBySession();
+  applyTimelineFilter();
 
   // Update visibility of session-specific panels
-  updateSessionPanelVisibility(sessionId);
+  updateSessionPanelVisibility(resolvedSessionId);
 
   // Update view tab visibility (hide session-scoped tabs when "All" is selected)
   updateSessionViewTabs(isAllSessions);
 
   // Show the plan associated with this session (if any)
-  if (sessionId === 'all') {
+  if (resolvedSessionId === ALL_SESSIONS) {
     // When "All" is selected, panels are hidden - no need to update plan content
   } else {
     // Check if this session has an associated plan
-    const associatedPlanPath = state.sessionPlanMap.get(sessionId);
+    const associatedPlanPath = state.sessionPlanMap.get(resolvedSessionId);
     if (associatedPlanPath) {
       // Show this session's plan
       if (callbacks) {
@@ -474,14 +511,14 @@ export function selectSession(sessionId: string): void {
     } else {
       // No plan associated with this session - show a helpful message
       if (callbacks) {
-        callbacks.displaySessionPlanEmpty(sessionId);
+        callbacks.displaySessionPlanEmpty(resolvedSessionId);
       }
     }
   }
 
   // Update stats bar to show session-specific stats
   if (callbacks) {
-    callbacks.setStatsSource(sessionId);
+    callbacks.setStatsSource(resolvedSessionId);
   }
 
   // Filter team and tasks panels by session
@@ -501,7 +538,7 @@ export function selectSession(sessionId: string): void {
  */
 export function autoSelectActiveSession(): void {
   // Check if selectedSession is set to a specific session
-  if (state.selectedSession && state.selectedSession !== 'all') {
+  if (state.selectedSession && state.selectedSession !== ALL_SESSIONS) {
     const selectedSession = state.sessions.get(state.selectedSession);
     // If the selected session is still active, keep it selected
     if (selectedSession && selectedSession.active) {

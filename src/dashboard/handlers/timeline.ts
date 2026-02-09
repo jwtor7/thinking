@@ -4,12 +4,12 @@
  * Provides a unified chronological view of all events across panels.
  */
 
-import { state, subagentState, teamState } from '../state.ts';
+import { state, subagentState, teamState, ALL_SESSIONS } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { formatTime, shortenToolName, summarizeInput } from '../utils/formatting.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { getAgentBadgeColors } from '../ui/colors.ts';
-import { getSessionDisplayName } from './sessions.ts';
+import { getSessionDisplayName, getSessionFolderName, resolveSessionId } from './sessions.ts';
 import { selectView } from '../ui/views.ts';
 import type { StrictMonitorEvent } from '../../shared/types.ts';
 
@@ -268,6 +268,58 @@ function saveSessionFilterState(): void {
 }
 
 /**
+ * Merge stale/alias chips (short IDs or folder names) into a canonical session chip.
+ * This keeps timeline chips stable when richer session metadata arrives later.
+ */
+function mergeSessionAliases(canonicalSessionId: string, displayLabel: string): void {
+  const aliasIds = Array.from(sessionChipElements.keys()).filter((candidateId) => {
+    if (candidateId === canonicalSessionId) return false;
+
+    const candidateSession = state.sessions.get(candidateId);
+    const looksLikeAlias = !candidateSession?.workingDirectory;
+    if (!looksLikeAlias) return false;
+
+    return candidateId === displayLabel
+      || canonicalSessionId.startsWith(candidateId)
+      || candidateId.startsWith(canonicalSessionId);
+  });
+
+  if (aliasIds.length === 0) return;
+
+  for (const aliasId of aliasIds) {
+    const aliasChip = sessionChipElements.get(aliasId);
+    if (aliasChip) {
+      aliasChip.remove();
+    }
+    sessionChipElements.delete(aliasId);
+
+    const aliasCount = sessionCounts.get(aliasId) || 0;
+    if (aliasCount > 0) {
+      sessionCounts.set(canonicalSessionId, (sessionCounts.get(canonicalSessionId) || 0) + aliasCount);
+    }
+    sessionCounts.delete(aliasId);
+
+    const aliasEnabled = sessionFilterState.get(aliasId) === true;
+    if (aliasEnabled) {
+      sessionFilterState.set(canonicalSessionId, true);
+    }
+    sessionFilterState.delete(aliasId);
+
+    const entriesContainer = elements.timelineEntries;
+    if (entriesContainer) {
+      for (const child of Array.from(entriesContainer.children)) {
+        const el = child as HTMLElement;
+        if (el.dataset.session === aliasId) {
+          el.dataset.session = canonicalSessionId;
+        }
+      }
+    }
+  }
+
+  saveSessionFilterState();
+}
+
+/**
  * Add or update a session chip when a new session appears.
  * Chips start disabled (user opts in to see session events).
  */
@@ -275,11 +327,13 @@ function addOrUpdateSessionChip(sessionId: string): void {
   const container = elements.timelineSessionChips;
   if (!container) return;
 
+  const session = state.sessions.get(sessionId);
+  const label = getSessionDisplayName(session?.workingDirectory, sessionId);
+  mergeSessionAliases(sessionId, label);
+
   // Already exists - update count and label (label may have been UUID, now resolved to project name)
   if (sessionChipElements.has(sessionId)) {
     const chip = sessionChipElements.get(sessionId)!;
-    const session = state.sessions.get(sessionId);
-    const newLabel = getSessionDisplayName(session?.workingDirectory, sessionId);
     const color = session?.color || 'var(--color-text-muted)';
 
     // Update chip label if it has changed (preserving the count span)
@@ -288,7 +342,7 @@ function addOrUpdateSessionChip(sessionId: string): void {
     if (countEl) {
       countEl.textContent = currentCount;
       // Update the text node before the span with the new label
-      chip.childNodes[0].textContent = newLabel + ' ';
+      chip.childNodes[0].textContent = label + ' ';
     }
 
     // Update color if active
@@ -305,8 +359,6 @@ function addOrUpdateSessionChip(sessionId: string): void {
     sessionFilterState.set(sessionId, false);
   }
 
-  const session = state.sessions.get(sessionId);
-  const label = getSessionDisplayName(session?.workingDirectory, sessionId);
   const color = session?.color || 'var(--color-text-muted)';
   const isActive = sessionFilterState.get(sessionId) ?? false;
 
@@ -350,9 +402,146 @@ function resetSessionChips(): void {
  */
 export function refreshSessionChips(): void {
   for (const sessionId of state.sessions.keys()) {
-    if (!sessionChipElements.has(sessionId)) {
-      addOrUpdateSessionChip(sessionId);
+    addOrUpdateSessionChip(sessionId);
+  }
+}
+
+/**
+ * Find the sole active session (or undefined if none/ambiguous).
+ */
+function getSingleActiveSessionId(): string | undefined {
+  const activeSessions = Array.from(state.sessions.values()).filter((session) => session.active);
+  if (activeSessions.length === 1) {
+    return activeSessions[0].id;
+  }
+  return undefined;
+}
+
+/**
+ * Best-effort default session fallback for events without explicit session IDs.
+ */
+function getDefaultTimelineSessionId(): string | undefined {
+  if (state.selectedSession !== ALL_SESSIONS && state.sessions.has(state.selectedSession)) {
+    return state.selectedSession;
+  }
+
+  const soleActive = getSingleActiveSessionId();
+  if (soleActive) {
+    return soleActive;
+  }
+
+  if (state.currentSessionId && state.sessions.has(state.currentSessionId)) {
+    return state.currentSessionId;
+  }
+
+  if (state.sessions.size === 1) {
+    return state.sessions.keys().next().value;
+  }
+
+  return undefined;
+}
+
+/**
+ * Resolve a session from a plan path using known session-plan associations.
+ */
+function resolveSessionFromPlanPath(planPath?: string): string | undefined {
+  if (!planPath) return undefined;
+
+  const normalizedPlanPath = planPath.replace(/\\/g, '/');
+  const planFilename = normalizedPlanPath.split('/').pop();
+
+  for (const [sessionId, assocPath] of state.sessionPlanMap) {
+    const normalizedAssocPath = assocPath.replace(/\\/g, '/');
+    const assocFilename = normalizedAssocPath.split('/').pop();
+
+    const matches = normalizedAssocPath === normalizedPlanPath
+      || normalizedAssocPath.endsWith(normalizedPlanPath)
+      || normalizedPlanPath.endsWith(normalizedAssocPath)
+      || (!!planFilename && planFilename === assocFilename);
+
+    if (matches) {
+      return resolveSessionId(sessionId);
     }
+  }
+
+  return undefined;
+}
+
+/**
+ * Resolve a session from team/task identifiers.
+ */
+function resolveSessionFromTeamKey(teamKey?: string): string | undefined {
+  const normalizedKey = teamKey?.trim();
+  if (!normalizedKey) return undefined;
+
+  const directMapped = teamState.teamSessionMap.get(normalizedKey);
+  if (directMapped) {
+    return resolveSessionId(directMapped);
+  }
+
+  // Match team/task key to session folder name (common project-level convention).
+  const folderMatches = Array.from(state.sessions.values())
+    .filter((session) => getSessionFolderName(session.workingDirectory) === normalizedKey)
+    .map((session) => session.id);
+  if (folderMatches.length === 1) {
+    return folderMatches[0];
+  }
+
+  // If all known teams map to one session, use it as a conservative fallback.
+  const mappedSessions = Array.from(new Set(
+    Array.from(teamState.teamSessionMap.values())
+      .map((sessionId) => resolveSessionId(sessionId))
+      .filter((sessionId): sessionId is string => !!sessionId)
+  ));
+  if (mappedSessions.length === 1) {
+    return mappedSessions[0];
+  }
+
+  return undefined;
+}
+
+/**
+ * Resolve the best session ID for timeline rendering/filtering.
+ */
+function resolveEventSessionId(event: StrictMonitorEvent): string | undefined {
+  // Trust explicit session IDs first, but normalize aliases to known IDs when possible.
+  const explicitSessionId = resolveSessionId(event.sessionId);
+  if (explicitSessionId) {
+    return explicitSessionId;
+  }
+
+  switch (event.type) {
+    case 'plan_update':
+    case 'plan_delete':
+      return resolveSessionFromPlanPath(event.path) || getDefaultTimelineSessionId();
+    case 'team_update':
+      return resolveSessionFromTeamKey(event.teamName) || getDefaultTimelineSessionId();
+    case 'task_update':
+      return resolveSessionFromTeamKey(event.teamId) || getDefaultTimelineSessionId();
+    case 'task_completed':
+      return resolveSessionFromTeamKey(event.teamId) || getDefaultTimelineSessionId();
+    case 'teammate_idle':
+      return resolveSessionFromTeamKey(event.teamName) || getDefaultTimelineSessionId();
+    default:
+      return getDefaultTimelineSessionId();
+  }
+}
+
+/**
+ * Label fallback for non-session-scoped events when we can't resolve a session.
+ */
+function getEventContextLabel(event: StrictMonitorEvent): string | undefined {
+  switch (event.type) {
+    case 'team_update':
+      return event.teamName;
+    case 'task_update':
+      return event.teamId;
+    case 'task_completed':
+      return event.teamId || event.taskSubject;
+    case 'teammate_idle':
+      return event.teamName || event.teammateName;
+    default:
+      return undefined;
   }
 }
 
@@ -367,6 +556,13 @@ export function applyTimelineFilter(): void {
 
   const filter = state.timelineFilter;
   let visible = 0;
+  const contextTypeCounts: Map<string, number> = new Map();
+  for (const cat of Object.keys(TIMELINE_CATEGORIES)) {
+    contextTypeCounts.set(cat, 0);
+  }
+
+  const anySessionChipActive = Array.from(sessionFilterState.values()).some(v => v);
+  const hasContextFilter = !!filter || anySessionChipActive || state.selectedSession !== ALL_SESSIONS;
 
   for (const child of Array.from(container.children)) {
     const el = child as HTMLElement;
@@ -377,19 +573,23 @@ export function applyTimelineFilter(): void {
     const matchesType = !elCategory || typeFilterState.get(elCategory) !== false;
 
     // Session filtering: global session selector + session chip filter
-    const anySessionChipActive = Array.from(sessionFilterState.values()).some(v => v);
     let matchesSession: boolean;
     if (anySessionChipActive) {
       // When session chips are active, they override global session selector for timeline
       matchesSession = !el.dataset.session || sessionFilterState.get(el.dataset.session) === true;
     } else {
       // No chips active: fall back to global session selector
-      matchesSession = state.selectedSession === 'all'
+      matchesSession = state.selectedSession === ALL_SESSIONS
         || !el.dataset.session
         || el.dataset.session === state.selectedSession;
     }
 
-    if (matchesText && matchesType && matchesSession) {
+    const matchesContext = matchesText && matchesSession;
+    if (matchesContext && elCategory) {
+      contextTypeCounts.set(elCategory, (contextTypeCounts.get(elCategory) || 0) + 1);
+    }
+
+    if (matchesContext && matchesType) {
       el.style.display = '';
       visible++;
     } else {
@@ -400,7 +600,7 @@ export function applyTimelineFilter(): void {
   if (elements.timelineCount) {
     const anyTypeDisabled = Array.from(typeFilterState.values()).some(v => !v);
     const anySessionChipEnabled = Array.from(sessionFilterState.values()).some(v => v);
-    const hasActiveFilter = !!filter || anyTypeDisabled || anySessionChipEnabled || state.selectedSession !== 'all';
+    const hasActiveFilter = !!filter || anyTypeDisabled || anySessionChipEnabled || state.selectedSession !== ALL_SESSIONS;
     elements.timelineCount.textContent = hasActiveFilter
       ? `${visible}/${timelineCount}`
       : String(timelineCount);
@@ -411,6 +611,21 @@ export function applyTimelineFilter(): void {
     } else {
       elements.timelineCount.title = '';
     }
+  }
+
+  // Type chips show contextual counts when text/session filters are active.
+  for (const [cat, chip] of chipElements) {
+    const countEl = chip.querySelector('.chip-count');
+    if (!countEl) continue;
+
+    const total = typeCounts.get(cat) || 0;
+    const contextual = contextTypeCounts.get(cat) || 0;
+    countEl.textContent = String(hasContextFilter ? contextual : total);
+
+    const categoryLabel = TIMELINE_CATEGORIES[cat]?.label || cat;
+    chip.title = hasContextFilter
+      ? `${categoryLabel}: ${contextual} shown (${total} total)`
+      : `${categoryLabel}: ${total}`;
   }
 }
 
@@ -502,26 +717,8 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
     }
   }
 
-  // Resolve sessionId for plan/team events that lack one
-  let resolvedSessionId = event.sessionId;
-  if (!resolvedSessionId) {
-    if (event.type === 'plan_update' || event.type === 'plan_delete') {
-      const planPath = (event as any).path;
-      if (planPath) {
-        for (const [sessId, assocPath] of state.sessionPlanMap) {
-          if (assocPath === planPath || assocPath.endsWith(planPath)) {
-            resolvedSessionId = sessId;
-            break;
-          }
-        }
-      }
-    } else if (event.type === 'team_update' || event.type === 'task_update') {
-      const teamName = (event as any).teamName || (event as any).teamId;
-      if (teamName) {
-        resolvedSessionId = teamState.teamSessionMap.get(teamName);
-      }
-    }
-  }
+  // Resolve session ID with aliases + no-session fallbacks.
+  const resolvedSessionId = resolveEventSessionId(event);
 
   // Track per-session count and update/create session chip
   if (resolvedSessionId) {
@@ -543,11 +740,20 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
   let agentLabel: string;
   let agentTooltip: string;
   if (agentId === 'main') {
-    const session = state.sessions.get(resolvedSessionId || '');
-    agentLabel = getSessionDisplayName(session?.workingDirectory, resolvedSessionId);
-    agentTooltip = session?.workingDirectory
-      ? `${session.workingDirectory}\nSession: ${resolvedSessionId || ''}`
-      : `Session: ${resolvedSessionId || ''}`;
+    const session = resolvedSessionId ? state.sessions.get(resolvedSessionId) : undefined;
+    const contextLabel = getEventContextLabel(event);
+    if (session || resolvedSessionId) {
+      agentLabel = getSessionDisplayName(session?.workingDirectory, resolvedSessionId);
+      agentTooltip = session?.workingDirectory
+        ? `${session.workingDirectory}\nSession: ${resolvedSessionId || ''}`
+        : `Session: ${resolvedSessionId || ''}`;
+    } else if (contextLabel) {
+      agentLabel = contextLabel;
+      agentTooltip = `Context: ${contextLabel}`;
+    } else {
+      agentLabel = 'unknown';
+      agentTooltip = 'Session: unknown';
+    }
   } else {
     const subagent = subagentState.subagents.get(agentId);
     agentLabel = subagent?.agentName || (agentId.length > 12 ? agentId.slice(0, 12) + '...' : agentId);
@@ -592,21 +798,6 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
     });
   }
 
-  // Apply session filter
-  if (state.selectedSession !== 'all' && resolvedSessionId && resolvedSessionId !== state.selectedSession) {
-    entry.style.display = 'none';
-  }
-
-  // Apply text filter
-  if (state.timelineFilter && !filterText.includes(state.timelineFilter)) {
-    entry.style.display = 'none';
-  }
-
-  // Apply type filter
-  if (category && typeFilterState.get(category) === false) {
-    entry.style.display = 'none';
-  }
-
   // Trim old entries if over limit - protect thinking entries
   const children = entriesContainer.children;
   while (children.length >= MAX_TIMELINE_ENTRIES) {
@@ -627,6 +818,7 @@ export function addTimelineEntry(event: StrictMonitorEvent): void {
   }
 
   entriesContainer.appendChild(entry);
+  applyTimelineFilter();
   callbacks.smartScroll(entriesContainer);
 
   // Remove 'new' class after animation

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-02-09 — v1.3.2
+
+#### 15:21
+### Changed
+- **Extracted ALL_SESSIONS constant** — Eliminated magic string `'all'` by defining `ALL_SESSIONS` constant in `state.ts` and using it throughout handlers (12 occurrences replaced across `sessions.ts`, `timeline.ts`)
+- **Simplified session-change detection** — Removed redundant double-check logic in `selectSession()` that compared both raw and canonical IDs; now uses single comparison against `resolvedSessionId` for clearer intent
+
+---
+
 ## 2026-02-08 — v1.3.1
 
 #### 17:24

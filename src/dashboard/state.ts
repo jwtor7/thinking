@@ -6,6 +6,9 @@
 
 import type { AppState, AgentContextStack, SubagentMappingInfo, TeamMemberInfo, TaskInfo, MessageSentEvent } from './types.ts';
 
+/** Sentinel value for "all sessions" filter. */
+export const ALL_SESSIONS = 'all' as const;
+
 /**
  * Subagent tracking state.
  * Separate from AppState to avoid modifying the interface.
