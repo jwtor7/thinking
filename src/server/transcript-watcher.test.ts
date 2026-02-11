@@ -6,10 +6,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { TranscriptWatcher, isValidClaudePathWithinRoot } from './transcript-watcher.ts';
+import { TranscriptWatcher, extractWorkingDirectory, isValidClaudePathWithinRoot } from './transcript-watcher.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
 import type { ThinkingEvent, MonitorEvent } from './types.ts';
 
@@ -286,6 +286,119 @@ describe('File Tracking Logic', () => {
 
     expect(isValidClaudePathWithinRoot(validPath, claudeDir)).toBe(true);
     expect(isValidClaudePathWithinRoot(invalidPath, claudeDir)).toBe(false);
+  });
+
+  it('should extract working directory from subagent sidecar paths', () => {
+    const subagentPath = '/Users/test/.claude/projects/-Users-true-dev-thinking/session-123/subagents/agent-abc.jsonl';
+    expect(extractWorkingDirectory(subagentPath)).toBe('/Users/true/dev/thinking');
+  });
+});
+
+describe('Subagent Transcript Support', () => {
+  let mockHub: MockWebSocketHub;
+  let watcher: TranscriptWatcher;
+  let testDir: string;
+  let projectsDir: string;
+
+  beforeEach(async () => {
+    mockHub = new MockWebSocketHub();
+
+    testDir = join(tmpdir(), `transcript-watcher-subagent-test-${Date.now()}`);
+    await mkdir(testDir, { recursive: true });
+    projectsDir = join(testDir, 'projects');
+    await mkdir(projectsDir, { recursive: true });
+
+    watcher = new TranscriptWatcher(mockHub as unknown as WebSocketHub, {
+      claudeDir: testDir,
+      projectsDir,
+    });
+  });
+
+  afterEach(async () => {
+    watcher.stop();
+    try {
+      await rm(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should not treat subagent sidecar files as session IDs', () => {
+    const privateApi = watcher as unknown as { extractSessionIdFromPath: (filePath: string) => string | undefined };
+    const sessionId = privateApi.extractSessionIdFromPath(
+      '/tmp/.claude/projects/-Users-test-dev-app/session-1/subagents/agent-abc123.jsonl'
+    );
+    expect(sessionId).toBeUndefined();
+  });
+
+  it('should track subagent sidecar files discovered from main transcript lines', async () => {
+    const projectPath = join(projectsDir, '-Users-test-dev-app');
+    const sessionId = 'session-xyz';
+    const agentId = 'abc123';
+    const mainFilePath = join(projectPath, `${sessionId}.jsonl`);
+    const sessionDir = join(projectPath, sessionId, 'subagents');
+    const subagentFilePath = join(sessionDir, `agent-${agentId}.jsonl`);
+
+    await mkdir(sessionDir, { recursive: true });
+    await writeFile(mainFilePath, '', 'utf-8');
+    await writeFile(subagentFilePath, '', 'utf-8');
+
+    const privateApi = watcher as unknown as {
+      processLine: (line: string, filePath: string) => Promise<void>;
+    };
+    await privateApi.processLine(
+      JSON.stringify({
+        sessionId,
+        data: { agentId },
+        timestamp: '2026-02-09T20:00:00.000Z',
+      }),
+      mainFilePath
+    );
+
+    expect(watcher.getTrackedFileCount()).toBe(1);
+  });
+
+  it('should extract thinking from nested progress message envelopes', async () => {
+    const projectPath = join(projectsDir, '-Users-test-dev-app');
+    const sessionId = 'session-nested';
+    const mainFilePath = join(projectPath, `${sessionId}.jsonl`);
+
+    await mkdir(projectPath, { recursive: true });
+    await writeFile(mainFilePath, '', 'utf-8');
+
+    const privateApi = watcher as unknown as {
+      processLine: (line: string, filePath: string) => Promise<void>;
+    };
+    await privateApi.processLine(
+      JSON.stringify({
+        sessionId,
+        timestamp: '2026-02-09T20:01:00.000Z',
+        data: {
+          agentId: 'agent-nested-1',
+          message: {
+            timestamp: '2026-02-09T20:01:01.000Z',
+            message: {
+              role: 'assistant',
+              content: [
+                { type: 'thinking', thinking: 'Nested subagent thought' },
+                { type: 'text', text: 'Assistant reply' },
+              ],
+            },
+          },
+        },
+      }),
+      mainFilePath
+    );
+
+    const thinkingEvent = mockHub.broadcastedEvents.find(
+      (event): event is ThinkingEvent => event.type === 'thinking'
+    );
+
+    expect(thinkingEvent).toBeDefined();
+    expect(thinkingEvent?.content).toBe('Nested subagent thought');
+    expect(thinkingEvent?.sessionId).toBe(sessionId);
+    expect(thinkingEvent?.agentId).toBe('agent-nested-1');
+    expect(thinkingEvent?.timestamp).toBe('2026-02-09T20:01:01.000Z');
   });
 });
 

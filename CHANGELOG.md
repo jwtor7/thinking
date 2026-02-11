@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-02-10 — v1.3.4
+
+#### 19:31
+### Added
+- **Subagent transcript support** — TranscriptWatcher now discovers and tracks nested subagent transcript files in `<session>/subagents/agent-<id>.jsonl`, enabling the dashboard to display thinking blocks from nested agents
+- **Subagent transcript tests** — Added 3 new test cases covering subagent file discovery, content parsing, and nested directory traversal
+
+### Changed
+- **Collapsible team sections** — Team panel and related dashboard handlers updated to support section collapsing (handlers/team.ts, handlers/agents.ts, team.css)
+- **Team UI improvements** — Enhanced team section layout and styling for better readability of agent hierarchies
+
+### Fixed
+- **Thinking Monitor.app launch** — Fixed missing Volta bin directory on PATH in macOS .app bundle launcher; shell scripts now correctly source ~/.zshrc and find pnpm command during `pnpm ship` invocation from Finder
+
+---
+
 ## 2026-02-09 — v1.3.3
 
 #### 15:40

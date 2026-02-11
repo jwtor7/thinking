@@ -41,6 +41,20 @@ interface TranscriptLine {
       text?: string;
     }>;
   };
+  data?: {
+    agentId?: string;
+    message?: {
+      timestamp?: string;
+      message?: {
+        role?: string;
+        content?: Array<{
+          type: string;
+          thinking?: string;
+          text?: string;
+        }>;
+      };
+    };
+  };
 }
 
 /** Tracked file state for incremental reading */
@@ -68,7 +82,16 @@ interface TrackedFile {
 export function extractWorkingDirectory(filePath: string): string | undefined {
   // Get the parent directory name (e.g., "-Users-dev-myproject")
   const parentDir = dirname(filePath);
-  const dirName = parentDir.split('/').pop();
+  let dirName = parentDir.split('/').pop();
+
+  // Subagent transcripts live at:
+  // ~/.claude/projects/<project>/<session>/subagents/agent-<id>.jsonl
+  // In this case, derive the project directory name instead.
+  if (dirName === 'subagents') {
+    const sessionDir = dirname(parentDir);
+    const projectDir = dirname(sessionDir);
+    dirName = projectDir.split('/').pop();
+  }
 
   if (!dirName || !dirName.startsWith('-')) {
     return undefined;
@@ -294,7 +317,15 @@ export class TranscriptWatcher {
       const watcher = watch(projectPath, { persistent: false }, (_eventType, filename) => {
         if (this.isShuttingDown) return;
         if (filename?.endsWith('.jsonl')) {
-          this.handleFileChange(join(projectPath, filename));
+          void this.handleFileChange(join(projectPath, filename));
+          return;
+        }
+
+        // Session directories may contain nested subagent transcripts:
+        // <session-id>/subagents/agent-*.jsonl
+        if (filename) {
+          const sessionPath = join(projectPath, filename);
+          void this.scanSessionSubagentFiles(sessionPath);
         }
       });
 
@@ -312,9 +343,59 @@ export class TranscriptWatcher {
           const filePath = join(projectPath, entry.name);
           await this.trackFile(filePath);
         }
+        if (entry.isDirectory() && !entry.name.startsWith('.')) {
+          const sessionPath = join(projectPath, entry.name);
+          await this.scanSessionSubagentFiles(sessionPath);
+        }
       }
     } catch (error) {
       logger.error(`[TranscriptWatcher] Error watching project directory ${projectPath}:`, error);
+    }
+  }
+
+  /**
+   * Scan a session directory for nested subagent transcript files.
+   * Expected layout:
+   *   <project>/<session-id>/subagents/agent-<id>.jsonl
+   */
+  private async scanSessionSubagentFiles(sessionPath: string): Promise<void> {
+    if (!this.isValidPath(sessionPath)) {
+      return;
+    }
+
+    try {
+      const sessionStats = await stat(sessionPath);
+      if (!sessionStats.isDirectory()) {
+        return;
+      }
+    } catch {
+      // Session directory may not exist yet
+      return;
+    }
+
+    const subagentsDir = join(sessionPath, 'subagents');
+    if (!this.isValidPath(subagentsDir)) {
+      return;
+    }
+
+    try {
+      const subagentStats = await stat(subagentsDir);
+      if (!subagentStats.isDirectory()) {
+        return;
+      }
+    } catch {
+      return;
+    }
+
+    try {
+      const entries = await readdir(subagentsDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isFile() && entry.name.endsWith('.jsonl')) {
+          await this.trackFile(join(subagentsDir, entry.name));
+        }
+      }
+    } catch (error) {
+      logger.error(`[TranscriptWatcher] Error scanning subagent transcripts in ${subagentsDir}:`, error);
     }
   }
 
@@ -334,7 +415,7 @@ export class TranscriptWatcher {
 
     // Remove tracked files in this directory
     for (const [filePath, tracked] of this.trackedFiles) {
-      if (dirname(filePath) === projectPath) {
+      if (isPathWithin(filePath, projectPath)) {
         if (tracked.watcher) {
           try {
             tracked.watcher.close();
@@ -405,6 +486,12 @@ export class TranscriptWatcher {
    * Transcript files are named with their session ID: {session-id}.jsonl
    */
   private extractSessionIdFromPath(filePath: string): string | undefined {
+    // Subagent sidecar files are named agent-<id>.jsonl and should not be
+    // treated as top-level sessions.
+    if (filePath.includes('/subagents/')) {
+      return undefined;
+    }
+
     const filename = filePath.split('/').pop();
     if (!filename || !filename.endsWith('.jsonl')) {
       return undefined;
@@ -627,12 +714,51 @@ export class TranscriptWatcher {
       this.broadcastSessionStart(parsed.sessionId, workingDirectory, parsed.timestamp);
     }
 
+    // When main transcript lines mention a subagent, eagerly track the sidecar file.
+    // This captures subagent thinking streams written to:
+    // <project>/<session>/subagents/agent-<id>.jsonl
+    if (!filePath.includes('/subagents/') && parsed.sessionId) {
+      const discoveredAgentIds = new Set<string>();
+      if (parsed.agentId) {
+        discoveredAgentIds.add(parsed.agentId);
+      }
+      if (parsed.data?.agentId) {
+        discoveredAgentIds.add(parsed.data.agentId);
+      }
+      for (const agentId of discoveredAgentIds) {
+        await this.trackSubagentFile(filePath, parsed.sessionId, agentId);
+      }
+    }
+
     // Extract thinking blocks from assistant messages
-    const thinkingBlocks = this.extractThinking(parsed);
+    const thinkingBlocks = this.extractThinking(parsed.message);
 
     for (const thinking of thinkingBlocks) {
       this.broadcastThinking(thinking, parsed.sessionId, parsed.agentId, parsed.timestamp);
     }
+
+    // Newer transcript formats can wrap agent messages inside progress entries.
+    const nestedMessage = parsed.data?.message?.message;
+    const nestedThinkingBlocks = this.extractThinking(nestedMessage);
+    const nestedTimestamp = parsed.data?.message?.timestamp || parsed.timestamp;
+    const nestedAgentId = parsed.data?.agentId || parsed.agentId;
+
+    for (const thinking of nestedThinkingBlocks) {
+      this.broadcastThinking(thinking, parsed.sessionId, nestedAgentId, nestedTimestamp);
+    }
+  }
+
+  /**
+   * Try to track a subagent sidecar transcript file if it exists.
+   */
+  private async trackSubagentFile(
+    filePath: string,
+    sessionId: string,
+    agentId: string
+  ): Promise<void> {
+    const projectDir = dirname(filePath);
+    const subagentFilePath = join(projectDir, sessionId, 'subagents', `agent-${agentId}.jsonl`);
+    await this.trackFile(subagentFilePath);
   }
 
   /**
@@ -657,14 +783,14 @@ export class TranscriptWatcher {
   /**
    * Extract thinking content from a transcript line.
    */
-  private extractThinking(line: TranscriptLine): string[] {
+  private extractThinking(message: TranscriptLine['message']): string[] {
     const thinkingBlocks: string[] = [];
 
-    if (line.message?.role !== 'assistant' || !line.message?.content) {
+    if (message?.role !== 'assistant' || !message?.content) {
       return thinkingBlocks;
     }
 
-    for (const block of line.message.content) {
+    for (const block of message.content) {
       if (block.type === 'thinking' && block.thinking) {
         thinkingBlocks.push(block.thinking);
       }

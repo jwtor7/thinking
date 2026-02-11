@@ -131,9 +131,20 @@
           </header>
           <div class="panel-content" id="team-content">
             <div class="team-layout">
-              <div class="team-member-section">
-                <div class="team-section-label">MEMBERS</div>
-                <div class="team-member-grid" id="team-member-grid">
+              <div class="team-member-section team-section" id="team-member-section">
+                <button
+                  class="team-section-toggle"
+                  id="team-member-toggle"
+                  data-team-section="members"
+                  type="button"
+                  aria-expanded="true"
+                  aria-label="Collapse team members section"
+                  title="Collapse section"
+                >
+                  <span class="team-section-label">MEMBERS</span>
+                  <span class="team-section-chevron">&#9660;</span>
+                </button>
+                <div class="team-member-grid team-section-body" id="team-member-grid">
                   <div class="empty-state">
                     <div class="empty-state-icon">&#128101;</div>
                     <p class="empty-state-title">No team activity</p>
@@ -141,9 +152,20 @@
                   </div>
                 </div>
               </div>
-              <div class="team-agent-tree-section" id="agent-tree-section" style="display: none;">
-                <div class="team-section-label">AGENT HIERARCHY</div>
-                <div class="agent-tree-content" id="agent-tree-content"></div>
+              <div class="team-agent-tree-section team-section team-section-no-data" id="agent-tree-section">
+                <button
+                  class="team-section-toggle"
+                  id="agent-tree-toggle"
+                  data-team-section="hierarchy"
+                  type="button"
+                  aria-expanded="true"
+                  aria-label="Collapse agent hierarchy section"
+                  title="Collapse section"
+                >
+                  <span class="team-section-label">AGENT HIERARCHY</span>
+                  <span class="team-section-chevron">&#9660;</span>
+                </button>
+                <div class="agent-tree-content team-section-body" id="agent-tree-content"></div>
               </div>
               <div class="team-messages-section">
                 <div class="team-section-label">MESSAGES</div>

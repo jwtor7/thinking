@@ -19,6 +19,57 @@
   padding: 0 var(--spacing-xs);
 }
 
+.team-section {
+  min-width: 0;
+}
+
+.team-section-no-data {
+  display: none;
+}
+
+.team-section-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-xs);
+  border: none;
+  background: transparent;
+  padding: 0 var(--spacing-xs);
+  margin: 0 0 var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.team-section-toggle:hover {
+  background: var(--color-surface-2);
+}
+
+.team-section-toggle:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 1px;
+}
+
+.team-section-toggle .team-section-label {
+  margin: 0;
+  padding: 0;
+}
+
+.team-section-chevron {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  transition: transform var(--duration-fast) var(--ease-default);
+  flex-shrink: 0;
+}
+
+.team-section.team-section-collapsed .team-section-chevron {
+  transform: rotate(-90deg);
+}
+
+.team-section.team-section-collapsed .team-section-body {
+  display: none;
+}
+
 /* Team name badge in header */
 .team-name-badge {
   font-size: var(--font-size-xs);

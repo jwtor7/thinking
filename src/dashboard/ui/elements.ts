@@ -58,7 +58,11 @@ export const elements = {
   // Team panel elements
   teamPanel: document.querySelector('.panel-team') as HTMLElement,
   teamName: document.getElementById('team-name'),
+  teamMemberSection: document.getElementById('team-member-section'),
+  teamMemberToggle: document.getElementById('team-member-toggle') as HTMLButtonElement | null,
   teamMemberGrid: document.getElementById('team-member-grid'),
+  teamAgentTreeSection: document.getElementById('agent-tree-section'),
+  teamAgentTreeToggle: document.getElementById('agent-tree-toggle') as HTMLButtonElement | null,
   teamMessages: document.getElementById('team-messages'),
   teamCollapseBtn: document.querySelector('.panel-team .panel-collapse-btn') as HTMLButtonElement,
   // Tasks panel elements

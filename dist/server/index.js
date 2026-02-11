@@ -21,7 +21,7 @@ function isClientRequest(obj) {
 }
 function getVersion() {
   if (true) {
-    return "1.3.2";
+    return "1.3.3";
   }
   try {
     const packagePath = join(process.cwd(), "package.json");
@@ -1548,7 +1548,12 @@ import * as readline from "node:readline";
 import { homedir } from "node:os";
 function extractWorkingDirectory(filePath) {
   const parentDir = dirname2(filePath);
-  const dirName = parentDir.split("/").pop();
+  let dirName = parentDir.split("/").pop();
+  if (dirName === "subagents") {
+    const sessionDir = dirname2(parentDir);
+    const projectDir = dirname2(sessionDir);
+    dirName = projectDir.split("/").pop();
+  }
   if (!dirName || !dirName.startsWith("-")) {
     return void 0;
   }
@@ -1715,7 +1720,12 @@ var TranscriptWatcher = class _TranscriptWatcher {
       const watcher = watch(projectPath, { persistent: false }, (_eventType, filename) => {
         if (this.isShuttingDown) return;
         if (filename?.endsWith(".jsonl")) {
-          this.handleFileChange(join4(projectPath, filename));
+          void this.handleFileChange(join4(projectPath, filename));
+          return;
+        }
+        if (filename) {
+          const sessionPath = join4(projectPath, filename);
+          void this.scanSessionSubagentFiles(sessionPath);
         }
       });
       watcher.on("error", (error) => {
@@ -1728,9 +1738,53 @@ var TranscriptWatcher = class _TranscriptWatcher {
           const filePath = join4(projectPath, entry.name);
           await this.trackFile(filePath);
         }
+        if (entry.isDirectory() && !entry.name.startsWith(".")) {
+          const sessionPath = join4(projectPath, entry.name);
+          await this.scanSessionSubagentFiles(sessionPath);
+        }
       }
     } catch (error) {
       logger.error(`[TranscriptWatcher] Error watching project directory ${projectPath}:`, error);
+    }
+  }
+  /**
+   * Scan a session directory for nested subagent transcript files.
+   * Expected layout:
+   *   <project>/<session-id>/subagents/agent-<id>.jsonl
+   */
+  async scanSessionSubagentFiles(sessionPath) {
+    if (!this.isValidPath(sessionPath)) {
+      return;
+    }
+    try {
+      const sessionStats = await stat2(sessionPath);
+      if (!sessionStats.isDirectory()) {
+        return;
+      }
+    } catch {
+      return;
+    }
+    const subagentsDir = join4(sessionPath, "subagents");
+    if (!this.isValidPath(subagentsDir)) {
+      return;
+    }
+    try {
+      const subagentStats = await stat2(subagentsDir);
+      if (!subagentStats.isDirectory()) {
+        return;
+      }
+    } catch {
+      return;
+    }
+    try {
+      const entries = await readdir(subagentsDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+          await this.trackFile(join4(subagentsDir, entry.name));
+        }
+      }
+    } catch (error) {
+      logger.error(`[TranscriptWatcher] Error scanning subagent transcripts in ${subagentsDir}:`, error);
     }
   }
   /**
@@ -1746,7 +1800,7 @@ var TranscriptWatcher = class _TranscriptWatcher {
       this.subDirWatchers.delete(projectPath);
     }
     for (const [filePath, tracked] of this.trackedFiles) {
-      if (dirname2(filePath) === projectPath) {
+      if (isPathWithin(filePath, projectPath)) {
         if (tracked.watcher) {
           try {
             tracked.watcher.close();
@@ -1810,6 +1864,9 @@ var TranscriptWatcher = class _TranscriptWatcher {
    * Transcript files are named with their session ID: {session-id}.jsonl
    */
   extractSessionIdFromPath(filePath) {
+    if (filePath.includes("/subagents/")) {
+      return void 0;
+    }
     const filename = filePath.split("/").pop();
     if (!filename || !filename.endsWith(".jsonl")) {
       return void 0;
@@ -1985,10 +2042,37 @@ var TranscriptWatcher = class _TranscriptWatcher {
       this.announcedSessions.set(parsed.sessionId, workingDirectory);
       this.broadcastSessionStart(parsed.sessionId, workingDirectory, parsed.timestamp);
     }
-    const thinkingBlocks = this.extractThinking(parsed);
+    if (!filePath.includes("/subagents/") && parsed.sessionId) {
+      const discoveredAgentIds = /* @__PURE__ */ new Set();
+      if (parsed.agentId) {
+        discoveredAgentIds.add(parsed.agentId);
+      }
+      if (parsed.data?.agentId) {
+        discoveredAgentIds.add(parsed.data.agentId);
+      }
+      for (const agentId of discoveredAgentIds) {
+        await this.trackSubagentFile(filePath, parsed.sessionId, agentId);
+      }
+    }
+    const thinkingBlocks = this.extractThinking(parsed.message);
     for (const thinking of thinkingBlocks) {
       this.broadcastThinking(thinking, parsed.sessionId, parsed.agentId, parsed.timestamp);
     }
+    const nestedMessage = parsed.data?.message?.message;
+    const nestedThinkingBlocks = this.extractThinking(nestedMessage);
+    const nestedTimestamp = parsed.data?.message?.timestamp || parsed.timestamp;
+    const nestedAgentId = parsed.data?.agentId || parsed.agentId;
+    for (const thinking of nestedThinkingBlocks) {
+      this.broadcastThinking(thinking, parsed.sessionId, nestedAgentId, nestedTimestamp);
+    }
+  }
+  /**
+   * Try to track a subagent sidecar transcript file if it exists.
+   */
+  async trackSubagentFile(filePath, sessionId, agentId) {
+    const projectDir = dirname2(filePath);
+    const subagentFilePath = join4(projectDir, sessionId, "subagents", `agent-${agentId}.jsonl`);
+    await this.trackFile(subagentFilePath);
   }
   /**
    * Broadcast a session_start event when a new session is first seen.
@@ -2006,12 +2090,12 @@ var TranscriptWatcher = class _TranscriptWatcher {
   /**
    * Extract thinking content from a transcript line.
    */
-  extractThinking(line) {
+  extractThinking(message) {
     const thinkingBlocks = [];
-    if (line.message?.role !== "assistant" || !line.message?.content) {
+    if (message?.role !== "assistant" || !message?.content) {
       return thinkingBlocks;
     }
-    for (const block of line.message.content) {
+    for (const block of message.content) {
       if (block.type === "thinking" && block.thinking) {
         thinkingBlocks.push(block.thinking);
       }

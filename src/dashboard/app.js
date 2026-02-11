@@ -161,7 +161,11 @@
     // Team panel elements
     teamPanel: document.querySelector(".panel-team"),
     teamName: document.getElementById("team-name"),
+    teamMemberSection: document.getElementById("team-member-section"),
+    teamMemberToggle: document.getElementById("team-member-toggle"),
     teamMemberGrid: document.getElementById("team-member-grid"),
+    teamAgentTreeSection: document.getElementById("agent-tree-section"),
+    teamAgentTreeToggle: document.getElementById("agent-tree-toggle"),
     teamMessages: document.getElementById("team-messages"),
     teamCollapseBtn: document.querySelector(".panel-team .panel-collapse-btn"),
     // Tasks panel elements
@@ -1614,9 +1618,91 @@
 
   // src/dashboard/handlers/team.ts
   var MAX_MESSAGES = 200;
+  var TEAM_SECTION_STORAGE_KEY = "thinking-monitor-team-section-collapse";
+  var TEAM_SECTION_LABELS = {
+    members: "team members section",
+    hierarchy: "agent hierarchy section"
+  };
+  var teamSectionCollapseState = {
+    members: false,
+    hierarchy: false
+  };
   var callbacks4 = null;
   function initTeam(cbs) {
     callbacks4 = cbs;
+    loadTeamSectionCollapseState();
+    initTeamSectionToggles();
+    for (const sectionName of ["members", "hierarchy"]) {
+      applyTeamSectionCollapse(sectionName, false);
+    }
+  }
+  function getTeamSectionElements(sectionName) {
+    if (sectionName === "members") {
+      return {
+        section: elements.teamMemberSection,
+        toggle: elements.teamMemberToggle
+      };
+    }
+    return {
+      section: elements.teamAgentTreeSection,
+      toggle: elements.teamAgentTreeToggle
+    };
+  }
+  function saveTeamSectionCollapseState() {
+    try {
+      localStorage.setItem(TEAM_SECTION_STORAGE_KEY, JSON.stringify(teamSectionCollapseState));
+    } catch {
+    }
+  }
+  function loadTeamSectionCollapseState() {
+    try {
+      const stored = localStorage.getItem(TEAM_SECTION_STORAGE_KEY);
+      if (!stored) return;
+      const parsed = JSON.parse(stored);
+      if (typeof parsed !== "object" || parsed === null) return;
+      if (typeof parsed.members === "boolean") {
+        teamSectionCollapseState.members = parsed.members;
+      }
+      if (typeof parsed.hierarchy === "boolean") {
+        teamSectionCollapseState.hierarchy = parsed.hierarchy;
+      }
+    } catch {
+    }
+  }
+  function applyTeamSectionCollapse(sectionName, persist) {
+    const { section, toggle } = getTeamSectionElements(sectionName);
+    const isCollapsed = teamSectionCollapseState[sectionName];
+    if (section) {
+      section.classList.toggle("team-section-collapsed", isCollapsed);
+    }
+    if (toggle) {
+      toggle.setAttribute("aria-expanded", String(!isCollapsed));
+      toggle.setAttribute(
+        "aria-label",
+        `${isCollapsed ? "Expand" : "Collapse"} ${TEAM_SECTION_LABELS[sectionName]}`
+      );
+      toggle.title = `${isCollapsed ? "Expand" : "Collapse"} section`;
+    }
+    if (persist) {
+      saveTeamSectionCollapseState();
+    }
+  }
+  function toggleTeamSection(sectionName) {
+    teamSectionCollapseState[sectionName] = !teamSectionCollapseState[sectionName];
+    applyTeamSectionCollapse(sectionName, true);
+  }
+  function initTeamSectionToggles() {
+    const sections = ["members", "hierarchy"];
+    for (const sectionName of sections) {
+      const { toggle } = getTeamSectionElements(sectionName);
+      if (!toggle || toggle.dataset.initialized === "true") {
+        continue;
+      }
+      toggle.dataset.initialized = "true";
+      toggle.addEventListener("click", () => {
+        toggleTeamSection(sectionName);
+      });
+    }
   }
   function renderMemberGrid(teamName) {
     const memberGrid = elements.teamMemberGrid;
@@ -4484,7 +4570,7 @@ Session: ${id}` : `Session: ${id}`;
   }
   function renderAgentTree() {
     const treeContainer = elements.agentTreeContent;
-    const treeSection = document.getElementById("agent-tree-section");
+    const treeSection = elements.teamAgentTreeSection;
     if (!treeContainer) return;
     const rootAgents = [];
     for (const mapping of subagentState.subagents.values()) {
@@ -4494,13 +4580,13 @@ Session: ${id}` : `Session: ${id}`;
     }
     if (rootAgents.length === 0) {
       if (treeSection && subagentState.subagents.size === 0) {
-        treeSection.style.display = "none";
+        treeSection.classList.add("team-section-no-data");
       }
       treeContainer.innerHTML = "";
       return;
     }
     if (treeSection) {
-      treeSection.style.display = "";
+      treeSection.classList.remove("team-section-no-data");
     }
     rootAgents.sort((a, b) => a.startTime.localeCompare(b.startTime));
     treeContainer.innerHTML = "";

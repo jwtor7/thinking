@@ -233,7 +233,7 @@ function getAgentDisplayName(agentId: string): string {
  */
 function renderAgentTree(): void {
   const treeContainer = elements.agentTreeContent;
-  const treeSection = document.getElementById('agent-tree-section');
+  const treeSection = elements.teamAgentTreeSection;
   if (!treeContainer) return;
 
   // Find root agents (those without a parentAgentId, or whose parent is a session)
@@ -246,14 +246,14 @@ function renderAgentTree(): void {
 
   if (rootAgents.length === 0) {
     if (treeSection && subagentState.subagents.size === 0) {
-      treeSection.style.display = 'none';
+      treeSection.classList.add('team-section-no-data');
     }
     treeContainer.innerHTML = '';
     return;
   }
 
   if (treeSection) {
-    treeSection.style.display = '';
+    treeSection.classList.remove('team-section-no-data');
   }
 
   // Sort roots by start time

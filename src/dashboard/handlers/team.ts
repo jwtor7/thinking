@@ -19,6 +19,19 @@ import { updateTabBadge } from '../ui/views.ts';
 // ============================================
 
 const MAX_MESSAGES = 200;
+const TEAM_SECTION_STORAGE_KEY = 'thinking-monitor-team-section-collapse';
+
+type TeamSectionName = 'members' | 'hierarchy';
+
+const TEAM_SECTION_LABELS: Record<TeamSectionName, string> = {
+  members: 'team members section',
+  hierarchy: 'agent hierarchy section',
+};
+
+const teamSectionCollapseState: Record<TeamSectionName, boolean> = {
+  members: false,
+  hierarchy: false,
+};
 
 // ============================================
 // Callback Interface
@@ -37,6 +50,93 @@ let callbacks: TeamCallbacks | null = null;
  */
 export function initTeam(cbs: TeamCallbacks): void {
   callbacks = cbs;
+  loadTeamSectionCollapseState();
+  initTeamSectionToggles();
+  for (const sectionName of ['members', 'hierarchy'] as const) {
+    applyTeamSectionCollapse(sectionName, false);
+  }
+}
+
+function getTeamSectionElements(sectionName: TeamSectionName): {
+  section: HTMLElement | null;
+  toggle: HTMLButtonElement | null;
+} {
+  if (sectionName === 'members') {
+    return {
+      section: elements.teamMemberSection as HTMLElement | null,
+      toggle: elements.teamMemberToggle,
+    };
+  }
+  return {
+    section: elements.teamAgentTreeSection as HTMLElement | null,
+    toggle: elements.teamAgentTreeToggle,
+  };
+}
+
+function saveTeamSectionCollapseState(): void {
+  try {
+    localStorage.setItem(TEAM_SECTION_STORAGE_KEY, JSON.stringify(teamSectionCollapseState));
+  } catch {
+    // Ignore persistence failures (private mode/storage quota)
+  }
+}
+
+function loadTeamSectionCollapseState(): void {
+  try {
+    const stored = localStorage.getItem(TEAM_SECTION_STORAGE_KEY);
+    if (!stored) return;
+
+    const parsed = JSON.parse(stored) as Partial<Record<TeamSectionName, boolean>>;
+    if (typeof parsed !== 'object' || parsed === null) return;
+
+    if (typeof parsed.members === 'boolean') {
+      teamSectionCollapseState.members = parsed.members;
+    }
+    if (typeof parsed.hierarchy === 'boolean') {
+      teamSectionCollapseState.hierarchy = parsed.hierarchy;
+    }
+  } catch {
+    // Ignore malformed values and fall back to defaults
+  }
+}
+
+function applyTeamSectionCollapse(sectionName: TeamSectionName, persist: boolean): void {
+  const { section, toggle } = getTeamSectionElements(sectionName);
+  const isCollapsed = teamSectionCollapseState[sectionName];
+  if (section) {
+    section.classList.toggle('team-section-collapsed', isCollapsed);
+  }
+  if (toggle) {
+    toggle.setAttribute('aria-expanded', String(!isCollapsed));
+    toggle.setAttribute(
+      'aria-label',
+      `${isCollapsed ? 'Expand' : 'Collapse'} ${TEAM_SECTION_LABELS[sectionName]}`
+    );
+    toggle.title = `${isCollapsed ? 'Expand' : 'Collapse'} section`;
+  }
+  if (persist) {
+    saveTeamSectionCollapseState();
+  }
+}
+
+function toggleTeamSection(sectionName: TeamSectionName): void {
+  teamSectionCollapseState[sectionName] = !teamSectionCollapseState[sectionName];
+  applyTeamSectionCollapse(sectionName, true);
+}
+
+function initTeamSectionToggles(): void {
+  const sections: TeamSectionName[] = ['members', 'hierarchy'];
+  for (const sectionName of sections) {
+    const { toggle } = getTeamSectionElements(sectionName);
+    if (!toggle || toggle.dataset.initialized === 'true') {
+      continue;
+    }
+
+    toggle.dataset.initialized = 'true';
+    toggle.addEventListener('click', () => {
+      toggleTeamSection(sectionName);
+    });
+  }
 }
 
 // ============================================
