@@ -10,6 +10,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { TranscriptWatcher, extractWorkingDirectory, isValidClaudePathWithinRoot } from './transcript-watcher.ts';
+import { extractSessionIdFromPath } from './transcript/parser.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
 import type { ThinkingEvent, MonitorEvent } from './types.ts';
 
@@ -324,8 +325,7 @@ describe('Subagent Transcript Support', () => {
   });
 
   it('should not treat subagent sidecar files as session IDs', () => {
-    const privateApi = watcher as unknown as { extractSessionIdFromPath: (filePath: string) => string | undefined };
-    const sessionId = privateApi.extractSessionIdFromPath(
+    const sessionId = extractSessionIdFromPath(
       '/tmp/.claude/projects/-Users-test-dev-app/session-1/subagents/agent-abc123.jsonl'
     );
     expect(sessionId).toBeUndefined();

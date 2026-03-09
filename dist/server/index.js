@@ -1,8 +1,8 @@
 // src/server/index.ts
 import { createServer as createServer2 } from "node:http";
 import { fileURLToPath } from "node:url";
-import { dirname as dirname4, join as join8 } from "node:path";
-import { stat as stat6, readFile as readFile4 } from "node:fs/promises";
+import { dirname as dirname5, join as join8 } from "node:path";
+import { stat as stat7, readFile as readFile4 } from "node:fs/promises";
 import { homedir as homedir6 } from "node:os";
 
 // src/server/websocket-hub.ts
@@ -23,7 +23,7 @@ function isClientRequest(obj) {
 }
 function getVersion() {
   if (true) {
-    return "1.3.7";
+    return "1.3.8";
   }
   try {
     const packagePath = join(process.cwd(), "package.json");
@@ -1587,12 +1587,14 @@ var StaticServer = class {
   }
 };
 
-// src/server/transcript-watcher.ts
-import { watch, createReadStream } from "node:fs";
-import { stat as stat2, readdir } from "node:fs/promises";
-import { join as join4, dirname as dirname2 } from "node:path";
-import * as readline from "node:readline";
+// src/server/transcript/watcher.ts
+import { watch } from "node:fs";
+import { stat as stat3, readdir } from "node:fs/promises";
+import { join as join4, dirname as dirname3 } from "node:path";
 import { homedir } from "node:os";
+
+// src/server/transcript/parser.ts
+import { dirname as dirname2 } from "node:path";
 function extractWorkingDirectory(filePath) {
   const parentDir = dirname2(filePath);
   let dirName = parentDir.split("/").pop();
@@ -1613,6 +1615,91 @@ function extractWorkingDirectory(filePath) {
 function isValidClaudePathWithinRoot(filePath, claudeDir) {
   return isPathWithin(filePath, claudeDir);
 }
+function extractSessionIdFromPath(filePath) {
+  if (filePath.includes("/subagents/")) {
+    return void 0;
+  }
+  const filename = filePath.split("/").pop();
+  if (!filename || !filename.endsWith(".jsonl")) {
+    return void 0;
+  }
+  return filename.slice(0, -6);
+}
+function extractThinking(message) {
+  const thinkingBlocks = [];
+  if (message?.role !== "assistant" || !message?.content) {
+    return thinkingBlocks;
+  }
+  for (const block of message.content) {
+    if (block.type === "thinking" && block.thinking) {
+      thinkingBlocks.push(block.thinking);
+    }
+  }
+  return thinkingBlocks;
+}
+
+// src/server/transcript/reader.ts
+import { createReadStream } from "node:fs";
+import { stat as stat2 } from "node:fs/promises";
+import * as readline from "node:readline";
+async function readNewLines(filePath, fromOffset) {
+  const lines = [];
+  return new Promise((resolve4, reject) => {
+    let settled = false;
+    const stream = createReadStream(filePath, {
+      start: fromOffset,
+      encoding: "utf-8"
+    });
+    const rl = readline.createInterface({
+      input: stream,
+      crlfDelay: Infinity
+    });
+    rl.on("line", (line) => {
+      if (line.trim()) {
+        lines.push(line);
+      }
+    });
+    rl.on("close", async () => {
+      if (settled) {
+        return;
+      }
+      try {
+        const stats = await stat2(filePath);
+        settled = true;
+        resolve4({ lines, newOffset: stats.size });
+      } catch (error) {
+        settled = true;
+        reject(error);
+      }
+    });
+    rl.on("error", (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      try {
+        rl.close();
+      } catch {
+      }
+      stream.destroy();
+      reject(error);
+    });
+    stream.on("error", (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      try {
+        rl.close();
+      } catch {
+      }
+      stream.destroy();
+      reject(error);
+    });
+  });
+}
+
+// src/server/transcript/watcher.ts
 var TranscriptWatcher = class _TranscriptWatcher {
   hub;
   claudeDir;
@@ -1623,33 +1710,21 @@ var TranscriptWatcher = class _TranscriptWatcher {
   pollInterval = null;
   watcherReconcileInterval = null;
   isShuttingDown = false;
-  /**
-   * Flag to track if we're in the initial scanning phase.
-   * During initial scan, files should be tracked but not processed (tail -f behavior).
-   */
   isInitialScan = true;
-  /**
-   * Track sessions we've already announced via session_start events.
-   * Maps sessionId to workingDirectory (if known).
-   */
   announcedSessions = /* @__PURE__ */ new Map();
-  /** Reconcile subdirectory watchers every 5 minutes to avoid stale watcher leaks. */
   static WATCHER_RECONCILE_INTERVAL_MS = 5 * 60 * 1e3;
   constructor(hub, options) {
     this.hub = hub;
-    this.claudeDir = options?.claudeDir ?? (options?.projectsDir ? dirname2(options.projectsDir) : join4(homedir(), ".claude"));
+    this.claudeDir = options?.claudeDir ?? (options?.projectsDir ? dirname3(options.projectsDir) : join4(homedir(), ".claude"));
     this.projectsDir = options?.projectsDir ?? join4(this.claudeDir, "projects");
   }
-  /**
-   * Start watching transcript files.
-   */
   async start() {
     if (!this.isValidPath(this.projectsDir)) {
       logger.error("[TranscriptWatcher] Invalid projects directory path");
       return;
     }
     try {
-      await stat2(this.projectsDir);
+      await stat3(this.projectsDir);
     } catch {
       logger.warn(`[TranscriptWatcher] Projects directory not found: ${this.projectsDir}`);
       logger.info("[TranscriptWatcher] Will retry when directory becomes available");
@@ -1658,20 +1733,13 @@ var TranscriptWatcher = class _TranscriptWatcher {
     }
     await this.initializeWatching();
   }
-  /**
-   * Poll for directory availability.
-   */
   startDirectoryPolling() {
-    if (this.pollInterval) {
-      return;
-    }
+    if (this.pollInterval) return;
     this.pollInterval = setInterval(() => {
       (async () => {
-        if (this.isShuttingDown) {
-          return;
-        }
+        if (this.isShuttingDown) return;
         try {
-          await stat2(this.projectsDir);
+          await stat3(this.projectsDir);
           this.stopPolling();
           await this.initializeWatching();
         } catch {
@@ -1681,18 +1749,12 @@ var TranscriptWatcher = class _TranscriptWatcher {
       });
     }, CONFIG.TRANSCRIPT_POLL_INTERVAL_MS * 5);
   }
-  /**
-   * Stop polling interval.
-   */
   stopPolling() {
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
       this.pollInterval = null;
     }
   }
-  /**
-   * Initialize file system watching.
-   */
   async initializeWatching() {
     logger.info(`[TranscriptWatcher] Watching: ${this.projectsDir}`);
     this.isInitialScan = true;
@@ -1721,16 +1783,11 @@ var TranscriptWatcher = class _TranscriptWatcher {
     this.startWatcherReconcileInterval();
     logger.info(`[TranscriptWatcher] Tracking ${this.trackedFiles.size} transcript files`);
   }
-  /**
-   * Handle changes in the projects directory.
-   */
   async handleProjectChange(projectName) {
     const projectPath = join4(this.projectsDir, projectName);
-    if (!this.isValidPath(projectPath)) {
-      return;
-    }
+    if (!this.isValidPath(projectPath)) return;
     try {
-      const stats = await stat2(projectPath);
+      const stats = await stat3(projectPath);
       if (stats.isDirectory()) {
         await this.watchProjectDirectory(projectPath);
       }
@@ -1738,9 +1795,6 @@ var TranscriptWatcher = class _TranscriptWatcher {
       this.cleanupProjectDirectory(projectPath);
     }
   }
-  /**
-   * Scan all project directories for transcript files.
-   */
   async scanProjectDirectories() {
     try {
       const entries = await readdir(this.projectsDir, { withFileTypes: true });
@@ -1756,13 +1810,8 @@ var TranscriptWatcher = class _TranscriptWatcher {
       logger.error("[TranscriptWatcher] Error scanning project directories:", error);
     }
   }
-  /**
-   * Watch a specific project directory for JSONL files.
-   */
   async watchProjectDirectory(projectPath) {
-    if (this.subDirWatchers.has(projectPath)) {
-      return;
-    }
+    if (this.subDirWatchers.has(projectPath)) return;
     try {
       const watcher = watch(projectPath, { persistent: false }, (_eventType, filename) => {
         if (this.isShuttingDown) return;
@@ -1771,8 +1820,7 @@ var TranscriptWatcher = class _TranscriptWatcher {
           return;
         }
         if (filename) {
-          const sessionPath = join4(projectPath, filename);
-          void this.scanSessionSubagentFiles(sessionPath);
+          void this.scanSessionSubagentFiles(join4(projectPath, filename));
         }
       });
       watcher.on("error", (error) => {
@@ -1782,44 +1830,29 @@ var TranscriptWatcher = class _TranscriptWatcher {
       const entries = await readdir(projectPath, { withFileTypes: true });
       for (const entry of entries) {
         if (entry.isFile() && entry.name.endsWith(".jsonl")) {
-          const filePath = join4(projectPath, entry.name);
-          await this.trackFile(filePath);
+          await this.trackFile(join4(projectPath, entry.name));
         }
         if (entry.isDirectory() && !entry.name.startsWith(".")) {
-          const sessionPath = join4(projectPath, entry.name);
-          await this.scanSessionSubagentFiles(sessionPath);
+          await this.scanSessionSubagentFiles(join4(projectPath, entry.name));
         }
       }
     } catch (error) {
       logger.error(`[TranscriptWatcher] Error watching project directory ${projectPath}:`, error);
     }
   }
-  /**
-   * Scan a session directory for nested subagent transcript files.
-   * Expected layout:
-   *   <project>/<session-id>/subagents/agent-<id>.jsonl
-   */
   async scanSessionSubagentFiles(sessionPath) {
-    if (!this.isValidPath(sessionPath)) {
-      return;
-    }
+    if (!this.isValidPath(sessionPath)) return;
     try {
-      const sessionStats = await stat2(sessionPath);
-      if (!sessionStats.isDirectory()) {
-        return;
-      }
+      const sessionStats = await stat3(sessionPath);
+      if (!sessionStats.isDirectory()) return;
     } catch {
       return;
     }
     const subagentsDir = join4(sessionPath, "subagents");
-    if (!this.isValidPath(subagentsDir)) {
-      return;
-    }
+    if (!this.isValidPath(subagentsDir)) return;
     try {
-      const subagentStats = await stat2(subagentsDir);
-      if (!subagentStats.isDirectory()) {
-        return;
-      }
+      const subagentStats = await stat3(subagentsDir);
+      if (!subagentStats.isDirectory()) return;
     } catch {
       return;
     }
@@ -1834,9 +1867,6 @@ var TranscriptWatcher = class _TranscriptWatcher {
       logger.error(`[TranscriptWatcher] Error scanning subagent transcripts in ${subagentsDir}:`, error);
     }
   }
-  /**
-   * Clean up watchers for a removed project directory.
-   */
   cleanupProjectDirectory(projectPath) {
     const watcher = this.subDirWatchers.get(projectPath);
     if (watcher) {
@@ -1846,38 +1876,21 @@ var TranscriptWatcher = class _TranscriptWatcher {
       }
       this.subDirWatchers.delete(projectPath);
     }
-    for (const [filePath, tracked] of this.trackedFiles) {
+    for (const [filePath] of this.trackedFiles) {
       if (isPathWithin(filePath, projectPath)) {
-        if (tracked.watcher) {
-          try {
-            tracked.watcher.close();
-          } catch {
-          }
-        }
         this.trackedFiles.delete(filePath);
       }
     }
   }
-  /**
-   * Periodically reconcile watched subdirectories to clean up stale watchers.
-   * This prevents watcher leaks when filesystem events are missed.
-   */
   startWatcherReconcileInterval() {
-    if (this.watcherReconcileInterval) {
-      return;
-    }
+    if (this.watcherReconcileInterval) return;
     this.watcherReconcileInterval = setInterval(() => {
-      if (this.isShuttingDown) {
-        return;
-      }
+      if (this.isShuttingDown) return;
       (async () => {
-        const watchedPaths = Array.from(this.subDirWatchers.keys());
-        for (const projectPath of watchedPaths) {
+        for (const projectPath of Array.from(this.subDirWatchers.keys())) {
           try {
-            const stats = await stat2(projectPath);
-            if (!stats.isDirectory()) {
-              this.cleanupProjectDirectory(projectPath);
-            }
+            const stats = await stat3(projectPath);
+            if (!stats.isDirectory()) this.cleanupProjectDirectory(projectPath);
           } catch {
             this.cleanupProjectDirectory(projectPath);
           }
@@ -1890,46 +1903,16 @@ var TranscriptWatcher = class _TranscriptWatcher {
       });
     }, _TranscriptWatcher.WATCHER_RECONCILE_INTERVAL_MS);
   }
-  /**
-   * Handle changes to a specific JSONL file.
-   */
   async handleFileChange(filePath) {
-    if (!this.isValidPath(filePath)) {
-      return;
-    }
+    if (!this.isValidPath(filePath)) return;
     await this.trackFile(filePath);
   }
-  /**
-   * Start tracking a transcript file.
-   *
-   * CRITICAL: For files discovered during initial scan (startup), we skip ALL existing content
-   * to avoid flooding the dashboard with historical data. We use file SIZE as the marker,
-   * not line count, to ensure we only process bytes written AFTER we start tracking.
-   */
-  /**
-   * Extract session ID from a transcript file path.
-   * Transcript files are named with their session ID: {session-id}.jsonl
-   */
-  extractSessionIdFromPath(filePath) {
-    if (filePath.includes("/subagents/")) {
-      return void 0;
-    }
-    const filename = filePath.split("/").pop();
-    if (!filename || !filename.endsWith(".jsonl")) {
-      return void 0;
-    }
-    return filename.slice(0, -6);
-  }
   async trackFile(filePath) {
-    if (!this.isValidPath(filePath) || this.trackedFiles.has(filePath)) {
-      return;
-    }
+    if (!this.isValidPath(filePath) || this.trackedFiles.has(filePath)) return;
     try {
-      const stats = await stat2(filePath);
-      if (!stats.isFile()) {
-        return;
-      }
-      const sessionId = this.extractSessionIdFromPath(filePath);
+      const stats = await stat3(filePath);
+      if (!stats.isFile()) return;
+      const sessionId = extractSessionIdFromPath(filePath);
       const workingDirectory = extractWorkingDirectory(filePath);
       if (!this.isInitialScan && sessionId && !this.announcedSessions.has(sessionId)) {
         this.announcedSessions.set(sessionId, workingDirectory);
@@ -1940,7 +1923,6 @@ var TranscriptWatcher = class _TranscriptWatcher {
           path: filePath,
           lastSize: stats.size,
           lastOffset: stats.size,
-          // Start reading from end of file
           lastProcessedLine: 0,
           isInitialFile: true
         });
@@ -1948,9 +1930,7 @@ var TranscriptWatcher = class _TranscriptWatcher {
         this.trackedFiles.set(filePath, {
           path: filePath,
           lastSize: 0,
-          // Start from 0 so first check processes all content
           lastOffset: 0,
-          // Start reading from beginning
           lastProcessedLine: 0,
           isInitialFile: false
         });
@@ -1961,9 +1941,6 @@ var TranscriptWatcher = class _TranscriptWatcher {
       }
     }
   }
-  /**
-   * Poll tracked files for updates.
-   */
   async pollTrackedFiles() {
     const promises = [];
     for (const [filePath, tracked] of this.trackedFiles) {
@@ -1971,12 +1948,9 @@ var TranscriptWatcher = class _TranscriptWatcher {
     }
     await Promise.allSettled(promises);
   }
-  /**
-   * Check a specific file for updates.
-   */
   async checkFileForUpdates(filePath, tracked) {
     try {
-      const stats = await stat2(filePath);
+      const stats = await stat3(filePath);
       if (stats.size > tracked.lastOffset) {
         await this.processFileUpdates(filePath);
         tracked.lastSize = stats.size;
@@ -1987,81 +1961,11 @@ var TranscriptWatcher = class _TranscriptWatcher {
       }
     }
   }
-  /**
-   * Read new lines from a file starting at a byte offset.
-   * Uses streaming to avoid loading the entire file into memory.
-   *
-   * @param filePath - Path to the file to read
-   * @param fromOffset - Byte offset to start reading from
-   * @returns Object containing the new lines and the new byte offset
-   */
-  async readNewLines(filePath, fromOffset) {
-    const lines = [];
-    return new Promise((resolve4, reject) => {
-      let settled = false;
-      const stream = createReadStream(filePath, {
-        start: fromOffset,
-        encoding: "utf-8"
-      });
-      const rl = readline.createInterface({
-        input: stream,
-        crlfDelay: Infinity
-      });
-      rl.on("line", (line) => {
-        if (line.trim()) {
-          lines.push(line);
-        }
-      });
-      rl.on("close", async () => {
-        if (settled) {
-          return;
-        }
-        try {
-          const stats = await stat2(filePath);
-          settled = true;
-          resolve4({ lines, newOffset: stats.size });
-        } catch (error) {
-          settled = true;
-          reject(error);
-        }
-      });
-      rl.on("error", (error) => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        try {
-          rl.close();
-        } catch {
-        }
-        stream.destroy();
-        reject(error);
-      });
-      stream.on("error", (error) => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        try {
-          rl.close();
-        } catch {
-        }
-        stream.destroy();
-        reject(error);
-      });
-    });
-  }
-  /**
-   * Process new content from a transcript file.
-   * Uses byte-offset streaming to only read newly appended content.
-   */
   async processFileUpdates(filePath) {
     const tracked = this.trackedFiles.get(filePath);
-    if (!tracked) {
-      return;
-    }
+    if (!tracked) return;
     try {
-      const { lines, newOffset } = await this.readNewLines(filePath, tracked.lastOffset);
+      const { lines, newOffset } = await readNewLines(filePath, tracked.lastOffset);
       for (const line of lines) {
         await this.processLine(line, filePath);
       }
@@ -2071,13 +1975,8 @@ var TranscriptWatcher = class _TranscriptWatcher {
       logger.error(`[TranscriptWatcher] Error processing file ${filePath}:`, error);
     }
   }
-  /**
-   * Process a single JSONL line.
-   */
   async processLine(line, filePath) {
-    if (!line.trim()) {
-      return;
-    }
+    if (!line.trim()) return;
     let parsed;
     try {
       parsed = JSON.parse(line);
@@ -2091,67 +1990,38 @@ var TranscriptWatcher = class _TranscriptWatcher {
     }
     if (!filePath.includes("/subagents/") && parsed.sessionId) {
       const discoveredAgentIds = /* @__PURE__ */ new Set();
-      if (parsed.agentId) {
-        discoveredAgentIds.add(parsed.agentId);
-      }
-      if (parsed.data?.agentId) {
-        discoveredAgentIds.add(parsed.data.agentId);
-      }
+      if (parsed.agentId) discoveredAgentIds.add(parsed.agentId);
+      if (parsed.data?.agentId) discoveredAgentIds.add(parsed.data.agentId);
       for (const agentId of discoveredAgentIds) {
         await this.trackSubagentFile(filePath, parsed.sessionId, agentId);
       }
     }
-    const thinkingBlocks = this.extractThinking(parsed.message);
+    const thinkingBlocks = extractThinking(parsed.message);
     for (const thinking of thinkingBlocks) {
       this.broadcastThinking(thinking, parsed.sessionId, parsed.agentId, parsed.timestamp);
     }
     const nestedMessage = parsed.data?.message?.message;
-    const nestedThinkingBlocks = this.extractThinking(nestedMessage);
+    const nestedThinkingBlocks = extractThinking(nestedMessage);
     const nestedTimestamp = parsed.data?.message?.timestamp || parsed.timestamp;
     const nestedAgentId = parsed.data?.agentId || parsed.agentId;
     for (const thinking of nestedThinkingBlocks) {
       this.broadcastThinking(thinking, parsed.sessionId, nestedAgentId, nestedTimestamp);
     }
   }
-  /**
-   * Try to track a subagent sidecar transcript file if it exists.
-   */
   async trackSubagentFile(filePath, sessionId, agentId) {
-    const projectDir = dirname2(filePath);
+    const projectDir = dirname3(filePath);
     const subagentFilePath = join4(projectDir, sessionId, "subagents", `agent-${agentId}.jsonl`);
     await this.trackFile(subagentFilePath);
   }
-  /**
-   * Broadcast a session_start event when a new session is first seen.
-   */
   broadcastSessionStart(sessionId, workingDirectory, timestamp) {
-    const event = {
+    this.hub.broadcast({
       type: "session_start",
       timestamp: timestamp || (/* @__PURE__ */ new Date()).toISOString(),
       sessionId,
       workingDirectory
-    };
-    this.hub.broadcast(event);
+    });
     logger.debug(`[TranscriptWatcher] Broadcast session_start for ${sessionId} (${workingDirectory || "no path"})`);
   }
-  /**
-   * Extract thinking content from a transcript line.
-   */
-  extractThinking(message) {
-    const thinkingBlocks = [];
-    if (message?.role !== "assistant" || !message?.content) {
-      return thinkingBlocks;
-    }
-    for (const block of message.content) {
-      if (block.type === "thinking" && block.thinking) {
-        thinkingBlocks.push(block.thinking);
-      }
-    }
-    return thinkingBlocks;
-  }
-  /**
-   * Broadcast a thinking event to connected clients.
-   */
   broadcastThinking(content, sessionId, agentId, timestamp) {
     const safeContent = redactSecrets(truncatePayload(content) ?? "");
     const event = {
@@ -2164,19 +2034,12 @@ var TranscriptWatcher = class _TranscriptWatcher {
     this.hub.broadcast(event);
     logger.debug(`[TranscriptWatcher] Broadcast thinking (${safeContent.slice(0, 50)}...)`);
   }
-  /**
-   * Get all known sessions with their working directories.
-   * Used to send session_start events to newly connected clients.
-   */
   getKnownSessions() {
     return Array.from(this.announcedSessions.entries()).map(([sessionId, workingDirectory]) => ({
       sessionId,
       workingDirectory
     }));
   }
-  /**
-   * Stop watching transcript files.
-   */
   stop() {
     this.isShuttingDown = true;
     this.stopPolling();
@@ -2209,21 +2072,12 @@ var TranscriptWatcher = class _TranscriptWatcher {
     }
     logger.info("[TranscriptWatcher] Stopped");
   }
-  /**
-   * Get the number of tracked files.
-   */
   getTrackedFileCount() {
     return this.trackedFiles.size;
   }
-  /**
-   * Check if the watcher is running.
-   */
   isRunning() {
     return !this.isShuttingDown && (this.projectsWatcher !== null || this.pollInterval !== null);
   }
-  /**
-   * Validate that a path is inside the configured Claude root.
-   */
   isValidPath(filePath) {
     return isValidClaudePathWithinRoot(filePath, this.claudeDir);
   }
@@ -2231,7 +2085,7 @@ var TranscriptWatcher = class _TranscriptWatcher {
 
 // src/server/plan-watcher.ts
 import { watch as watch2 } from "node:fs";
-import { readFile as readFile2, stat as stat3, readdir as readdir2 } from "node:fs/promises";
+import { readFile as readFile2, stat as stat4, readdir as readdir2 } from "node:fs/promises";
 import { join as join5, basename as basename2 } from "node:path";
 import { homedir as homedir2 } from "node:os";
 
@@ -2277,7 +2131,7 @@ var PlanWatcher = class _PlanWatcher {
       return;
     }
     try {
-      await stat3(this.plansDir);
+      await stat4(this.plansDir);
     } catch {
       logger.warn(`[PlanWatcher] Plans directory not found: ${this.plansDir}`);
       logger.info("[PlanWatcher] Will retry when directory becomes available");
@@ -2298,7 +2152,7 @@ var PlanWatcher = class _PlanWatcher {
         return;
       }
       try {
-        await stat3(this.plansDir);
+        await stat4(this.plansDir);
         this.stopPolling();
         await this.initializeWatching();
       } catch {
@@ -2371,7 +2225,7 @@ var PlanWatcher = class _PlanWatcher {
       (async () => {
         if (this.isShuttingDown) return;
         try {
-          await stat3(filePath);
+          await stat4(filePath);
           await this.processPlanUpdate(filePath);
         } catch {
           this.handlePlanDelete(filePath, filename);
@@ -2389,7 +2243,7 @@ var PlanWatcher = class _PlanWatcher {
       return;
     }
     try {
-      const stats = await stat3(filePath);
+      const stats = await stat4(filePath);
       if (!stats.isFile()) {
         return;
       }
@@ -2417,7 +2271,7 @@ var PlanWatcher = class _PlanWatcher {
       return;
     }
     try {
-      const stats = await stat3(filePath);
+      const stats = await stat4(filePath);
       const content = await readFile2(filePath, "utf-8");
       const filename = basename2(filePath);
       const contentHash = hashContent(content);
@@ -2487,7 +2341,7 @@ var PlanWatcher = class _PlanWatcher {
       return;
     }
     try {
-      const stats = await stat3(filePath);
+      const stats = await stat4(filePath);
       if (stats.mtimeMs > tracked.lastModified) {
         await this.processPlanUpdate(filePath);
       }
@@ -2649,7 +2503,7 @@ var PlanWatcher = class _PlanWatcher {
 };
 
 // src/server/team-watcher.ts
-import { readFile as readFile3, stat as stat4, readdir as readdir3 } from "node:fs/promises";
+import { readFile as readFile3, stat as stat5, readdir as readdir3 } from "node:fs/promises";
 import { join as join6 } from "node:path";
 import { homedir as homedir3 } from "node:os";
 var POLL_INTERVAL_MS = 2e3;
@@ -2738,7 +2592,7 @@ var TeamWatcher = class {
    */
   async pollTeams() {
     try {
-      await stat4(this.teamsDir);
+      await stat5(this.teamsDir);
     } catch {
       if (this.trackedTeams.size > 0) {
         this.trackedTeams.clear();
@@ -2795,7 +2649,7 @@ var TeamWatcher = class {
    */
   async pollTasks() {
     try {
-      await stat4(this.tasksDir);
+      await stat5(this.tasksDir);
     } catch {
       if (this.trackedTaskDirs.size > 0) {
         this.trackedTaskDirs.clear();
@@ -3110,9 +2964,9 @@ function sendResponse(res, statusCode, data) {
 }
 
 // src/server/export-handler.ts
-import { writeFile, mkdir, readdir as readdir4, stat as stat5 } from "node:fs/promises";
+import { writeFile, mkdir, readdir as readdir4, stat as stat6 } from "node:fs/promises";
 import { realpathSync as realpathSync2 } from "node:fs";
-import { dirname as dirname3, basename as basename3, isAbsolute as isAbsolute3, join as join7 } from "node:path";
+import { dirname as dirname4, basename as basename3, isAbsolute as isAbsolute3, join as join7 } from "node:path";
 import { homedir as homedir5 } from "node:os";
 import { spawn as spawn2 } from "node:child_process";
 import { parse as parseUrl } from "node:url";
@@ -3123,7 +2977,7 @@ function validateExportPath(filePath) {
     return null;
   }
   try {
-    const parentDir = dirname3(normalizedPath);
+    const parentDir = dirname4(normalizedPath);
     const realParent = realpathSync2(parentDir);
     const realPath = join7(realParent, basename3(normalizedPath));
     return realPath;
@@ -3216,7 +3070,7 @@ async function handleExportRequest(req, res) {
   }
   const { path: exportPath, content } = validation.request;
   try {
-    const dir = dirname3(exportPath);
+    const dir = dirname4(exportPath);
     await mkdir(dir, { recursive: true });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -3283,7 +3137,7 @@ async function handleBrowseRequest(req, res) {
     return true;
   }
   try {
-    const pathStat = await stat5(absolutePath);
+    const pathStat = await stat6(absolutePath);
     if (!pathStat.isDirectory()) {
       sendBrowseResponse(res, 400, { success: false, error: "Path is not a directory" });
       return true;
@@ -3307,7 +3161,7 @@ async function handleBrowseRequest(req, res) {
       return a.name.localeCompare(b.name);
     });
     let parentPath = null;
-    const parentDir = dirname3(absolutePath);
+    const parentDir = dirname4(absolutePath);
     if (parentDir !== absolutePath) {
       parentPath = parentDir;
     }
@@ -3443,14 +3297,14 @@ async function handleRevealFileRequest(req, res) {
 
 // src/server/index.ts
 var __filename = fileURLToPath(import.meta.url);
-var __dirname = dirname4(__filename);
+var __dirname = dirname5(__filename);
 var dashboardDir = join8(__dirname, "..", "dashboard");
 var srcDashboardDir = join8(__dirname, "..", "..", "src", "dashboard");
 var repoRootDir = join8(__dirname, "..", "..");
 var repoHooksDir = join8(repoRootDir, "hooks");
 async function checkPath(path, label) {
   try {
-    await stat6(path);
+    await stat7(path);
     return { label, path, exists: true };
   } catch {
     return { label, path, exists: false };
@@ -3560,8 +3414,8 @@ async function main() {
   });
   let dashboardPath;
   try {
-    const { stat: stat7 } = await import("node:fs/promises");
-    await stat7(join8(srcDashboardDir, "index.html"));
+    const { stat: stat8 } = await import("node:fs/promises");
+    await stat8(join8(srcDashboardDir, "index.html"));
     dashboardPath = srcDashboardDir;
   } catch {
     dashboardPath = dashboardDir;

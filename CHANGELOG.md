@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-03-09 — v1.4.0
+
+### Changed
+- **TranscriptWatcher** (904 LOC) split into `transcript/parser.ts`, `transcript/reader.ts`, `transcript/watcher.ts` with backward-compatible re-exports
+- **timeline.ts** (866 LOC) split into `timeline/chips.ts`, `timeline/entries.ts`, `timeline/index.ts`
+- **plans.ts** (684 LOC) split into `plans/state.ts`, `plans/display.ts`, `plans/context-menu.ts`, `plans/index.ts`
+- **export-modal.ts** (754 LOC) split into `export/modal.ts`, `export/browser.ts`, `export/index.ts`
+- All existing imports remain valid via re-export shims
+
+---
+
 ## 2026-03-09 — v1.3.8
 
 ### Added

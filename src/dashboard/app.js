@@ -2400,66 +2400,7 @@
     renderTaskBoard();
   }
 
-  // src/dashboard/handlers/timeline.ts
-  var MAX_TIMELINE_ENTRIES = 500;
-  var TYPE_LABELS = {
-    thinking: "thinking",
-    tool_start: "tool start",
-    tool_end: "tool end",
-    hook_execution: "hook",
-    agent_start: "agent start",
-    agent_stop: "agent stop",
-    session_start: "session",
-    session_stop: "session",
-    team_update: "team",
-    task_update: "task",
-    task_completed: "task done",
-    message_sent: "message",
-    teammate_idle: "idle",
-    plan_update: "plan",
-    plan_delete: "plan",
-    plan_list: "plan",
-    connection_status: "connection",
-    subagent_mapping: "subagent"
-  };
-  var TYPE_ICONS = {
-    thinking: "&#129504;",
-    // brain
-    tool_start: "&#128295;",
-    // wrench
-    tool_end: "&#128295;",
-    // wrench
-    hook_execution: "&#9881;",
-    // gear
-    agent_start: "&#129302;",
-    // robot
-    agent_stop: "&#129302;",
-    // robot
-    session_start: "&#128225;",
-    // satellite
-    session_stop: "&#128225;",
-    // satellite
-    team_update: "&#128101;",
-    // people
-    task_update: "&#128203;",
-    // clipboard
-    task_completed: "&#9989;",
-    // check
-    message_sent: "&#128172;",
-    // speech
-    teammate_idle: "&#128164;",
-    // zzz
-    plan_update: "&#128196;",
-    // document
-    plan_delete: "&#128196;",
-    // document
-    plan_list: "&#128196;",
-    // document
-    connection_status: "&#128268;",
-    // plug
-    subagent_mapping: "&#128279;"
-    // link
-  };
+  // src/dashboard/handlers/timeline/chips.ts
   var TIMELINE_CATEGORIES = {
     thinking: { label: "Thinking", types: ["thinking"], color: "var(--color-accent-blue)", icon: "&#129504;" },
     tools: { label: "Tools", types: ["tool_start", "tool_end"], color: "var(--color-accent-green)", icon: "&#128295;" },
@@ -2474,46 +2415,15 @@
       TYPE_TO_CATEGORY[t] = cat;
     }
   }
+  var STORAGE_KEY = "tm-timeline-type-filter";
+  var SESSION_STORAGE_KEY = "tm-timeline-session-filter";
   var typeFilterState = /* @__PURE__ */ new Map();
   var typeCounts = /* @__PURE__ */ new Map();
   var chipElements = /* @__PURE__ */ new Map();
-  var STORAGE_KEY = "tm-timeline-type-filter";
-  var SESSION_STORAGE_KEY = "tm-timeline-session-filter";
   var sessionFilterState = /* @__PURE__ */ new Map();
   var sessionCounts = /* @__PURE__ */ new Map();
   var sessionChipElements = /* @__PURE__ */ new Map();
-  var callbacks6 = null;
-  var timelineCount = 0;
-  function initTimeline(cbs) {
-    callbacks6 = cbs;
-    initTimelineFilter();
-    initTypeChips();
-    loadSessionFilterState();
-  }
-  function initTimelineFilter() {
-    const filterInput = elements.timelineFilter;
-    const clearBtn = elements.timelineFilterClear;
-    if (filterInput) {
-      filterInput.addEventListener("input", () => {
-        state.timelineFilter = filterInput.value.toLowerCase();
-        applyTimelineFilter();
-        if (clearBtn) {
-          clearBtn.classList.toggle("panel-filter-hidden", !filterInput.value);
-        }
-      });
-    }
-    if (clearBtn) {
-      clearBtn.addEventListener("click", () => {
-        if (filterInput) {
-          filterInput.value = "";
-          state.timelineFilter = "";
-          applyTimelineFilter();
-          clearBtn.classList.add("panel-filter-hidden");
-        }
-      });
-    }
-  }
-  function initTypeChips() {
+  function initTypeChips(onFilterChange) {
     const container = elements.timelineTypeChips;
     if (!container) return;
     try {
@@ -2550,7 +2460,7 @@
         chip.classList.toggle("active", !current);
         chip.style.background = !current ? def.color : "";
         saveTypeFilterState();
-        applyTimelineFilter();
+        onFilterChange();
       });
       container.appendChild(chip);
       chipElements.set(cat, chip);
@@ -2614,9 +2524,7 @@
     if (aliasIds.length === 0) return;
     for (const aliasId of aliasIds) {
       const aliasChip = sessionChipElements.get(aliasId);
-      if (aliasChip) {
-        aliasChip.remove();
-      }
+      if (aliasChip) aliasChip.remove();
       sessionChipElements.delete(aliasId);
       const aliasCount = sessionCounts.get(aliasId) || 0;
       if (aliasCount > 0) {
@@ -2640,7 +2548,7 @@
     }
     saveSessionFilterState();
   }
-  function addOrUpdateSessionChip(sessionId) {
+  function addOrUpdateSessionChip(sessionId, onFilterChange) {
     const container = elements.timelineSessionChips;
     if (!container) return;
     const session = state.sessions.get(sessionId);
@@ -2681,7 +2589,7 @@
       chip.classList.toggle("active", !current);
       chip.style.background = !current ? color : "";
       saveSessionFilterState();
-      applyTimelineFilter();
+      onFilterChange();
     });
     container.appendChild(chip);
     sessionChipElements.set(sessionId, chip);
@@ -2697,11 +2605,54 @@
     } catch {
     }
   }
-  function refreshSessionChips() {
+  function refreshSessionChips(onFilterChange) {
     for (const sessionId of state.sessions.keys()) {
-      addOrUpdateSessionChip(sessionId);
+      addOrUpdateSessionChip(sessionId, onFilterChange);
     }
   }
+
+  // src/dashboard/handlers/timeline/entries.ts
+  var MAX_TIMELINE_ENTRIES = 500;
+  var TYPE_LABELS = {
+    thinking: "thinking",
+    tool_start: "tool start",
+    tool_end: "tool end",
+    hook_execution: "hook",
+    agent_start: "agent start",
+    agent_stop: "agent stop",
+    session_start: "session",
+    session_stop: "session",
+    team_update: "team",
+    task_update: "task",
+    task_completed: "task done",
+    message_sent: "message",
+    teammate_idle: "idle",
+    plan_update: "plan",
+    plan_delete: "plan",
+    plan_list: "plan",
+    connection_status: "connection",
+    subagent_mapping: "subagent"
+  };
+  var TYPE_ICONS = {
+    thinking: "&#129504;",
+    tool_start: "&#128295;",
+    tool_end: "&#128295;",
+    hook_execution: "&#9881;",
+    agent_start: "&#129302;",
+    agent_stop: "&#129302;",
+    session_start: "&#128225;",
+    session_stop: "&#128225;",
+    team_update: "&#128101;",
+    task_update: "&#128203;",
+    task_completed: "&#9989;",
+    message_sent: "&#128172;",
+    teammate_idle: "&#128164;",
+    plan_update: "&#128196;",
+    plan_delete: "&#128196;",
+    plan_list: "&#128196;",
+    connection_status: "&#128268;",
+    subagent_mapping: "&#128279;"
+  };
   function getSingleActiveSessionId() {
     const activeSessions = Array.from(state.sessions.values()).filter((session) => session.active);
     if (activeSessions.length === 1) {
@@ -2714,9 +2665,7 @@
       return state.selectedSession;
     }
     const soleActive = getSingleActiveSessionId();
-    if (soleActive) {
-      return soleActive;
-    }
+    if (soleActive) return soleActive;
     if (state.currentSessionId && state.sessions.has(state.currentSessionId)) {
       return state.currentSessionId;
     }
@@ -2733,9 +2682,7 @@
       const normalizedAssocPath = assocPath.replace(/\\/g, "/");
       const assocFilename = normalizedAssocPath.split("/").pop();
       const matches = normalizedAssocPath === normalizedPlanPath || normalizedAssocPath.endsWith(normalizedPlanPath) || normalizedPlanPath.endsWith(normalizedAssocPath) || !!planFilename && planFilename === assocFilename;
-      if (matches) {
-        return resolveSessionId(sessionId);
-      }
+      if (matches) return resolveSessionId(sessionId);
     }
     return void 0;
   }
@@ -2743,26 +2690,18 @@
     const normalizedKey = teamKey?.trim();
     if (!normalizedKey) return void 0;
     const directMapped = teamState.teamSessionMap.get(normalizedKey);
-    if (directMapped) {
-      return resolveSessionId(directMapped);
-    }
+    if (directMapped) return resolveSessionId(directMapped);
     const folderMatches = Array.from(state.sessions.values()).filter((session) => getSessionFolderName(session.workingDirectory) === normalizedKey).map((session) => session.id);
-    if (folderMatches.length === 1) {
-      return folderMatches[0];
-    }
+    if (folderMatches.length === 1) return folderMatches[0];
     const mappedSessions = Array.from(new Set(
       Array.from(teamState.teamSessionMap.values()).map((sessionId) => resolveSessionId(sessionId)).filter((sessionId) => !!sessionId)
     ));
-    if (mappedSessions.length === 1) {
-      return mappedSessions[0];
-    }
+    if (mappedSessions.length === 1) return mappedSessions[0];
     return void 0;
   }
   function resolveEventSessionId(event) {
     const explicitSessionId = resolveSessionId(event.sessionId);
-    if (explicitSessionId) {
-      return explicitSessionId;
-    }
+    if (explicitSessionId) return explicitSessionId;
     switch (event.type) {
       case "plan_update":
       case "plan_delete":
@@ -2791,61 +2730,6 @@
         return event.teamName || event.teammateName;
       default:
         return void 0;
-    }
-  }
-  function applyTimelineFilter() {
-    const container = elements.timelineEntries;
-    if (!container) return;
-    const filter = state.timelineFilter;
-    let visible = 0;
-    const contextTypeCounts = /* @__PURE__ */ new Map();
-    for (const cat of Object.keys(TIMELINE_CATEGORIES)) {
-      contextTypeCounts.set(cat, 0);
-    }
-    const anySessionChipActive = Array.from(sessionFilterState.values()).some((v) => v);
-    const hasContextFilter = !!filter || anySessionChipActive || state.selectedSession !== ALL_SESSIONS;
-    for (const child of Array.from(container.children)) {
-      const el = child;
-      if (!el.dataset.filterText) continue;
-      const matchesText = !filter || el.dataset.filterText.includes(filter);
-      const elCategory = el.dataset.category || "";
-      const matchesType = !elCategory || typeFilterState.get(elCategory) !== false;
-      let matchesSession;
-      if (anySessionChipActive) {
-        matchesSession = !el.dataset.session || sessionFilterState.get(el.dataset.session) === true;
-      } else {
-        matchesSession = state.selectedSession === ALL_SESSIONS || !el.dataset.session || el.dataset.session === state.selectedSession;
-      }
-      const matchesContext = matchesText && matchesSession;
-      if (matchesContext && elCategory) {
-        contextTypeCounts.set(elCategory, (contextTypeCounts.get(elCategory) || 0) + 1);
-      }
-      if (matchesContext && matchesType) {
-        el.style.display = "";
-        visible++;
-      } else {
-        el.style.display = "none";
-      }
-    }
-    if (elements.timelineCount) {
-      const anyTypeDisabled = Array.from(typeFilterState.values()).some((v) => !v);
-      const anySessionChipEnabled = Array.from(sessionFilterState.values()).some((v) => v);
-      const hasActiveFilter = !!filter || anyTypeDisabled || anySessionChipEnabled || state.selectedSession !== ALL_SESSIONS;
-      elements.timelineCount.textContent = hasActiveFilter ? `${visible}/${timelineCount}` : String(timelineCount);
-      if (anySessionChipEnabled) {
-        elements.timelineCount.title = "Filtered by session chips (overrides dropdown)";
-      } else {
-        elements.timelineCount.title = "";
-      }
-    }
-    for (const [cat, chip] of chipElements) {
-      const countEl = chip.querySelector(".chip-count");
-      if (!countEl) continue;
-      const total = typeCounts.get(cat) || 0;
-      const contextual = contextTypeCounts.get(cat) || 0;
-      countEl.textContent = String(hasContextFilter ? contextual : total);
-      const categoryLabel = TIMELINE_CATEGORIES[cat]?.label || cat;
-      chip.title = hasContextFilter ? `${categoryLabel}: ${contextual} shown (${total} total)` : `${categoryLabel}: ${total}`;
     }
   }
   function getEventSummary(event) {
@@ -2892,17 +2776,23 @@
         return "Unknown event";
     }
   }
-  function addTimelineEntry(event) {
-    if (!callbacks6) return;
+  var entryCallbacks = null;
+  var timelineCount = 0;
+  function initEntries(cbs) {
+    entryCallbacks = cbs;
+  }
+  function getTimelineCount() {
+    return timelineCount;
+  }
+  function addTimelineEntry(event, applyFilter) {
+    if (!entryCallbacks) return;
     const entriesContainer = elements.timelineEntries;
     if (!entriesContainer) return;
     if (event.type === "connection_status" || event.type === "subagent_mapping" || event.type === "plan_list") {
       return;
     }
     const emptyState2 = entriesContainer.querySelector(".empty-state");
-    if (emptyState2) {
-      emptyState2.remove();
-    }
+    if (emptyState2) emptyState2.remove();
     timelineCount++;
     const category = TYPE_TO_CATEGORY[event.type] || "";
     if (category) {
@@ -2916,7 +2806,7 @@
     const resolvedSessionId = resolveEventSessionId(event);
     if (resolvedSessionId) {
       sessionCounts.set(resolvedSessionId, (sessionCounts.get(resolvedSessionId) || 0) + 1);
-      addOrUpdateSessionChip(resolvedSessionId);
+      addOrUpdateSessionChip(resolvedSessionId, applyFilter);
     }
     if (elements.timelineCount) {
       elements.timelineCount.textContent = String(timelineCount);
@@ -2992,13 +2882,13 @@ Session: ${resolvedSessionId || ""}`;
       }
     }
     entriesContainer.appendChild(entry);
-    applyTimelineFilter();
-    callbacks6.smartScroll(entriesContainer);
+    applyFilter();
+    entryCallbacks.smartScroll(entriesContainer);
     setTimeout(() => entry.classList.remove("new"), 1e3);
   }
   function navigateToThinkingEntry(eventTimestamp, sessionId) {
-    if (sessionId && callbacks6) {
-      callbacks6.selectSession(sessionId);
+    if (sessionId && entryCallbacks) {
+      entryCallbacks.selectSession(sessionId);
     }
     selectView("thinking");
     const thinkingContent = elements.thinkingContent;
@@ -3024,14 +2914,110 @@ Session: ${resolvedSessionId || ""}`;
     });
   }
 
+  // src/dashboard/handlers/timeline/index.ts
+  function initTimeline(cbs) {
+    initEntries(cbs);
+    initTimelineFilter();
+    initTypeChips(applyTimelineFilter);
+    loadSessionFilterState();
+  }
+  function addTimelineEntry2(event) {
+    addTimelineEntry(event, applyTimelineFilter);
+  }
+  function resetTypeChips2() {
+    resetTypeChips();
+  }
+  function refreshSessionChips2() {
+    refreshSessionChips(applyTimelineFilter);
+  }
+  function initTimelineFilter() {
+    const filterInput = elements.timelineFilter;
+    const clearBtn = elements.timelineFilterClear;
+    if (filterInput) {
+      filterInput.addEventListener("input", () => {
+        state.timelineFilter = filterInput.value.toLowerCase();
+        applyTimelineFilter();
+        if (clearBtn) {
+          clearBtn.classList.toggle("panel-filter-hidden", !filterInput.value);
+        }
+      });
+    }
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        if (filterInput) {
+          filterInput.value = "";
+          state.timelineFilter = "";
+          applyTimelineFilter();
+          clearBtn.classList.add("panel-filter-hidden");
+        }
+      });
+    }
+  }
+  function applyTimelineFilter() {
+    const container = elements.timelineEntries;
+    if (!container) return;
+    const filter = state.timelineFilter;
+    let visible = 0;
+    const contextTypeCounts = /* @__PURE__ */ new Map();
+    for (const cat of Object.keys(TIMELINE_CATEGORIES)) {
+      contextTypeCounts.set(cat, 0);
+    }
+    const anySessionChipActive = Array.from(sessionFilterState.values()).some((v) => v);
+    const hasContextFilter = !!filter || anySessionChipActive || state.selectedSession !== ALL_SESSIONS;
+    for (const child of Array.from(container.children)) {
+      const el = child;
+      if (!el.dataset.filterText) continue;
+      const matchesText = !filter || el.dataset.filterText.includes(filter);
+      const elCategory = el.dataset.category || "";
+      const matchesType = !elCategory || typeFilterState.get(elCategory) !== false;
+      let matchesSession;
+      if (anySessionChipActive) {
+        matchesSession = !el.dataset.session || sessionFilterState.get(el.dataset.session) === true;
+      } else {
+        matchesSession = state.selectedSession === ALL_SESSIONS || !el.dataset.session || el.dataset.session === state.selectedSession;
+      }
+      const matchesContext = matchesText && matchesSession;
+      if (matchesContext && elCategory) {
+        contextTypeCounts.set(elCategory, (contextTypeCounts.get(elCategory) || 0) + 1);
+      }
+      if (matchesContext && matchesType) {
+        el.style.display = "";
+        visible++;
+      } else {
+        el.style.display = "none";
+      }
+    }
+    const timelineCount2 = getTimelineCount();
+    if (elements.timelineCount) {
+      const anyTypeDisabled = Array.from(typeFilterState.values()).some((v) => !v);
+      const anySessionChipEnabled = Array.from(sessionFilterState.values()).some((v) => v);
+      const hasActiveFilter = !!filter || anyTypeDisabled || anySessionChipEnabled || state.selectedSession !== ALL_SESSIONS;
+      elements.timelineCount.textContent = hasActiveFilter ? `${visible}/${timelineCount2}` : String(timelineCount2);
+      if (anySessionChipEnabled) {
+        elements.timelineCount.title = "Filtered by session chips (overrides dropdown)";
+      } else {
+        elements.timelineCount.title = "";
+      }
+    }
+    for (const [cat, chip] of chipElements) {
+      const countEl = chip.querySelector(".chip-count");
+      if (!countEl) continue;
+      const total = typeCounts.get(cat) || 0;
+      const contextual = contextTypeCounts.get(cat) || 0;
+      countEl.textContent = String(hasContextFilter ? contextual : total);
+      const categoryLabel = TIMELINE_CATEGORIES[cat]?.label || cat;
+      chip.title = hasContextFilter ? `${categoryLabel}: ${contextual} shown (${total} total)` : `${categoryLabel}: ${total}`;
+    }
+  }
+
   // src/dashboard/handlers/sessions.ts
   var ACTIVITY_THRESHOLD_MS = 1e4;
   var ACTIVITY_CHECK_INTERVAL_MS = 5e3;
   var activityCheckerInterval = null;
   var durationInterval = null;
-  var callbacks7 = null;
+  var callbacks6 = null;
   function initSessions(cbs) {
-    callbacks7 = cbs;
+    callbacks6 = cbs;
     startActivityChecker();
     startDurationTimer();
   }
@@ -3121,7 +3107,7 @@ Session: ${resolvedSessionId || ""}`;
       });
       debug(`[Dashboard] New session tracked: ${canonicalSessionId}`);
       updateSessionFilter();
-      refreshSessionChips();
+      refreshSessionChips2();
     }
     state.currentSessionId = canonicalSessionId;
   }
@@ -3140,7 +3126,7 @@ Session: ${resolvedSessionId || ""}`;
     });
     state.currentSessionId = sessionId;
     updateSessionFilter();
-    refreshSessionChips();
+    refreshSessionChips2();
     applyTimelineFilter();
     if (state.selectedSession === ALL_SESSIONS) {
       updateSessionPanelVisibility(ALL_SESSIONS);
@@ -3238,7 +3224,7 @@ Session: ${resolvedSessionId || ""}`;
     const clearBtn = filterEl.querySelector(".session-filter-clear-btn");
     if (clearBtn) {
       clearBtn.addEventListener("click", () => {
-        if (callbacks7) callbacks7.clearAllPanels();
+        if (callbacks6) callbacks6.clearAllPanels();
       });
     }
     const dropdown = filterEl.querySelector(".session-dropdown");
@@ -3289,22 +3275,22 @@ Session: ${resolvedSessionId || ""}`;
     } else {
       const associatedPlanPath = state.sessionPlanMap.get(resolvedSessionId);
       if (associatedPlanPath) {
-        if (callbacks7) {
-          callbacks7.displayPlan(associatedPlanPath);
+        if (callbacks6) {
+          callbacks6.displayPlan(associatedPlanPath);
         }
       } else {
-        if (callbacks7) {
-          callbacks7.displaySessionPlanEmpty(resolvedSessionId);
+        if (callbacks6) {
+          callbacks6.displaySessionPlanEmpty(resolvedSessionId);
         }
       }
     }
-    if (callbacks7) {
-      callbacks7.setStatsSource(resolvedSessionId);
+    if (callbacks6) {
+      callbacks6.setStatsSource(resolvedSessionId);
     }
     filterTeamBySession();
     filterTasksBySession();
-    if (callbacks7) {
-      callbacks7.updateExportButtonState();
+    if (callbacks6) {
+      callbacks6.updateExportButtonState();
     }
   }
   function selectAgentFilter(agentId) {
@@ -3334,16 +3320,16 @@ Session: ${resolvedSessionId || ""}`;
       if (!response.ok) {
         const text = await response.text();
         console.error("[Dashboard] Reveal in Finder failed:", response.status, text);
-        if (callbacks7) {
-          callbacks7.showToast(`Path: ${path}`, "info", 5e3);
+        if (callbacks6) {
+          callbacks6.showToast(`Path: ${path}`, "info", 5e3);
         }
       } else {
         debug("[Dashboard] Reveal in Finder succeeded");
       }
     }).catch((err) => {
       console.error("[Dashboard] Reveal in Finder fetch error:", err);
-      if (callbacks7) {
-        callbacks7.showToast(`Path: ${path}`, "info", 5e3);
+      if (callbacks6) {
+        callbacks6.showToast(`Path: ${path}`, "info", 5e3);
       }
     });
     hideSessionContextMenu();
@@ -3425,10 +3411,10 @@ Session: ${id}` : `Session: ${id}`;
   }
 
   // src/dashboard/handlers/hooks.ts
-  var callbacks8 = null;
+  var callbacks7 = null;
   var hooksFilter = "all";
   function initHooks(cbs) {
-    callbacks8 = cbs;
+    callbacks7 = cbs;
     elements.hooksFilter?.addEventListener("change", (e) => {
       hooksFilter = e.target.value;
       filterAllHooks();
@@ -3540,7 +3526,7 @@ Session: ${id}` : `Session: ${id}`;
     updateTabBadge("hooks", state.hooksCount);
   }
   function handleHookExecution(event) {
-    if (!callbacks8) {
+    if (!callbacks7) {
       console.error("[Hooks] Handler not initialized - call initHooks first");
       return;
     }
@@ -3655,8 +3641,8 @@ Session: ${id}` : `Session: ${id}`;
   `;
     if (elements.hooksContent) {
       applyHooksFilter(entry);
-      callbacks8.appendAndTrim(elements.hooksContent, entry);
-      callbacks8.smartScroll(elements.hooksContent);
+      callbacks7.appendAndTrim(elements.hooksContent, entry);
+      callbacks7.smartScroll(elements.hooksContent);
     }
     const toolEl = entry.querySelector(".hook-tool");
     if (toolEl && toolName && !isSubagentHook) {
@@ -4154,9 +4140,9 @@ Session: ${id}` : `Session: ${id}`;
   }
 
   // src/dashboard/ui/keyboard.ts
-  var callbacks9 = null;
+  var callbacks8 = null;
   function initKeyboard(cbs) {
-    callbacks9 = cbs;
+    callbacks8 = cbs;
     document.addEventListener("keydown", handleKeydown2);
   }
   function handleKeydown2(event) {
@@ -4174,8 +4160,8 @@ Session: ${id}` : `Session: ${id}`;
       document.body.classList.add("keyboard-mode");
     }
     if (event.key === "c" && !event.ctrlKey && !event.metaKey) {
-      if (callbacks9) {
-        callbacks9.clearAllPanels();
+      if (callbacks8) {
+        callbacks8.clearAllPanels();
       }
       return;
     }
@@ -4242,8 +4228,8 @@ Session: ${id}` : `Session: ${id}`;
           return;
         case "p":
           event.preventDefault();
-          if (callbacks9) {
-            callbacks9.togglePanelSelector();
+          if (callbacks8) {
+            callbacks8.togglePanelSelector();
           }
           return;
       }
@@ -4284,22 +4270,22 @@ Session: ${id}` : `Session: ${id}`;
       }
       if (event.key.toLowerCase() === "e" && !event.shiftKey) {
         event.preventDefault();
-        if (callbacks9) {
-          callbacks9.tryOpenExportModal();
+        if (callbacks8) {
+          callbacks8.tryOpenExportModal();
         }
         return;
       }
       if (event.key.toLowerCase() === "o" && !event.shiftKey) {
-        if (state.currentPlanPath && callbacks9) {
+        if (state.currentPlanPath && callbacks8) {
           event.preventDefault();
-          callbacks9.handlePlanOpenClick();
+          callbacks8.handlePlanOpenClick();
         }
         return;
       }
       if (event.key.toLowerCase() === "r" && event.shiftKey) {
-        if (state.currentPlanPath && callbacks9) {
+        if (state.currentPlanPath && callbacks8) {
           event.preventDefault();
-          callbacks9.handlePlanRevealClick();
+          callbacks8.handlePlanRevealClick();
         }
         return;
       }
@@ -4320,9 +4306,9 @@ Session: ${id}` : `Session: ${id}`;
   var modalElement = null;
   var isOpen2 = false;
   var previouslyFocused3 = null;
-  var callbacks10 = null;
+  var callbacks9 = null;
   function initPanelSelector(cbs) {
-    callbacks10 = cbs;
+    callbacks9 = cbs;
   }
   function createModal2() {
     const backdrop = document.createElement("div");
@@ -4380,8 +4366,8 @@ Session: ${id}` : `Session: ${id}`;
     applyViewFilter();
     rebuildResizers();
     savePanelVisibility();
-    if (callbacks10) {
-      callbacks10.announceStatus(`${PANEL_LABELS[panelName]} panel ${visible ? "shown" : "hidden"}`);
+    if (callbacks9) {
+      callbacks9.announceStatus(`${PANEL_LABELS[panelName]} panel ${visible ? "shown" : "hidden"}`);
     }
   }
   function applyAllPanelVisibility() {
@@ -4456,12 +4442,12 @@ Session: ${id}` : `Session: ${id}`;
   }
 
   // src/dashboard/handlers/thinking.ts
-  var callbacks11 = null;
+  var callbacks10 = null;
   function initThinking(cbs) {
-    callbacks11 = cbs;
+    callbacks10 = cbs;
   }
   function handleThinking(event) {
-    if (!callbacks11) {
+    if (!callbacks10) {
       console.error("[Thinking Handler] Callbacks not initialized - call initThinking() first");
       return;
     }
@@ -4475,7 +4461,7 @@ Session: ${id}` : `Session: ${id}`;
     const eventAgentId = event.agentId;
     let agentId = eventAgentId;
     if (!agentId) {
-      const contextAgentId = callbacks11.getCurrentAgentContext();
+      const contextAgentId = callbacks10.getCurrentAgentContext();
       const contextAgent = subagentState.subagents.get(contextAgentId);
       if (contextAgent && contextAgent.parentSessionId === sessionId) {
         agentId = contextAgentId;
@@ -4483,7 +4469,7 @@ Session: ${id}` : `Session: ${id}`;
         agentId = "main";
       }
     }
-    const agentDisplayName = callbacks11.getAgentDisplayName(agentId);
+    const agentDisplayName = callbacks10.getAgentDisplayName(agentId);
     const emptyState2 = elements.thinkingContent.querySelector(".empty-state");
     if (emptyState2) {
       emptyState2.remove();
@@ -4519,8 +4505,8 @@ Session: ${id}` : `Session: ${id}`;
     <div class="thinking-text">${escapeHtml(content)}</div>
   `;
     applyThinkingFilter(entry);
-    callbacks11.appendAndTrim(elements.thinkingContent, entry);
-    callbacks11.smartScroll(elements.thinkingContent);
+    callbacks10.appendAndTrim(elements.thinkingContent, entry);
+    callbacks10.smartScroll(elements.thinkingContent);
     setTimeout(() => entry.classList.remove("new"), 1e3);
   }
 
@@ -4729,12 +4715,12 @@ Session: ${id}` : `Session: ${id}`;
       }
     }
   }
-  var callbacks12 = null;
+  var callbacks11 = null;
   function initTools(cbs) {
-    callbacks12 = cbs;
+    callbacks11 = cbs;
   }
   function handleToolStart(event) {
-    if (!callbacks12) {
+    if (!callbacks11) {
       console.error("[Tools] Handler not initialized - call initTools first");
       return;
     }
@@ -4746,7 +4732,7 @@ Session: ${id}` : `Session: ${id}`;
     const eventAgentId = event.agentId;
     let agentId = eventAgentId;
     if (!agentId) {
-      const contextAgentId = callbacks12.getCurrentAgentContext();
+      const contextAgentId = callbacks11.getCurrentAgentContext();
       const contextAgent = subagentState.subagents.get(contextAgentId);
       if (contextAgent && contextAgent.parentSessionId === sessionId) {
         agentId = contextAgentId;
@@ -4758,7 +4744,7 @@ Session: ${id}` : `Session: ${id}`;
       detectPlanAccess(input, sessionId);
     }
     if (toolName === "SendMessage") {
-      callbacks12.detectSendMessage(input, agentId, event.sessionId, event.timestamp);
+      callbacks11.detectSendMessage(input, agentId, event.sessionId, event.timestamp);
     }
     state.toolsCount++;
     updateToolsCount();
@@ -4772,7 +4758,7 @@ Session: ${id}` : `Session: ${id}`;
     const folderBadge = sessionId && folderName ? `<span class="entry-folder-badge" style="background: ${escapeCssValue(getSessionColorByFolder(folderName))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(folderName)}</span>` : "";
     const sessionBadge = sessionId && !folderName ? `<span class="entry-session-badge" style="background: ${escapeCssValue(getSessionColorByHash(sessionId))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>` : "";
     const preview = summarizeInput(input, toolName);
-    const agentDisplayName = callbacks12.getAgentDisplayName(agentId);
+    const agentDisplayName = callbacks11.getAgentDisplayName(agentId);
     const agentBadgeColors = getAgentBadgeColors(agentDisplayName);
     const entry = document.createElement("div");
     entry.className = "tool-entry collapsed new";
@@ -4821,8 +4807,8 @@ Session: ${id}` : `Session: ${id}`;
       element: entry
     });
     applyToolsFilter(entry);
-    callbacks12.appendAndTrim(elements.toolsContent, entry);
-    callbacks12.smartScroll(elements.toolsContent);
+    callbacks11.appendAndTrim(elements.toolsContent, entry);
+    callbacks11.smartScroll(elements.toolsContent);
     setTimeout(() => entry.classList.remove("new"), 1e3);
   }
   function handleToolEnd(event) {
@@ -5047,67 +5033,21 @@ Session: ${id}` : `Session: ${id}`;
     clearInterval(agentContextCleanupInterval);
   });
 
-  // src/dashboard/handlers/plans.ts
-  var callbacks13 = null;
-  function initPlans(cbs) {
-    callbacks13 = cbs;
+  // src/dashboard/handlers/plans/utils.ts
+  function formatTimeAgo(date) {
+    const now = Date.now();
+    const diff = now - date.getTime();
+    const seconds = Math.floor(diff / 1e3);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
+    return "just now";
   }
-  function handlePlanList(event) {
-    const plans = event.plans;
-    state.planList = plans.map((p) => ({
-      path: p.path,
-      filename: p.filename,
-      lastModified: p.lastModified
-    }));
-    debug(`[Dashboard] Received plan list with ${state.planList.length} plans`);
-    renderPlanSelector();
-  }
-  function handlePlanUpdate(event) {
-    const filename = event.filename;
-    const path = event.path;
-    const content = event.content || "";
-    const lastModified = event.lastModified ?? Date.now();
-    const activeAgent = callbacks13?.findActiveAgent();
-    state.plans.set(path, {
-      path,
-      filename,
-      content,
-      lastModified,
-      sessionId: event.sessionId || void 0,
-      agentId: activeAgent?.id
-    });
-    const existingIndex = state.planList.findIndex((p) => p.path === path);
-    if (existingIndex >= 0) {
-      state.planList[existingIndex] = { path, filename, lastModified };
-    } else {
-      state.planList.push({ path, filename, lastModified });
-    }
-    state.planList.sort((a, b) => b.lastModified - a.lastModified);
-    renderPlanSelector();
-    const isCurrentPlan = state.currentPlanPath === path;
-    const selectedSessionPlan = state.selectedSession !== "all" ? state.sessionPlanMap.get(state.selectedSession) : null;
-    const isSelectedSessionPlan = selectedSessionPlan === path;
-    if (isCurrentPlan) {
-      displayPlan(path);
-    } else if (isSelectedSessionPlan) {
-      displayPlan(path);
-    }
-  }
-  function handlePlanDelete(event) {
-    const path = event.path;
-    if (path) {
-      state.plans.delete(path);
-      state.planList = state.planList.filter((p) => p.path !== path);
-    }
-    renderPlanSelector();
-    if (state.currentPlanPath === path) {
-      if (state.selectedSession === "all") {
-        displayEmptyPlan();
-      } else {
-        displayMostRecentPlan();
-      }
-    }
-  }
+
+  // src/dashboard/handlers/plans/display.ts
   function displayMostRecentPlan() {
     if (state.plans.size === 0) {
       displayEmptyPlan();
@@ -5201,6 +5141,157 @@ Session: ${id}` : `Session: ${id}`;
     </span>
   `;
     elements.planMeta.classList.add("visible");
+  }
+  function updatePlanActionButtons() {
+    const hasActivePlan = state.currentPlanPath !== null;
+    elements.planOpenBtn.disabled = !hasActivePlan;
+    elements.planRevealBtn.disabled = !hasActivePlan;
+  }
+
+  // src/dashboard/handlers/plans/context-menu.ts
+  var callbacks12 = null;
+  function setContextMenuCallbacks(cbs) {
+    callbacks12 = cbs;
+  }
+  function showFileContextMenu(x, y, filePath) {
+    state.contextMenuFilePath = filePath;
+    const menu = elements.planContextMenu;
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    requestAnimationFrame(() => {
+      const rect = menu.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      if (rect.right > viewportWidth) {
+        menu.style.left = `${x - rect.width}px`;
+      }
+      if (rect.bottom > viewportHeight) {
+        menu.style.top = `${y - rect.height}px`;
+      }
+    });
+    menu.classList.add("visible");
+  }
+  function hidePlanContextMenu() {
+    elements.planContextMenu.classList.remove("visible");
+    state.contextMenuFilePath = null;
+  }
+  async function executeFileAction(action, path) {
+    try {
+      const response = await fetch("http://localhost:3355/file-action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ action, path })
+      });
+      const result = await response.json();
+      if (!result.success) {
+        console.error(`[Dashboard] File action failed: ${result.error}`);
+        callbacks12?.showToast(result.error || "Action failed", "error");
+      } else {
+        const actionText = action === "open" ? "Opened in default app" : "Revealed in Finder";
+        callbacks12?.showToast(actionText, "success");
+      }
+    } catch (error) {
+      console.error("[Dashboard] Failed to execute file action:", error);
+      callbacks12?.showToast("Failed to connect to server", "error");
+    }
+  }
+  function handlePlanOpenClick() {
+    if (state.currentPlanPath) {
+      executeFileAction("open", state.currentPlanPath);
+    }
+  }
+  function handlePlanRevealClick() {
+    if (state.currentPlanPath) {
+      executeFileAction("reveal", state.currentPlanPath);
+    }
+  }
+  function handleContextMenuOpen() {
+    if (state.contextMenuFilePath) {
+      executeFileAction("open", state.contextMenuFilePath);
+    }
+    hidePlanContextMenu();
+  }
+  function handleContextMenuReveal() {
+    if (state.contextMenuFilePath) {
+      executeFileAction("reveal", state.contextMenuFilePath);
+    }
+    hidePlanContextMenu();
+  }
+  function handlePlanContextMenu(event) {
+    if (!state.currentPlanPath) {
+      return;
+    }
+    event.preventDefault();
+    showFileContextMenu(event.clientX, event.clientY, state.currentPlanPath);
+  }
+  function handlePlanOptionContextMenu(event, planPath) {
+    event.preventDefault();
+    event.stopPropagation();
+    showFileContextMenu(event.clientX, event.clientY, planPath);
+  }
+
+  // src/dashboard/handlers/plans/state.ts
+  var internalCallbacks = null;
+  function setInternalCallbacks(cbs) {
+    internalCallbacks = cbs;
+  }
+  function handlePlanList(event) {
+    const plans = event.plans;
+    state.planList = plans.map((p) => ({
+      path: p.path,
+      filename: p.filename,
+      lastModified: p.lastModified
+    }));
+    debug(`[Dashboard] Received plan list with ${state.planList.length} plans`);
+    renderPlanSelector();
+  }
+  function handlePlanUpdate(event) {
+    const filename = event.filename;
+    const path = event.path;
+    const content = event.content || "";
+    const lastModified = event.lastModified ?? Date.now();
+    const activeAgent = internalCallbacks?.findActiveAgent();
+    state.plans.set(path, {
+      path,
+      filename,
+      content,
+      lastModified,
+      sessionId: event.sessionId || void 0,
+      agentId: activeAgent?.id
+    });
+    const existingIndex = state.planList.findIndex((p) => p.path === path);
+    if (existingIndex >= 0) {
+      state.planList[existingIndex] = { path, filename, lastModified };
+    } else {
+      state.planList.push({ path, filename, lastModified });
+    }
+    state.planList.sort((a, b) => b.lastModified - a.lastModified);
+    renderPlanSelector();
+    const isCurrentPlan = state.currentPlanPath === path;
+    const selectedSessionPlan = state.selectedSession !== "all" ? state.sessionPlanMap.get(state.selectedSession) : null;
+    const isSelectedSessionPlan = selectedSessionPlan === path;
+    if (isCurrentPlan) {
+      displayPlan(path);
+    } else if (isSelectedSessionPlan) {
+      displayPlan(path);
+    }
+  }
+  function handlePlanDelete(event) {
+    const path = event.path;
+    if (path) {
+      state.plans.delete(path);
+      state.planList = state.planList.filter((p) => p.path !== path);
+    }
+    renderPlanSelector();
+    if (state.currentPlanPath === path) {
+      if (state.selectedSession === "all") {
+        displayEmptyPlan();
+      } else {
+        displayMostRecentPlan();
+      }
+    }
   }
   function renderPlanSelector() {
     const dropdown = elements.planSelectorDropdown;
@@ -5312,100 +5403,11 @@ Session: ${id}` : `Session: ${id}`;
     elements.planSelectorBtn.setAttribute("aria-expanded", "false");
     elements.planSelectorDropdown.classList.remove("visible");
   }
-  function formatTimeAgo(date) {
-    const now = Date.now();
-    const diff = now - date.getTime();
-    const seconds = Math.floor(diff / 1e3);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    if (days > 0) return `${days}d ago`;
-    if (hours > 0) return `${hours}h ago`;
-    if (minutes > 0) return `${minutes}m ago`;
-    return "just now";
-  }
-  function showFileContextMenu(x, y, filePath) {
-    state.contextMenuFilePath = filePath;
-    const menu = elements.planContextMenu;
-    menu.style.left = `${x}px`;
-    menu.style.top = `${y}px`;
-    requestAnimationFrame(() => {
-      const rect = menu.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      if (rect.right > viewportWidth) {
-        menu.style.left = `${x - rect.width}px`;
-      }
-      if (rect.bottom > viewportHeight) {
-        menu.style.top = `${y - rect.height}px`;
-      }
-    });
-    menu.classList.add("visible");
-  }
-  function hidePlanContextMenu() {
-    elements.planContextMenu.classList.remove("visible");
-    state.contextMenuFilePath = null;
-  }
-  async function executeFileAction(action, path) {
-    try {
-      const response = await fetch("http://localhost:3355/file-action", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ action, path })
-      });
-      const result = await response.json();
-      if (!result.success) {
-        console.error(`[Dashboard] File action failed: ${result.error}`);
-        callbacks13?.showToast(result.error || "Action failed", "error");
-      } else {
-        const actionText = action === "open" ? "Opened in default app" : "Revealed in Finder";
-        callbacks13?.showToast(actionText, "success");
-      }
-    } catch (error) {
-      console.error("[Dashboard] Failed to execute file action:", error);
-      callbacks13?.showToast("Failed to connect to server", "error");
-    }
-  }
-  function updatePlanActionButtons() {
-    const hasActivePlan = state.currentPlanPath !== null;
-    elements.planOpenBtn.disabled = !hasActivePlan;
-    elements.planRevealBtn.disabled = !hasActivePlan;
-  }
-  function handlePlanOpenClick() {
-    if (state.currentPlanPath) {
-      executeFileAction("open", state.currentPlanPath);
-    }
-  }
-  function handlePlanRevealClick() {
-    if (state.currentPlanPath) {
-      executeFileAction("reveal", state.currentPlanPath);
-    }
-  }
-  function handleContextMenuOpen() {
-    if (state.contextMenuFilePath) {
-      executeFileAction("open", state.contextMenuFilePath);
-    }
-    hidePlanContextMenu();
-  }
-  function handleContextMenuReveal() {
-    if (state.contextMenuFilePath) {
-      executeFileAction("reveal", state.contextMenuFilePath);
-    }
-    hidePlanContextMenu();
-  }
-  function handlePlanContextMenu(event) {
-    if (!state.currentPlanPath) {
-      return;
-    }
-    event.preventDefault();
-    showFileContextMenu(event.clientX, event.clientY, state.currentPlanPath);
-  }
-  function handlePlanOptionContextMenu(event, planPath) {
-    event.preventDefault();
-    event.stopPropagation();
-    showFileContextMenu(event.clientX, event.clientY, planPath);
+
+  // src/dashboard/handlers/plans/index.ts
+  function initPlans(cbs) {
+    setInternalCallbacks({ findActiveAgent: cbs.findActiveAgent });
+    setContextMenuCallbacks(cbs);
   }
 
   // src/dashboard/ui/stats-bar.ts
@@ -5590,7 +5592,7 @@ Session: ${id}` : `Session: ${id}`;
   function handleEvent(event) {
     state.eventCount++;
     elements.eventCount.textContent = `Events: ${state.eventCount}`;
-    addTimelineEntry(event);
+    addTimelineEntry2(event);
     updateStats(event, event.sessionId);
     debug(`[Dashboard] Event received:`, {
       type: event.type,
@@ -6015,20 +6017,99 @@ Session: ${id}` : `Session: ${id}`;
     return lines.join("\n");
   }
 
-  // src/dashboard/ui/export-modal.ts
-  var callbacks14 = null;
+  // src/dashboard/ui/export/browser.ts
+  var currentDirectory = "";
+  var parentDirectory = null;
+  function getCurrentDirectory() {
+    return currentDirectory;
+  }
+  function escapeHtml2(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+  function escapeAttr(str) {
+    return str.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  async function browseDirectory(path) {
+    const listEl = document.getElementById("export-browser-list");
+    const pathEl = document.getElementById("export-browser-path");
+    if (!listEl || !pathEl) return;
+    listEl.innerHTML = '<div class="export-browser-loading">Loading...</div>';
+    try {
+      const response = await fetch(
+        `http://localhost:3355/api/browse?path=${encodeURIComponent(path)}`
+      );
+      const data = await response.json();
+      if (!data.success) {
+        listEl.innerHTML = `<div class="export-browser-error">${escapeHtml2(data.error || "Failed to browse directory")}</div>`;
+        return;
+      }
+      currentDirectory = data.path || path;
+      parentDirectory = data.parent || null;
+      pathEl.textContent = currentDirectory;
+      pathEl.title = currentDirectory;
+      let html = "";
+      if (parentDirectory) {
+        html += `<button class="export-browser-item export-browser-parent" data-path="${escapeAttr(parentDirectory)}" data-type="directory">
+        <span class="export-browser-icon">&#8593;</span>
+        <span class="export-browser-name">..</span>
+      </button>`;
+      }
+      const entries = data.entries || [];
+      for (const entry of entries) {
+        const fullPath = `${currentDirectory}/${entry.name}`;
+        const icon = entry.type === "directory" ? "&#128193;" : "&#128196;";
+        const itemClass = entry.type === "directory" ? "export-browser-folder" : "export-browser-file";
+        html += `<button class="export-browser-item ${itemClass}" data-path="${escapeAttr(fullPath)}" data-type="${entry.type}" data-name="${escapeAttr(entry.name)}">
+        <span class="export-browser-icon">${icon}</span>
+        <span class="export-browser-name">${escapeHtml2(entry.name)}</span>
+      </button>`;
+      }
+      if (entries.length === 0 && !parentDirectory) {
+        html += '<div class="export-browser-empty">No folders or .md files</div>';
+      } else if (entries.length === 0) {
+        html += '<div class="export-browser-empty">Empty directory</div>';
+      }
+      listEl.innerHTML = html;
+      const items = listEl.querySelectorAll(".export-browser-item");
+      items.forEach((item) => {
+        item.addEventListener("click", handleBrowserItemClick);
+      });
+    } catch (error) {
+      console.error("[Export] Browse error:", error);
+      listEl.innerHTML = '<div class="export-browser-error">Failed to connect to server</div>';
+    }
+  }
+  function handleBrowserItemClick(event) {
+    const target = event.currentTarget;
+    const path = target.dataset.path;
+    const type = target.dataset.type;
+    const name = target.dataset.name;
+    if (!path) return;
+    if (type === "directory") {
+      browseDirectory(path);
+    } else if (type === "file" && name) {
+      const input = document.getElementById("export-filename-input");
+      if (input && name.endsWith(".md")) {
+        input.value = name.slice(0, -3);
+        input.focus();
+      }
+    }
+  }
+
+  // src/dashboard/ui/export/modal.ts
+  var callbacks13 = null;
   var modalElement2 = null;
   var isOpen3 = false;
   var previouslyFocused4 = null;
-  var currentDirectory = "";
-  var parentDirectory = null;
   var exportOptions = {
     includeThinking: true,
     includeTools: true,
     includeHooks: true
   };
   function initExportModal(cbs) {
-    callbacks14 = cbs;
+    callbacks13 = cbs;
   }
   function createModal3() {
     const backdrop = document.createElement("div");
@@ -6166,80 +6247,6 @@ Session: ${id}` : `Session: ${id}`;
     });
     return backdrop;
   }
-  async function browseDirectory(path) {
-    const listEl = document.getElementById("export-browser-list");
-    const pathEl = document.getElementById("export-browser-path");
-    if (!listEl || !pathEl) return;
-    listEl.innerHTML = '<div class="export-browser-loading">Loading...</div>';
-    try {
-      const response = await fetch(
-        `http://localhost:3355/api/browse?path=${encodeURIComponent(path)}`
-      );
-      const data = await response.json();
-      if (!data.success) {
-        listEl.innerHTML = `<div class="export-browser-error">${escapeHtml2(data.error || "Failed to browse directory")}</div>`;
-        return;
-      }
-      currentDirectory = data.path || path;
-      parentDirectory = data.parent || null;
-      pathEl.textContent = currentDirectory;
-      pathEl.title = currentDirectory;
-      let html = "";
-      if (parentDirectory) {
-        html += `<button class="export-browser-item export-browser-parent" data-path="${escapeAttr(parentDirectory)}" data-type="directory">
-        <span class="export-browser-icon">&#8593;</span>
-        <span class="export-browser-name">..</span>
-      </button>`;
-      }
-      const entries = data.entries || [];
-      for (const entry of entries) {
-        const fullPath = `${currentDirectory}/${entry.name}`;
-        const icon = entry.type === "directory" ? "&#128193;" : "&#128196;";
-        const itemClass = entry.type === "directory" ? "export-browser-folder" : "export-browser-file";
-        html += `<button class="export-browser-item ${itemClass}" data-path="${escapeAttr(fullPath)}" data-type="${entry.type}" data-name="${escapeAttr(entry.name)}">
-        <span class="export-browser-icon">${icon}</span>
-        <span class="export-browser-name">${escapeHtml2(entry.name)}</span>
-      </button>`;
-      }
-      if (entries.length === 0 && !parentDirectory) {
-        html += '<div class="export-browser-empty">No folders or .md files</div>';
-      } else if (entries.length === 0) {
-        html += '<div class="export-browser-empty">Empty directory</div>';
-      }
-      listEl.innerHTML = html;
-      const items = listEl.querySelectorAll(".export-browser-item");
-      items.forEach((item) => {
-        item.addEventListener("click", handleBrowserItemClick);
-      });
-    } catch (error) {
-      console.error("[Export] Browse error:", error);
-      listEl.innerHTML = '<div class="export-browser-error">Failed to connect to server</div>';
-    }
-  }
-  function handleBrowserItemClick(event) {
-    const target = event.currentTarget;
-    const path = target.dataset.path;
-    const type = target.dataset.type;
-    const name = target.dataset.name;
-    if (!path) return;
-    if (type === "directory") {
-      browseDirectory(path);
-    } else if (type === "file" && name) {
-      const input = document.getElementById("export-filename-input");
-      if (input && name.endsWith(".md")) {
-        input.value = name.slice(0, -3);
-        input.focus();
-      }
-    }
-  }
-  function escapeHtml2(str) {
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
-  }
-  function escapeAttr(str) {
-    return str.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-  }
   function updateSessionInfo() {
     const infoEl = document.getElementById("export-session-info");
     if (!infoEl) return;
@@ -6275,7 +6282,7 @@ Session: ${id}` : `Session: ${id}`;
     const filename = input.value.trim();
     if (!filename) return "";
     const fullFilename = filename.endsWith(".md") ? filename : `${filename}.md`;
-    return `${currentDirectory}/${fullFilename}`;
+    return `${getCurrentDirectory()}/${fullFilename}`;
   }
   async function handleExport() {
     const input = document.getElementById("export-filename-input");
@@ -6283,23 +6290,23 @@ Session: ${id}` : `Session: ${id}`;
     if (!input || !submitBtn) return;
     const filename = input.value.trim();
     if (!filename) {
-      if (callbacks14) {
-        callbacks14.showToast("Please enter a filename", "error");
+      if (callbacks13) {
+        callbacks13.showToast("Please enter a filename", "error");
       }
       input.focus();
       return;
     }
     if (/[/\\:*?"<>|]/.test(filename)) {
-      if (callbacks14) {
-        callbacks14.showToast("Filename contains invalid characters", "error");
+      if (callbacks13) {
+        callbacks13.showToast("Filename contains invalid characters", "error");
       }
       input.focus();
       return;
     }
     const path = getFullExportPath();
     if (!path) {
-      if (callbacks14) {
-        callbacks14.showToast("Invalid export path", "error");
+      if (callbacks13) {
+        callbacks13.showToast("Invalid export path", "error");
       }
       return;
     }
@@ -6315,9 +6322,9 @@ Session: ${id}` : `Session: ${id}`;
       });
       const result = await response.json();
       if (result.success) {
-        if (callbacks14) {
-          callbacks14.showToast(`Exported to ${result.path}`, "success", 5e3);
-          callbacks14.announceStatus("Export successful");
+        if (callbacks13) {
+          callbacks13.showToast(`Exported to ${result.path}`, "success", 5e3);
+          callbacks13.announceStatus("Export successful");
         }
         closeExportModal();
         if (result.path) {
@@ -6336,14 +6343,14 @@ Session: ${id}` : `Session: ${id}`;
           }
         }
       } else {
-        if (callbacks14) {
-          callbacks14.showToast(result.error || "Export failed", "error");
+        if (callbacks13) {
+          callbacks13.showToast(result.error || "Export failed", "error");
         }
       }
     } catch (error) {
       console.error("[Export] Failed:", error);
-      if (callbacks14) {
-        callbacks14.showToast("Export failed. Check console for details.", "error");
+      if (callbacks13) {
+        callbacks13.showToast("Export failed. Check console for details.", "error");
       }
     } finally {
       submitBtn.disabled = false;
@@ -6445,8 +6452,8 @@ Session: ${id}` : `Session: ${id}`;
   }
   function tryOpenExportModal() {
     if (!isExportAllowed()) {
-      if (callbacks14) {
-        callbacks14.showToast("Select a session to export", "info");
+      if (callbacks13) {
+        callbacks13.showToast("Select a session to export", "info");
       }
       return false;
     }
@@ -6607,7 +6614,7 @@ Session: ${id}` : `Session: ${id}`;
     if (elements.timelineCount) {
       elements.timelineCount.textContent = "0";
     }
-    resetTypeChips();
+    resetTypeChips2();
     state.thinkingFilter = "";
     state.toolsFilter = "";
     elements.thinkingFilter.value = "";
