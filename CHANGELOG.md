@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-03-09 — v1.5.1
+
+### Fixed
+- Only send recent sessions (last 24h) on client connect instead of all 604+, preventing UI flood
+- Update cache buster in index.html to match current version (was stuck at v0.16.0)
+
+### Changed
+- `bump-version.js` now auto-updates the `app.js?v=` cache buster in `index.html`
+
+---
+
 ## 2026-03-09 - v1.5.0
 
 ### Added

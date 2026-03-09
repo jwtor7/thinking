@@ -24,6 +24,7 @@ const rootDir = resolve(scriptDir, '..');
 const packagePath = resolve(rootDir, 'package.json');
 const changelogPath = resolve(rootDir, 'CHANGELOG.md');
 const readmePath = resolve(rootDir, 'README.md');
+const indexHtmlPath = resolve(rootDir, 'src', 'dashboard', 'index.html');
 
 function parseSemver(version) {
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
@@ -78,6 +79,14 @@ if (!badgePattern.test(readme)) {
 readme = readme.replace(badgePattern, `$1${newVersion}$3`);
 writeFileSync(readmePath, readme, 'utf8');
 console.log('Updated README.md version badge');
+
+let indexHtml = readFileSync(indexHtmlPath, 'utf8');
+const cacheBusterPattern = /(app\.js\?v=)[^"]+/;
+if (cacheBusterPattern.test(indexHtml)) {
+  indexHtml = indexHtml.replace(cacheBusterPattern, `$1${newVersion}`);
+  writeFileSync(indexHtmlPath, indexHtml, 'utf8');
+  console.log('Updated index.html cache buster');
+}
 
 const today = formatToday();
 const changelogHeading = `## ${today} — v${newVersion}`;
