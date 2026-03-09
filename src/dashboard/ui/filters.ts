@@ -1,11 +1,17 @@
 /**
  * Filtering functions for dashboard entries.
- * Handles session, thinking, tools, and hooks filtering with count updates.
+ * Delegates to FilterService for session/agent/text matching.
+ * Handles DOM operations and count updates.
  */
 
-import { state, subagentState } from '../state.ts';
+import { state } from '../state.ts';
 import { elements } from './elements.ts';
 import { filterAllHooks, updateHooksCount } from '../handlers/hooks.ts';
+import {
+  matchesCommonFilters,
+  matchesTextFilter,
+} from '../services/filter-service.ts';
+import { filterEntries } from '../services/dom-filter.ts';
 
 // ============================================
 // Session Filtering
@@ -13,17 +19,16 @@ import { filterAllHooks, updateHooksCount } from '../handlers/hooks.ts';
 
 export function filterAllBySession(): void {
   // Filter thinking entries
-  const thinkingEntries = elements.thinkingContent.querySelectorAll('.thinking-entry');
-  thinkingEntries.forEach((entry: Element) => {
-    const el = entry as HTMLElement;
-    applySessionFilter(el);
+  filterEntries(elements.thinkingContent, '.thinking-entry', (el) => {
+    return matchesCommonFilters(el) &&
+      matchesTextFilter(el.dataset.content || '', state.thinkingFilter);
   });
 
   // Filter tool entries
-  const toolEntries = elements.toolsContent.querySelectorAll('.tool-entry');
-  toolEntries.forEach((entry: Element) => {
-    const el = entry as HTMLElement;
-    applySessionFilter(el);
+  filterEntries(elements.toolsContent, '.tool-entry', (el) => {
+    const filter = state.toolsFilter.toLowerCase();
+    return matchesCommonFilters(el) &&
+      matchesTextFilter((el.dataset.toolName || '') + ' ' + (el.dataset.input || ''), filter ? state.toolsFilter : '');
   });
 
   // Filter hook entries
@@ -36,61 +41,24 @@ export function filterAllBySession(): void {
 }
 
 /**
- * Check if an entry matches the per-agent filter.
- * When selectedAgentId is set, only show events from that agent.
- */
-function matchesAgentFilter(entry: HTMLElement): boolean {
-  if (!state.selectedAgentId) return true;
-  const entryAgent = entry.dataset.agent || '';
-  return entryAgent === state.selectedAgentId;
-}
-
-/**
  * Apply session filter to a single entry element.
  * Also considers text filter, agent filter, and subagent parent relationships.
  */
 export function applySessionFilter(entry: HTMLElement): void {
-  const entrySession = entry.dataset.session || '';
-  const parentSession = entry.dataset.parentSession || '';
+  const common = matchesCommonFilters(entry);
 
-  // Session matching: also include entries from subagents when parent session is selected
-  let matchesSession = false;
-  if (state.selectedSession === 'all') {
-    matchesSession = true;
-  } else if (entrySession === state.selectedSession) {
-    // Direct session match
-    matchesSession = true;
-  } else if (parentSession === state.selectedSession) {
-    // This entry's parent session matches the selected session
-    matchesSession = true;
-  } else {
-    // Check if this entry's agent is a subagent of the selected session
-    const agentId = entry.dataset.agent;
-    if (agentId) {
-      const subagent = subagentState.subagents.get(agentId);
-      if (subagent && subagent.parentSessionId === state.selectedSession) {
-        matchesSession = true;
-      }
-    }
-  }
-
-  // Per-agent filter
-  const matchesAgent = matchesAgentFilter(entry);
-
-  // Check if this is a thinking entry or tool entry
   const isThinkingEntry = entry.classList.contains('thinking-entry');
 
   if (isThinkingEntry) {
-    const matchesText = !state.thinkingFilter ||
-      (entry.dataset.content || '').includes(state.thinkingFilter.toLowerCase());
-    entry.style.display = (matchesSession && matchesAgent && matchesText) ? '' : 'none';
+    const matchesText = matchesTextFilter(entry.dataset.content || '', state.thinkingFilter);
+    entry.style.display = (common && matchesText) ? '' : 'none';
   } else {
     // Tool entry
     const toolName = entry.dataset.toolName || '';
     const input = entry.dataset.input || '';
     const filter = state.toolsFilter.toLowerCase();
     const matchesText = !filter || toolName.includes(filter) || input.includes(filter);
-    entry.style.display = (matchesSession && matchesAgent && matchesText) ? '' : 'none';
+    entry.style.display = (common && matchesText) ? '' : 'none';
   }
 }
 
@@ -124,9 +92,9 @@ export function applyToolsFilter(entry: HTMLElement): void {
 }
 
 export function filterAllThinking(): void {
-  const entries = elements.thinkingContent.querySelectorAll('.thinking-entry');
-  entries.forEach((entry: Element) => {
-    applyThinkingFilter(entry as HTMLElement);
+  filterEntries(elements.thinkingContent, '.thinking-entry', (el) => {
+    return matchesCommonFilters(el) &&
+      matchesTextFilter(el.dataset.content || '', state.thinkingFilter);
   });
 
   // Show/hide clear button
@@ -136,14 +104,15 @@ export function filterAllThinking(): void {
     elements.thinkingFilterClear.classList.add('panel-filter-hidden');
   }
 
-  // Update count to reflect filtered entries
   updateThinkingCount();
 }
 
 export function filterAllTools(): void {
-  const entries = elements.toolsContent.querySelectorAll('.tool-entry');
-  entries.forEach((entry: Element) => {
-    applyToolsFilter(entry as HTMLElement);
+  filterEntries(elements.toolsContent, '.tool-entry', (el) => {
+    const filter = state.toolsFilter.toLowerCase();
+    const toolName = el.dataset.toolName || '';
+    const input = el.dataset.input || '';
+    return matchesCommonFilters(el) && (!filter || toolName.includes(filter) || input.includes(filter));
   });
 
   // Show/hide clear button
@@ -153,7 +122,6 @@ export function filterAllTools(): void {
     elements.toolsFilterClear.classList.add('panel-filter-hidden');
   }
 
-  // Update count to reflect filtered entries
   updateToolsCount();
 }
 
@@ -169,14 +137,10 @@ export function updateThinkingCount(): void {
   const hasFilter = state.thinkingFilter || state.selectedSession !== 'all' || state.selectedAgentId;
 
   if (hasFilter) {
-    // Count visible entries
     const entries = elements.thinkingContent.querySelectorAll('.thinking-entry');
     let visibleCount = 0;
     entries.forEach((entry: Element) => {
-      const el = entry as HTMLElement;
-      if (el.style.display !== 'none') {
-        visibleCount++;
-      }
+      if ((entry as HTMLElement).style.display !== 'none') visibleCount++;
     });
     elements.thinkingCount.textContent = `${visibleCount}/${state.thinkingCount}`;
   } else {
@@ -192,14 +156,10 @@ export function updateToolsCount(): void {
   const hasFilter = state.toolsFilter || state.selectedSession !== 'all' || state.selectedAgentId;
 
   if (hasFilter) {
-    // Count visible entries
     const entries = elements.toolsContent.querySelectorAll('.tool-entry');
     let visibleCount = 0;
     entries.forEach((entry: Element) => {
-      const el = entry as HTMLElement;
-      if (el.style.display !== 'none') {
-        visibleCount++;
-      }
+      if ((entry as HTMLElement).style.display !== 'none') visibleCount++;
     });
     elements.toolsCount.textContent = `${visibleCount}/${state.toolsCount}`;
   } else {

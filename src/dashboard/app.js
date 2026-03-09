@@ -3393,6 +3393,37 @@ Session: ${id}` : `Session: ${id}`;
     });
   }
 
+  // src/dashboard/services/filter-service.ts
+  function matchesSessionFilter(entrySession, parentSession, agentId) {
+    if (state.selectedSession === "all") return true;
+    if (entrySession === state.selectedSession) return true;
+    if (parentSession && parentSession === state.selectedSession) return true;
+    if (agentId) {
+      const subagent = subagentState.subagents.get(agentId);
+      if (subagent && subagent.parentSessionId === state.selectedSession) return true;
+    }
+    return false;
+  }
+  function matchesAgentFilter(agentId) {
+    if (!state.selectedAgentId) return true;
+    return (agentId || "") === state.selectedAgentId;
+  }
+  function matchesTextFilter(content, filter) {
+    if (!filter) return true;
+    return content.includes(filter.toLowerCase());
+  }
+  function getEntryFilterData(el) {
+    return {
+      session: el.dataset.session || "",
+      parentSession: el.dataset.parentSession || "",
+      agent: el.dataset.agent || ""
+    };
+  }
+  function matchesCommonFilters(el) {
+    const data = getEntryFilterData(el);
+    return matchesSessionFilter(data.session, data.parentSession, data.agent) && matchesAgentFilter(data.agent);
+  }
+
   // src/dashboard/handlers/hooks.ts
   var callbacks8 = null;
   var hooksFilter = "all";
@@ -3441,7 +3472,7 @@ Session: ${id}` : `Session: ${id}`;
     const hookType = entry.dataset.hookType || "";
     const decision = entry.dataset.decision || "";
     const entrySession = entry.dataset.session || "";
-    const matchesSession = state.selectedSession === "all" || entrySession === state.selectedSession;
+    const matchesSession = matchesSessionFilter(entrySession, entry.dataset.parentSession, entry.dataset.agent);
     let matchesHookFilter = true;
     switch (hooksFilter) {
       case "allow":
@@ -3651,58 +3682,46 @@ Session: ${id}` : `Session: ${id}`;
     setTimeout(() => entry.classList.remove("new"), 1e3);
   }
 
+  // src/dashboard/services/dom-filter.ts
+  function filterEntries(container, selector, predicate) {
+    if (!container) return 0;
+    let visible = 0;
+    const entries = container.querySelectorAll(selector);
+    entries.forEach((entry) => {
+      const el = entry;
+      const show = predicate(el);
+      el.style.display = show ? "" : "none";
+      if (show) visible++;
+    });
+    return visible;
+  }
+
   // src/dashboard/ui/filters.ts
   function filterAllBySession() {
-    const thinkingEntries = elements.thinkingContent.querySelectorAll(".thinking-entry");
-    thinkingEntries.forEach((entry) => {
-      const el = entry;
-      applySessionFilter(el);
+    filterEntries(elements.thinkingContent, ".thinking-entry", (el) => {
+      return matchesCommonFilters(el) && matchesTextFilter(el.dataset.content || "", state.thinkingFilter);
     });
-    const toolEntries = elements.toolsContent.querySelectorAll(".tool-entry");
-    toolEntries.forEach((entry) => {
-      const el = entry;
-      applySessionFilter(el);
+    filterEntries(elements.toolsContent, ".tool-entry", (el) => {
+      const filter = state.toolsFilter.toLowerCase();
+      return matchesCommonFilters(el) && matchesTextFilter((el.dataset.toolName || "") + " " + (el.dataset.input || ""), filter ? state.toolsFilter : "");
     });
     filterAllHooks();
     updateThinkingCount();
     updateToolsCount();
     updateHooksCount();
   }
-  function matchesAgentFilter(entry) {
-    if (!state.selectedAgentId) return true;
-    const entryAgent = entry.dataset.agent || "";
-    return entryAgent === state.selectedAgentId;
-  }
   function applySessionFilter(entry) {
-    const entrySession = entry.dataset.session || "";
-    const parentSession = entry.dataset.parentSession || "";
-    let matchesSession = false;
-    if (state.selectedSession === "all") {
-      matchesSession = true;
-    } else if (entrySession === state.selectedSession) {
-      matchesSession = true;
-    } else if (parentSession === state.selectedSession) {
-      matchesSession = true;
-    } else {
-      const agentId = entry.dataset.agent;
-      if (agentId) {
-        const subagent = subagentState.subagents.get(agentId);
-        if (subagent && subagent.parentSessionId === state.selectedSession) {
-          matchesSession = true;
-        }
-      }
-    }
-    const matchesAgent = matchesAgentFilter(entry);
+    const common = matchesCommonFilters(entry);
     const isThinkingEntry = entry.classList.contains("thinking-entry");
     if (isThinkingEntry) {
-      const matchesText = !state.thinkingFilter || (entry.dataset.content || "").includes(state.thinkingFilter.toLowerCase());
-      entry.style.display = matchesSession && matchesAgent && matchesText ? "" : "none";
+      const matchesText = matchesTextFilter(entry.dataset.content || "", state.thinkingFilter);
+      entry.style.display = common && matchesText ? "" : "none";
     } else {
       const toolName = entry.dataset.toolName || "";
       const input = entry.dataset.input || "";
       const filter = state.toolsFilter.toLowerCase();
       const matchesText = !filter || toolName.includes(filter) || input.includes(filter);
-      entry.style.display = matchesSession && matchesAgent && matchesText ? "" : "none";
+      entry.style.display = common && matchesText ? "" : "none";
     }
   }
   function getShortSessionId(sessionId) {
@@ -3716,9 +3735,8 @@ Session: ${id}` : `Session: ${id}`;
     applySessionFilter(entry);
   }
   function filterAllThinking() {
-    const entries = elements.thinkingContent.querySelectorAll(".thinking-entry");
-    entries.forEach((entry) => {
-      applyThinkingFilter(entry);
+    filterEntries(elements.thinkingContent, ".thinking-entry", (el) => {
+      return matchesCommonFilters(el) && matchesTextFilter(el.dataset.content || "", state.thinkingFilter);
     });
     if (state.thinkingFilter) {
       elements.thinkingFilterClear.classList.remove("panel-filter-hidden");
@@ -3728,9 +3746,11 @@ Session: ${id}` : `Session: ${id}`;
     updateThinkingCount();
   }
   function filterAllTools() {
-    const entries = elements.toolsContent.querySelectorAll(".tool-entry");
-    entries.forEach((entry) => {
-      applyToolsFilter(entry);
+    filterEntries(elements.toolsContent, ".tool-entry", (el) => {
+      const filter = state.toolsFilter.toLowerCase();
+      const toolName = el.dataset.toolName || "";
+      const input = el.dataset.input || "";
+      return matchesCommonFilters(el) && (!filter || toolName.includes(filter) || input.includes(filter));
     });
     if (state.toolsFilter) {
       elements.toolsFilterClear.classList.remove("panel-filter-hidden");
@@ -3745,10 +3765,7 @@ Session: ${id}` : `Session: ${id}`;
       const entries = elements.thinkingContent.querySelectorAll(".thinking-entry");
       let visibleCount = 0;
       entries.forEach((entry) => {
-        const el = entry;
-        if (el.style.display !== "none") {
-          visibleCount++;
-        }
+        if (entry.style.display !== "none") visibleCount++;
       });
       elements.thinkingCount.textContent = `${visibleCount}/${state.thinkingCount}`;
     } else {
@@ -3761,10 +3778,7 @@ Session: ${id}` : `Session: ${id}`;
       const entries = elements.toolsContent.querySelectorAll(".tool-entry");
       let visibleCount = 0;
       entries.forEach((entry) => {
-        const el = entry;
-        if (el.style.display !== "none") {
-          visibleCount++;
-        }
+        if (entry.style.display !== "none") visibleCount++;
       });
       elements.toolsCount.textContent = `${visibleCount}/${state.toolsCount}`;
     } else {

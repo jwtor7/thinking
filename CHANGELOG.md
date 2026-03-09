@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-03-09 — v1.3.8
+
+### Added
+- **FilterService** - Centralized session matching with subagent parent resolution, agent filtering, and text filtering (`src/dashboard/services/filter-service.ts`)
+- **DomFilter** - Reusable DOM entry filtering utility replacing duplicated querySelectorAll patterns (`src/dashboard/services/dom-filter.ts`)
+- 10 unit tests for filter service
+
+### Changed
+- **filters.ts** - Delegates to FilterService for session/agent/text matching
+- **hooks.ts** - Uses FilterService for session matching (gains subagent parent resolution it previously lacked)
+
+---
+
 ## 2026-03-08 — v1.3.7
 
 ### Added

@@ -13,6 +13,7 @@ import { getAgentBadgeColors, getSessionColorByHash, getSessionColorByFolder } f
 import { getShortSessionId } from '../ui/filters.ts';
 import { getSessionDisplayName } from './sessions.ts';
 import type { HookExecutionEvent } from '../types.ts';
+import { matchesSessionFilter } from '../services/filter-service.ts';
 import { updateTabBadge, selectView } from '../ui/views.ts';
 
 // ============================================
@@ -102,8 +103,8 @@ function applyHooksFilter(entry: HTMLElement): void {
   const decision = entry.dataset.decision || '';
   const entrySession = entry.dataset.session || '';
 
-  // Check session filter first
-  const matchesSession = state.selectedSession === 'all' || entrySession === state.selectedSession;
+  // Check session filter first (with subagent parent resolution)
+  const matchesSession = matchesSessionFilter(entrySession, entry.dataset.parentSession, entry.dataset.agent);
 
   // Check hook type/decision filter
   let matchesHookFilter = true;
