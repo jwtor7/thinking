@@ -22,6 +22,22 @@ import type { AppContext } from '../services/app-context.ts';
 import { DisposableGroup, type Disposable } from '../services/lifecycle.ts';
 
 // ============================================
+// Debounce Support
+// ============================================
+
+let sessionFilterPending = false;
+
+/** Debounced version of updateSessionFilter - coalesces multiple calls per frame */
+function scheduleSessionFilterUpdate(): void {
+  if (sessionFilterPending) return;
+  sessionFilterPending = true;
+  requestAnimationFrame(() => {
+    sessionFilterPending = false;
+    updateSessionFilterImpl();
+  });
+}
+
+// ============================================
 // Activity Tracking Constants
 // ============================================
 
@@ -320,6 +336,10 @@ export function handleSessionStop(event: SessionStopEvent): void {
  * Subagent filter chips appear when the selected session has subagents.
  */
 export function updateSessionFilter(): void {
+  scheduleSessionFilterUpdate();
+}
+
+function updateSessionFilterImpl(): void {
   // Create session filter element if it doesn't exist
   let filterEl = elements.sessionFilter;
 

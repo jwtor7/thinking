@@ -30,12 +30,20 @@ export class BoundedMap<K, V> implements Map<K, V> {
   }
 
   /**
-   * Get a value and promote it to most-recently-used.
+   * Get a value without LRU promotion.
+   * Safe to call during iteration.
    */
   get(key: K): V | undefined {
+    return this.map.get(key);
+  }
+
+  /**
+   * Get a value and promote it to most-recently-used.
+   * NOT safe to call during iteration of this map.
+   */
+  touch(key: K): V | undefined {
     const value = this.map.get(key);
     if (value !== undefined) {
-      // Re-insert to move to end (most recent)
       this.map.delete(key);
       this.map.set(key, value);
     }

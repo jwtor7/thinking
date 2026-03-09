@@ -30,6 +30,31 @@ import {
 } from './entries.ts';
 
 // ============================================
+// Debounce Support
+// ============================================
+
+let filterPending = false;
+let chipsPending = false;
+
+function scheduleFilter(): void {
+  if (filterPending) return;
+  filterPending = true;
+  requestAnimationFrame(() => {
+    filterPending = false;
+    applyTimelineFilterImpl();
+  });
+}
+
+function scheduleChipsRefresh(): void {
+  if (chipsPending) return;
+  chipsPending = true;
+  requestAnimationFrame(() => {
+    chipsPending = false;
+    refreshSessionChipsImpl(applyTimelineFilter);
+  });
+}
+
+// ============================================
 // Public API
 // ============================================
 
@@ -52,7 +77,7 @@ export function resetTypeChips(): void {
 }
 
 export function refreshSessionChips(): void {
-  refreshSessionChipsImpl(applyTimelineFilter);
+  scheduleChipsRefresh();
 }
 
 // ============================================
@@ -90,10 +115,17 @@ function initTimelineFilter(): void {
 // ============================================
 
 /**
+ * Debounced entry point - coalesces multiple calls per frame.
+ */
+export function applyTimelineFilter(): void {
+  scheduleFilter();
+}
+
+/**
  * Apply the current timeline filter to all entries.
  * Evaluates text, type, and session criteria for every entry.
  */
-export function applyTimelineFilter(): void {
+function applyTimelineFilterImpl(): void {
   const container = elements.timelineEntries;
   if (!container) return;
 

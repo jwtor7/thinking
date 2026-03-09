@@ -22,12 +22,25 @@ describe('BoundedMap', () => {
     expect(map.size).toBe(3);
   });
 
-  it('promotes accessed keys (LRU)', () => {
+  it('get() does not promote (safe during iteration)', () => {
     const map = new BoundedMap<string, number>(3);
     map.set('a', 1);
     map.set('b', 2);
     map.set('c', 3);
-    map.get('a'); // promote 'a' — now 'b' is oldest
+    map.get('a'); // does NOT promote - 'a' stays oldest
+    map.set('d', 4); // should evict 'a' (oldest by insertion)
+    expect(map.has('a')).toBe(false);
+    expect(map.has('b')).toBe(true);
+    expect(map.has('c')).toBe(true);
+    expect(map.has('d')).toBe(true);
+  });
+
+  it('touch() promotes accessed keys (LRU)', () => {
+    const map = new BoundedMap<string, number>(3);
+    map.set('a', 1);
+    map.set('b', 2);
+    map.set('c', 3);
+    map.touch('a'); // promote 'a' — now 'b' is oldest
     map.set('d', 4); // should evict 'b'
     expect(map.has('a')).toBe(true);
     expect(map.has('b')).toBe(false);

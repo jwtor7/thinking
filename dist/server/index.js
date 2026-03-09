@@ -23,7 +23,7 @@ function isClientRequest(obj) {
 }
 function getVersion() {
   if (true) {
-    return "1.5.1";
+    return "1.5.2";
   }
   try {
     const packagePath = join(process.cwd(), "package.json");
@@ -1047,9 +1047,17 @@ var BoundedMap = class {
     return this.map.has(key);
   }
   /**
-   * Get a value and promote it to most-recently-used.
+   * Get a value without LRU promotion.
+   * Safe to call during iteration.
    */
   get(key) {
+    return this.map.get(key);
+  }
+  /**
+   * Get a value and promote it to most-recently-used.
+   * NOT safe to call during iteration of this map.
+   */
+  touch(key) {
     const value = this.map.get(key);
     if (value !== void 0) {
       this.map.delete(key);

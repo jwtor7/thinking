@@ -614,7 +614,6 @@ initStatusBarSession();
 // Initialize WebSocket with callbacks
 initWebSocket({
   onEvent: (event) => {
-    // Track activity for pulse indicator
     activityTracker.timestamps.push(Date.now());
     handleEvent(event);
   },

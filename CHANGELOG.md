@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-03-09 — v1.5.2
+
+### Fixed
+- **Root cause of dashboard hang**: `BoundedMap.get()` did LRU delete+re-insert, causing infinite iteration in `refreshSessionChips()` when iterating `state.sessions.keys()` while calling `.get()` inside the loop
+
+### Changed
+- `BoundedMap.get()` no longer does LRU promotion (safe during iteration); use `.touch()` for explicit LRU promotion
+- Debounced `updateSessionFilter()`, `refreshSessionChips()`, and `applyTimelineFilter()` with `requestAnimationFrame` to coalesce rapid DOM updates
+
+---
+
 ## 2026-03-09 — v1.5.1
 
 ### Fixed

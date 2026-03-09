@@ -20,9 +20,17 @@
       return this.map.has(key);
     }
     /**
-     * Get a value and promote it to most-recently-used.
+     * Get a value without LRU promotion.
+     * Safe to call during iteration.
      */
     get(key) {
+      return this.map.get(key);
+    }
+    /**
+     * Get a value and promote it to most-recently-used.
+     * NOT safe to call during iteration of this map.
+     */
+    touch(key) {
       const value = this.map.get(key);
       if (value !== void 0) {
         this.map.delete(key);
@@ -2615,7 +2623,8 @@
     }
   }
   function refreshSessionChips(onFilterChange) {
-    for (const sessionId of state.sessions.keys()) {
+    const sessionIds = Array.from(state.sessions.keys());
+    for (const sessionId of sessionIds) {
       addOrUpdateSessionChip(sessionId, onFilterChange);
     }
   }
@@ -2924,6 +2933,24 @@ Session: ${resolvedSessionId || ""}`;
   }
 
   // src/dashboard/handlers/timeline/index.ts
+  var filterPending = false;
+  var chipsPending = false;
+  function scheduleFilter() {
+    if (filterPending) return;
+    filterPending = true;
+    requestAnimationFrame(() => {
+      filterPending = false;
+      applyTimelineFilterImpl();
+    });
+  }
+  function scheduleChipsRefresh() {
+    if (chipsPending) return;
+    chipsPending = true;
+    requestAnimationFrame(() => {
+      chipsPending = false;
+      refreshSessionChips(applyTimelineFilter);
+    });
+  }
   function initTimeline(appCtx) {
     initEntries(appCtx);
     initTimelineFilter();
@@ -2939,7 +2966,7 @@ Session: ${resolvedSessionId || ""}`;
     resetTypeChips();
   }
   function refreshSessionChips2() {
-    refreshSessionChips(applyTimelineFilter);
+    scheduleChipsRefresh();
   }
   function initTimelineFilter() {
     const filterInput = elements.timelineFilter;
@@ -2965,6 +2992,9 @@ Session: ${resolvedSessionId || ""}`;
     }
   }
   function applyTimelineFilter() {
+    scheduleFilter();
+  }
+  function applyTimelineFilterImpl() {
     const container = elements.timelineEntries;
     if (!container) return;
     const filter = state.timelineFilter;
@@ -3063,6 +3093,15 @@ Session: ${resolvedSessionId || ""}`;
   };
 
   // src/dashboard/handlers/sessions.ts
+  var sessionFilterPending = false;
+  function scheduleSessionFilterUpdate() {
+    if (sessionFilterPending) return;
+    sessionFilterPending = true;
+    requestAnimationFrame(() => {
+      sessionFilterPending = false;
+      updateSessionFilterImpl();
+    });
+  }
   var ACTIVITY_THRESHOLD_MS = 1e4;
   var ACTIVITY_CHECK_INTERVAL_MS = 5e3;
   var activityCheckerInterval = null;
@@ -3210,6 +3249,9 @@ Session: ${resolvedSessionId || ""}`;
     updateSessionFilter();
   }
   function updateSessionFilter() {
+    scheduleSessionFilterUpdate();
+  }
+  function updateSessionFilterImpl() {
     let filterEl = elements.sessionFilter;
     if (!filterEl) {
       const existingEl = document.getElementById("session-filter");

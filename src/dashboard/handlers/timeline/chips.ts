@@ -276,7 +276,10 @@ export function resetSessionChips(): void {
 }
 
 export function refreshSessionChips(onFilterChange: () => void): void {
-  for (const sessionId of state.sessions.keys()) {
+  // Snapshot keys to avoid infinite iteration when BoundedMap.get()
+  // re-inserts entries (LRU promotion) during the loop.
+  const sessionIds = Array.from(state.sessions.keys());
+  for (const sessionId of sessionIds) {
     addOrUpdateSessionChip(sessionId, onFilterChange);
   }
 }
