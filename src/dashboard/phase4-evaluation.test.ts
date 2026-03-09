@@ -656,7 +656,7 @@ describe('Panel Collapse Feature', () => {
     it('should have collapse buttons in panel headers', () => {
       expect(indexHtmlContent).toContain('panel-collapse-btn');
       expect(indexHtmlContent).toContain('data-panel="thinking"');
-      expect(indexHtmlContent).toContain('data-panel="agents"');
+      expect(indexHtmlContent).toContain('data-panel="team"');
       expect(indexHtmlContent).toContain('data-panel="tools"');
       expect(indexHtmlContent).toContain('data-panel="plan"');
     });
@@ -717,7 +717,7 @@ describe('Panel Collapse Feature', () => {
       expect(appTsContent).toContain('event.shiftKey');
       expect(appTsContent).toContain("togglePanelCollapse('thinking')");
       expect(appTsContent).toContain("togglePanelCollapse('tools')");
-      expect(appTsContent).toContain("togglePanelCollapse('agents')");
+      expect(appTsContent).toContain("togglePanelCollapse('team')");
       // Note: Shift+P is now used for togglePanelSelector instead of togglePanelCollapse('plan')
       expect(appTsContent).toContain('togglePanelSelector');
     });

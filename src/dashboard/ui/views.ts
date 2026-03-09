@@ -12,7 +12,7 @@ import type { PanelName } from './panels.ts';
 /**
  * View type definition
  */
-export type ViewType = 'thinking' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline' | 'agents';
+export type ViewType = 'thinking' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline';
 
 /**
  * Callbacks for view navigation events
@@ -51,7 +51,6 @@ export function initViewTabs(): void {
     { id: 'timeline', label: 'Timeline', shortcut: 'l' },
     { id: 'thinking', label: 'Thinking', shortcut: 't' },
     { id: 'tools', label: 'Tools', shortcut: 'o' },
-    { id: 'agents', label: 'Agents', shortcut: 'a' },
     { id: 'hooks', label: 'Hooks', shortcut: 'h' },
     { id: 'plan', label: 'Plan', shortcut: 'p' },
     { id: 'tasks', label: 'Tasks', shortcut: 'k' },
@@ -166,7 +165,7 @@ export function applyViewFilter(): void {
   if (!panels) return;
 
   // Remove any existing view-specific classes
-  panels.classList.remove('view-thinking', 'view-tools', 'view-hooks', 'view-plan', 'view-team', 'view-tasks', 'view-timeline', 'view-agents');
+  panels.classList.remove('view-thinking', 'view-tools', 'view-hooks', 'view-plan', 'view-team', 'view-tasks', 'view-timeline');
 
   // Add the current view class
   panels.classList.add(`view-${state.activeView}`);
@@ -198,7 +197,6 @@ export function applyViewFilter(): void {
   applyVisibility(elements.teamPanel, pv.team && state.activeView === 'team');
   applyVisibility(elements.tasksPanel, pv.tasks && state.activeView === 'tasks');
   applyVisibility(elements.timelinePanel, pv.timeline && state.activeView === 'timeline');
-  applyVisibility(elements.agentsPanel, pv.agents && state.activeView === 'agents');
 
   // Always single-view — ensure the active panel is expanded
   panels.classList.add('single-view');
@@ -214,7 +212,6 @@ export function applyViewFilter(): void {
       team: elements.teamPanel,
       tasks: elements.tasksPanel,
       timeline: elements.timelinePanel,
-      agents: elements.agentsPanel,
     };
     const panel = panelElements[panelName];
     if (panel) {

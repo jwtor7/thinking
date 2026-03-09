@@ -64,9 +64,6 @@ export function getEmptyStateHTML(panel: string, ctx?: EmptyStateContext): strin
     case 'timeline':
       return emptyState('&#128337;', 'No events yet', 'A chronological feed of all events: thinking, tools, hooks, agents, and more.');
 
-    case 'agents':
-      return emptyState('&#129302;', 'No agents', 'Sub-agents will appear here when Claude spawns them.');
-
     default:
       return emptyState('&#9679;', 'No data', 'Waiting for events...');
   }

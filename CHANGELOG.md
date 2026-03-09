@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-03-08 — v1.3.6
+
+### Fixed
+- **TeamWatcher poll race condition** — `pollTeams()` and `pollTasks()` now run sequentially instead of concurrently, ensuring team session data is populated before task session resolution
+- **Stale teamSessionMap on clear** — `clearAllPanels` now clears `teamSessionMap` alongside `taskSessionMap`, preventing stale team-to-session mappings after panel reset
+
+---
+
+## 2026-03-05 — v1.3.5
+
+#### 23:35 EST
+### Added
+- **Collaboration merge coverage tests** — Added dashboard smoke coverage for strict session-scoped collaboration rendering and merged Team+Agents behavior (`src/dashboard/collaboration-merge.test.ts`)
+- **Dev script guardrail test** — Added assertion that default `pnpm dev` path does not use Node watch mode (`src/server/dev-script.test.ts`)
+
+### Changed
+- **Reliable default dev startup** — Default `pnpm dev` now starts server without `node --watch`; watch mode remains available via `pnpm dev:watch` with a low-watcher restart runner to avoid `EMFILE` failures
+- **Session attribution propagation** — Team/task updates now carry session context when resolvable from team config `leadSessionId`, and SendMessage-derived `message_sent` events preserve `sessionId` through the dashboard pipeline
+- **Unified Team collaboration surface** — Removed standalone Agents panel and merged agent list/thinking detail into Team panel sections with keyboard alias continuity (`a` and `Shift+A` map to Team behavior)
+
+### Fixed
+- **Cross-session collaboration bleed** — Team messages and task rendering now apply strict session filtering in session-scoped mode, with explicit empty-state messaging when task/session mapping is unavailable
+- **Startup diagnosability** — Added preflight startup logging for Claude directory presence, hook registration state, and watcher readiness counts so "no data" states are immediately actionable
+
+---
+
 ## 2026-02-10 — v1.3.4
 
 #### 19:31

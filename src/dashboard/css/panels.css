@@ -579,7 +579,7 @@ body.dragging-panel * {
   .panels[data-view="plan"] .panel:not(.panel-plan),
   .panels[data-view="team"] .panel:not(.panel-team),
   .panels[data-view="tasks"] .panel:not(.panel-tasks),
-  .panels[data-view="agents"] .panel:not(.panel-agents) {
+  .panels[data-view="timeline"] .panel:not(.panel-timeline) {
     display: none;
   }
 

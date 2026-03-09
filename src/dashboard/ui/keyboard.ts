@@ -55,9 +55,9 @@ export function initKeyboard(cbs: KeyboardCallbacks): void {
  * - 's' - Toggle auto-scroll
  * - '/' - Focus thinking filter
  * - 'Escape' - Clear filters and blur
- * - Shift+L/T/O/A/H/M/K - Toggle panel collapse (Timeline/Thinking/Tools/Agents/Hooks/Team/Tasks)
+ * - Shift+L/T/O/A/H/M/K - Toggle panel collapse (A and M are Team aliases)
  * - Shift+P - Open panel selector modal
- * - L/T/O/A/H/P/K/M (without shift) - Select view (Timeline/Thinking/Tools/Agents/Hooks/Plan/Tasks/Team)
+ * - L/T/O/A/H/P/K/M (without shift) - Select view (Timeline/Thinking/Tools/Team/Hooks/Plan/Tasks/Team)
  * - Cmd/Ctrl+E - Export as Markdown
  * - Cmd/Ctrl+O - Open plan in default app
  * - Cmd/Ctrl+Shift+R - Reveal plan in Finder
@@ -148,7 +148,7 @@ export function handleKeydown(event: KeyboardEvent): void {
         return;
       case 'a':
         event.preventDefault();
-        togglePanelCollapse('agents');
+        togglePanelCollapse('team');
         return;
       case 'h':
         event.preventDefault();
@@ -186,7 +186,7 @@ export function handleKeydown(event: KeyboardEvent): void {
         selectView('tools');
         return;
       case 'a':
-        selectView('agents');
+        selectView('team');
         return;
       case 'h':
         selectView('hooks');

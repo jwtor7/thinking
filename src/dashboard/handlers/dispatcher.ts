@@ -8,10 +8,9 @@ import { handleToolStart, handleToolEnd } from './tools.ts';
 import { handleAgentStart, handleAgentStop, handleSubagentMapping } from './agents.ts';
 import { handlePlanList, handlePlanUpdate, handlePlanDelete } from './plans.ts';
 import { handleHookExecution } from './hooks.ts';
-import { handleTeamUpdate, handleTeammateIdle, handleMessageSent } from './team.ts';
+import { handleTeamUpdate, handleTeammateIdle, handleMessageSent, addTeamAgentThinking, refreshTeamAgentList } from './team.ts';
 import { handleTaskUpdate, handleTaskCompleted } from './tasks.ts';
 import { addTimelineEntry } from './timeline.ts';
-import { addAgentThinking } from './agents-view.ts';
 import { updateStats } from '../ui/stats-bar.ts';
 
 /**
@@ -46,7 +45,7 @@ export function handleEvent(event: StrictMonitorEvent): void {
         break;
       case 'thinking':
         handleThinking(event);
-        addAgentThinking(event);
+        addTeamAgentThinking(event);
         // Update activity for thinking events
         if (event.sessionId) {
           updateSessionActivity(event.sessionId);
@@ -98,6 +97,7 @@ export function handleEvent(event: StrictMonitorEvent): void {
         handleSubagentMapping(event);
         // Update session filter to show subagent indicators
         updateSessionFilter();
+        refreshTeamAgentList();
         break;
       case 'team_update':
         handleTeamUpdate(event);

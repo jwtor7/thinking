@@ -2,6 +2,8 @@
 import { createServer as createServer2 } from "node:http";
 import { fileURLToPath } from "node:url";
 import { dirname as dirname4, join as join8 } from "node:path";
+import { stat as stat6, readFile as readFile4 } from "node:fs/promises";
+import { homedir as homedir6 } from "node:os";
 
 // src/server/websocket-hub.ts
 import { WebSocket, WebSocketServer } from "ws";
@@ -21,7 +23,7 @@ function isClientRequest(obj) {
 }
 function getVersion() {
   if (true) {
-    return "1.3.3";
+    return "1.3.5";
   }
   try {
     const packagePath = join(process.cwd(), "package.json");
@@ -2656,6 +2658,7 @@ var TeamWatcher = class {
       events.push({
         type: "team_update",
         timestamp: team.detectedAt,
+        sessionId: team.sessionId,
         teamName: team.teamName,
         members: team.members
       });
@@ -2671,6 +2674,7 @@ var TeamWatcher = class {
       events.push({
         type: "task_update",
         timestamp: taskDir.detectedAt,
+        sessionId: taskDir.sessionId,
         teamId: taskDir.teamId,
         tasks: taskDir.tasks
       });
@@ -2711,23 +2715,30 @@ var TeamWatcher = class {
           const content = await readFile3(configPath, "utf-8");
           const contentHash = hashContent(content);
           const existing = this.trackedTeams.get(teamName);
+          const parsed = this.parseTeamConfig(content);
           if (!existing || existing.contentHash !== contentHash) {
-            const members = this.parseTeamConfig(content);
             this.trackedTeams.set(teamName, {
               teamName,
               contentHash,
-              members,
+              members: parsed.members,
+              sessionId: parsed.sessionId,
               detectedAt: existing?.detectedAt || (/* @__PURE__ */ new Date()).toISOString()
             });
-            this.broadcastTeamUpdate(teamName, members);
+            this.broadcastTeamUpdate(teamName, parsed.members, parsed.sessionId);
+          }
+          const trackedTasks = this.trackedTaskDirs.get(teamName);
+          if (trackedTasks && trackedTasks.sessionId !== parsed.sessionId) {
+            trackedTasks.sessionId = parsed.sessionId;
+            this.broadcastTaskUpdate(teamName, trackedTasks.tasks, parsed.sessionId);
           }
         } catch {
         }
       }
       for (const [teamName] of this.trackedTeams) {
         if (!currentTeamNames.has(teamName)) {
+          const removed = this.trackedTeams.get(teamName);
           this.trackedTeams.delete(teamName);
-          this.broadcastTeamUpdate(teamName, []);
+          this.broadcastTeamUpdate(teamName, [], removed?.sessionId);
         }
       }
     } catch (error) {
@@ -2788,22 +2799,25 @@ var TeamWatcher = class {
           }
           const contentHash = hashContentParts(hashParts);
           const existing = this.trackedTaskDirs.get(teamId);
+          const sessionId = this.resolveTaskSessionId(teamId);
           if (!existing || existing.contentHash !== contentHash) {
             this.trackedTaskDirs.set(teamId, {
               teamId,
               contentHash,
               tasks,
+              sessionId,
               detectedAt: existing?.detectedAt || (/* @__PURE__ */ new Date()).toISOString()
             });
-            this.broadcastTaskUpdate(teamId, tasks);
+            this.broadcastTaskUpdate(teamId, tasks, sessionId);
           }
         } catch {
         }
       }
       for (const [teamId] of this.trackedTaskDirs) {
         if (!currentTeamIds.has(teamId)) {
+          const removed = this.trackedTaskDirs.get(teamId);
           this.trackedTaskDirs.delete(teamId);
-          this.broadcastTaskUpdate(teamId, []);
+          this.broadcastTaskUpdate(teamId, [], removed?.sessionId);
         }
       }
     } catch (error) {
@@ -2818,18 +2832,26 @@ var TeamWatcher = class {
   parseTeamConfig(content) {
     try {
       const config = JSON.parse(content);
+      const sessionId = typeof config.leadSessionId === "string" && config.leadSessionId ? config.leadSessionId : void 0;
       if (!config.members || !Array.isArray(config.members)) {
-        return [];
+        return { members: [], sessionId };
       }
-      return config.members.filter((m) => m && typeof m.name === "string").map((m) => ({
+      const members = config.members.filter((m) => m && typeof m.name === "string").map((m) => ({
         name: String(m.name),
         agentId: String(m.agentId || ""),
         agentType: String(m.agentType || ""),
         status: m.status
       }));
+      return { members, sessionId };
     } catch {
-      return [];
+      return { members: [] };
     }
+  }
+  /**
+   * Resolve session ID for a task directory via its team identity.
+   */
+  resolveTaskSessionId(teamId) {
+    return this.trackedTeams.get(teamId)?.sessionId;
   }
   /**
    * Parse a task JSON file into TaskInfo.
@@ -2872,10 +2894,11 @@ var TeamWatcher = class {
   /**
    * Broadcast a team update event.
    */
-  broadcastTeamUpdate(teamName, members) {
+  broadcastTeamUpdate(teamName, members, sessionId) {
     const event = {
       type: "team_update",
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      sessionId,
       teamName,
       members
     };
@@ -2885,15 +2908,28 @@ var TeamWatcher = class {
   /**
    * Broadcast a task update event.
    */
-  broadcastTaskUpdate(teamId, tasks) {
+  broadcastTaskUpdate(teamId, tasks, sessionId) {
     const event = {
       type: "task_update",
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      sessionId,
       teamId,
       tasks
     };
     this.hub.broadcast(event);
     logger.debug(`[TeamWatcher] Broadcast task update: ${teamId} (${tasks.length} tasks)`);
+  }
+  /**
+   * Number of tracked team configs.
+   */
+  getTrackedTeamCount() {
+    return this.trackedTeams.size;
+  }
+  /**
+   * Number of tracked task directories.
+   */
+  getTrackedTaskDirCount() {
+    return this.trackedTaskDirs.size;
   }
 };
 
@@ -3367,6 +3403,68 @@ var __filename = fileURLToPath(import.meta.url);
 var __dirname = dirname4(__filename);
 var dashboardDir = join8(__dirname, "..", "dashboard");
 var srcDashboardDir = join8(__dirname, "..", "..", "src", "dashboard");
+var repoRootDir = join8(__dirname, "..", "..");
+var repoHooksDir = join8(repoRootDir, "hooks");
+async function checkPath(path, label) {
+  try {
+    await stat6(path);
+    return { label, path, exists: true };
+  } catch {
+    return { label, path, exists: false };
+  }
+}
+function isMonitorHookInstalled(settings, hookType, expectedCommand) {
+  const hookEntries = settings[hookType];
+  if (!Array.isArray(hookEntries)) {
+    return false;
+  }
+  for (const entry of hookEntries) {
+    const hooks = entry.hooks;
+    if (!Array.isArray(hooks)) {
+      continue;
+    }
+    for (const hook of hooks) {
+      const command = hook.command;
+      if (typeof command === "string" && command.includes(expectedCommand)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+async function logStartupPreflight() {
+  const claudeRoot = join8(homedir6(), ".claude");
+  const checks = await Promise.all([
+    checkPath(join8(claudeRoot, "projects"), "projects"),
+    checkPath(join8(claudeRoot, "plans"), "plans"),
+    checkPath(join8(claudeRoot, "teams"), "teams"),
+    checkPath(join8(claudeRoot, "tasks"), "tasks")
+  ]);
+  const checkSummary = checks.map((check) => `${check.label}=${check.exists ? "ok" : "missing"}`).join(", ");
+  logger.info(`[Preflight] Claude directories: ${checkSummary}`);
+  const missingChecks = checks.filter((check) => !check.exists);
+  for (const check of missingChecks) {
+    logger.warn(`[Preflight] Missing ${check.label} directory: ${check.path}`);
+  }
+  const settingsPath = join8(claudeRoot, "settings.json");
+  try {
+    const raw = await readFile4(settingsPath, "utf-8");
+    const parsed = JSON.parse(raw);
+    const hooks = parsed.hooks || {};
+    const requiredHooks = {
+      PreToolUse: join8(repoHooksDir, "pre-tool-use.sh"),
+      PostToolUse: join8(repoHooksDir, "post-tool-use.sh"),
+      SubagentStart: join8(repoHooksDir, "subagent-start.sh"),
+      SubagentStop: join8(repoHooksDir, "subagent-stop.sh"),
+      SessionStart: join8(repoHooksDir, "session-start.sh"),
+      SessionEnd: join8(repoHooksDir, "session-stop.sh")
+    };
+    const hookSummary = Object.entries(requiredHooks).map(([hookType, command]) => `${hookType}=${isMonitorHookInstalled(hooks, hookType, command) ? "ok" : "missing"}`).join(", ");
+    logger.info(`[Preflight] Hook registration: ${hookSummary}`);
+  } catch {
+    logger.warn(`[Preflight] Unable to read Claude settings: ${settingsPath}`);
+  }
+}
 async function main() {
   logger.info(`
 \u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557
@@ -3375,6 +3473,7 @@ async function main() {
 \u2551  Real-time monitoring for Claude Code thinking & tools    \u2551
 \u255A\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255D
 `);
+  await logStartupPreflight();
   const hub = new WebSocketHub();
   const eventReceiver = new EventReceiver(hub);
   const httpServer = createServer2(async (req, res) => {
@@ -3418,8 +3517,8 @@ async function main() {
   });
   let dashboardPath;
   try {
-    const { stat: stat6 } = await import("node:fs/promises");
-    await stat6(join8(srcDashboardDir, "index.html"));
+    const { stat: stat7 } = await import("node:fs/promises");
+    await stat7(join8(srcDashboardDir, "index.html"));
     dashboardPath = srcDashboardDir;
   } catch {
     dashboardPath = dashboardDir;
@@ -3435,6 +3534,9 @@ async function main() {
   const teamWatcher = new TeamWatcher(hub);
   await teamWatcher.start();
   logger.info(`[Server] Team/task watcher started`);
+  logger.info(
+    `[Preflight] Watchers ready: transcript=${transcriptWatcher.isRunning()}(${transcriptWatcher.getTrackedFileCount()} files), plan=${planWatcher.isRunning()}(${planWatcher.getTrackedPlanCount()} files), team=${teamWatcher.getTrackedTeamCount()} teams/${teamWatcher.getTrackedTaskDirCount()} task dirs`
+  );
   hub.onClientConnect(async (sendEvent) => {
     const knownSessions = transcriptWatcher.getKnownSessions();
     for (const { sessionId, workingDirectory } of knownSessions) {

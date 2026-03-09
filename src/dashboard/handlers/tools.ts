@@ -48,7 +48,12 @@ function processEscapes(str: string): string {
 export interface ToolsCallbacks {
   getCurrentAgentContext: () => string;
   getAgentDisplayName: (agentId: string) => string;
-  detectSendMessage: (input: string | undefined, agentId: string | undefined, timestamp: string) => void;
+  detectSendMessage: (
+    input: string | undefined,
+    agentId: string | undefined,
+    sessionId: string | undefined,
+    timestamp: string
+  ) => void;
   appendAndTrim: (container: HTMLElement, element: HTMLElement) => void;
   smartScroll: (container: HTMLElement) => void;
 }
@@ -145,7 +150,7 @@ export function handleToolStart(event: ToolStartEvent): void {
 
   // Detect SendMessage tool calls for inter-agent message tracking
   if (toolName === 'SendMessage') {
-    callbacks.detectSendMessage(input, agentId, event.timestamp);
+    callbacks.detectSendMessage(input, agentId, event.sessionId, event.timestamp);
   }
 
   state.toolsCount++;

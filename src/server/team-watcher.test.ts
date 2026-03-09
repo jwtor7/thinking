@@ -105,6 +105,27 @@ describe('TeamWatcher', () => {
       expect(teamEvent?.members[1].status).toBe('idle');
     });
 
+    it('should include leadSessionId as sessionId on team_update events', async () => {
+      const teamName = 'session-scoped-team';
+      const teamPath = join(teamsDir, teamName);
+      await mkdir(teamPath, { recursive: true });
+
+      const config = {
+        leadSessionId: 'session-abc-123',
+        members: [{ name: 'Alice', agentId: 'alice-1', agentType: 'general' }],
+      };
+
+      await writeFile(join(teamPath, 'config.json'), JSON.stringify(config));
+
+      await teamWatcher.start();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const events = mockHub.broadcastedEvents.filter((e) => e.type === 'team_update') as TeamUpdateEvent[];
+      const teamEvent = events.find((e) => e.teamName === teamName);
+      expect(teamEvent).toBeDefined();
+      expect(teamEvent?.sessionId).toBe('session-abc-123');
+    });
+
     it('should handle missing members array gracefully', async () => {
       const teamName = 'broken';
       const teamPath = join(teamsDir, teamName);
@@ -232,6 +253,37 @@ describe('TeamWatcher', () => {
       expect(taskEvent?.tasks[0].id).toBe('task-1');
       expect(taskEvent?.tasks[0].subject).toBe('Implement auth');
       expect(taskEvent?.tasks[0].status).toBe('in_progress');
+    });
+
+    it('should include sessionId on task_update when team config has leadSessionId', async () => {
+      const teamId = 'task-session-mapped';
+      const teamPath = join(teamsDir, teamId);
+      const taskDirPath = join(tasksDir, teamId);
+      await mkdir(teamPath, { recursive: true });
+      await mkdir(taskDirPath, { recursive: true });
+
+      const config = {
+        leadSessionId: 'session-task-789',
+        members: [{ name: 'Lead', agentId: 'lead-1', agentType: 'general' }],
+      };
+      const task = {
+        id: 'task-1',
+        subject: 'Session-attributed task',
+        status: 'pending',
+        blocks: [],
+        blockedBy: [],
+      };
+
+      await writeFile(join(teamPath, 'config.json'), JSON.stringify(config));
+      await writeFile(join(taskDirPath, 'task1.json'), JSON.stringify(task));
+
+      await teamWatcher.start();
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const events = mockHub.broadcastedEvents.filter((e) => e.type === 'task_update') as TaskUpdateEvent[];
+      const taskEvent = events.find((e) => e.teamId === teamId);
+      expect(taskEvent).toBeDefined();
+      expect(taskEvent?.sessionId).toBe('session-task-789');
     });
 
     it('should handle multiple task files in one directory', async () => {

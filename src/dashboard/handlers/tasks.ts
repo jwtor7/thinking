@@ -80,23 +80,58 @@ function renderTaskBoard(): void {
 
   // Gather tasks, filtered by session if one is selected
   const allTasks: TaskInfo[] = [];
+  let hasSessionMapping = false;
   if (state.selectedSession === 'all') {
     for (const tasks of teamState.teamTasks.values()) {
       allTasks.push(...tasks);
     }
   } else {
-    // Find team(s) belonging to this session
-    for (const [teamName, sessionId] of teamState.teamSessionMap) {
+    // Primary mapping path: task updates that provide sessionId.
+    for (const [teamId, sessionId] of teamState.taskSessionMap) {
       if (sessionId === state.selectedSession) {
-        const tasks = teamState.teamTasks.get(teamName);
-        if (tasks) allTasks.push(...tasks);
+        hasSessionMapping = true;
+        const tasks = teamState.teamTasks.get(teamId);
+        if (tasks) {
+          allTasks.push(...tasks);
+        }
       }
     }
-    // If no team mapped to session, show all as fallback
-    if (allTasks.length === 0) {
-      for (const tasks of teamState.teamTasks.values()) {
-        allTasks.push(...tasks);
+
+    // Compatibility path: older mappings that only include teamName -> session.
+    if (!hasSessionMapping) {
+      for (const [teamName, sessionId] of teamState.teamSessionMap) {
+        if (sessionId === state.selectedSession) {
+          hasSessionMapping = true;
+          const tasks = teamState.teamTasks.get(teamName);
+          if (tasks) {
+            allTasks.push(...tasks);
+          }
+        }
       }
+    }
+
+    if (!hasSessionMapping) {
+      if (elements.tasksPendingCount) {
+        elements.tasksPendingCount.textContent = '0';
+      }
+      if (elements.tasksInProgressCount) {
+        elements.tasksInProgressCount.textContent = '0';
+      }
+      if (elements.tasksCompletedCount) {
+        elements.tasksCompletedCount.textContent = '0';
+      }
+
+      const unmappedMessage = 'No tasks mapped to this session yet';
+      pendingCol.innerHTML = `<div class="task-column-empty">${unmappedMessage}</div>`;
+      progressCol.innerHTML = `<div class="task-column-empty">${unmappedMessage}</div>`;
+      completedCol.innerHTML = `<div class="task-column-empty">${unmappedMessage}</div>`;
+
+      updateTabBadge('tasks', 0);
+      const totalCountEl = document.getElementById('tasks-total-count');
+      if (totalCountEl) {
+        totalCountEl.textContent = '0';
+      }
+      return;
     }
   }
 
@@ -191,6 +226,10 @@ export function filterTasksBySession(): void {
  */
 export function handleTaskUpdate(event: TaskUpdateEvent): void {
   if (!callbacks) return;
+
+  if (event.sessionId) {
+    teamState.taskSessionMap.set(event.teamId, event.sessionId);
+  }
 
   const prev = teamState.teamTasks.get(event.teamId);
   if (prev) {

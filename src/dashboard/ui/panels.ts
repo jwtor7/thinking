@@ -14,7 +14,7 @@ import { resetPanelFlex, rebuildResizers } from './resizer.ts';
 /**
  * Panel names that can be collapsed
  */
-export type PanelName = 'thinking' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline' | 'agents';
+export type PanelName = 'thinking' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline';
 
 /**
  * Callbacks for panel operations
@@ -54,7 +54,6 @@ function getPanelElements(): Record<PanelName, { panel: HTMLElement | null; btn:
     team: { panel: elements.teamPanel, btn: elements.teamCollapseBtn },
     tasks: { panel: elements.tasksPanel, btn: elements.tasksCollapseBtn },
     timeline: { panel: elements.timelinePanel, btn: elements.timelineCollapseBtn },
-    agents: { panel: elements.agentsPanel, btn: elements.agentsCollapseBtn },
   };
 }
 
@@ -81,8 +80,6 @@ function getShortcutKey(panelName: PanelName): string | null {
       return 'K';
     case 'timeline':
       return 'L';
-    case 'agents':
-      return 'A';
   }
 }
 

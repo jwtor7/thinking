@@ -5,7 +5,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.3.4-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.3.6-purple)](./CHANGELOG.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 [![GitHub Stars](https://img.shields.io/github/stars/jwtor7/thinking?style=social)](https://github.com/jwtor7/thinking)
 
@@ -28,7 +28,7 @@ Claude Code is powerful, but opaque. You see the output, not the process. Thinki
 | **Thinking** | Live stream of Claude's reasoning with collapsible entries |
 | **Tools** | Every tool call with timing, inputs, and outputs |
 | **Plan** | Active plan files with quick-open and reveal |
-| **Team** | Agent teams with member grid, status indicators, inter-agent message timeline |
+| **Team** | Unified collaboration view: members, hierarchy, session-scoped agent list/thinking detail, and inter-agent messages |
 | **Tasks** | Three-column kanban board (Pending / In Progress / Completed) with task cards |
 | **Timeline** | Unified chronological feed across all event types with type icons and agent badges |
 
@@ -38,8 +38,9 @@ Claude Code is powerful, but opaque. You see the output, not the process. Thinki
 - Cross-panel linking (click to navigate between related entries)
 - Hook PRE+POST grouping (merges paired hook events)
 - Tab count badges showing live event counts
-- Single-column vertical layout with resizable panels
+- Single-view panel layout with collapsible sections
 - Session filtering across all panels
+- Stable default `pnpm dev` startup path with optional `pnpm dev:watch` hot-reload mode
 - Keyboard shortcuts for everything
 - Collapsible panels with drag-to-reorder
 - Right-click to open files in editor or Finder
@@ -108,8 +109,8 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 | Key | Action |
 |-----|--------|
-| `l` `t` `o` `a` `h` `p` `k` `m` | Switch view (Timeline, Thinking, Tools, Agents, Hooks, Plan, Tasks, Team) |
-| `Shift` + `l` `t` `o` `a` `h` `m` `k` | Collapse/expand panel (Timeline, Thinking, Tools, Agents, Hooks, Team, Tasks) |
+| `l` `t` `o` `a` `h` `p` `k` `m` | Switch view (Timeline, Thinking, Tools, Team alias, Hooks, Plan, Tasks, Team) |
+| `Shift` + `l` `t` `o` `a` `h` `m` `k` | Collapse/expand panel (Timeline, Thinking, Tools, Team alias, Hooks, Team, Tasks) |
 | `Shift+P` | Open panel visibility settings |
 | `c` | Clear all entries |
 | `s` | Toggle auto-scroll |
@@ -174,10 +175,10 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
+- **v1.3.6** (2026-03-08 22:41) — Fixed TeamWatcher poll race condition and stale teamSessionMap on clear; team session data now populates before task resolution, and panel reset properly clears team-to-session mappings.
+- **v1.3.5** (2026-03-05 23:35 EST) — Reliability and collaboration refactor: stable non-watch `pnpm dev`, startup preflight diagnostics, strict session-scoped team/tasks/message rendering, and merged Team+Agents panel in a single collaboration view.
 - **v1.3.4** (2026-02-10 19:31) — Subagent transcript support: TranscriptWatcher now discovers nested subagent files; collapsible team sections; fixed Thinking Monitor.app launch path issue.
 - **v1.3.3** (2026-02-09 15:40) — Improved stats bar tooltips: extracted text to constant, unified attribute handling, and fixed duration formatting for fractional milliseconds.
 - **v1.3.2** (2026-02-09 15:21) — Cleaned up session resolution code: extracted ALL_SESSIONS constant to eliminate magic string literals, simplified redundant session-change detection in selectSession().
-- **v1.3.1** (2026-02-08 17:24) — Removed unused resizer functionality and simplified dashboard UI layer; cleaned up duplicate event handlers; added output/ to .gitignore.
-- **v1.3.0** (2026-02-08 16:59) — Timeline-first navigation: default view changed to Timeline, unified session filtering, stale agent filter cleanup on session switch, keyboard shortcut hints on collapse buttons, 8 new navigation behavior tests.
 
 *[Full changelog →](./CHANGELOG.md)*

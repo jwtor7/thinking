@@ -1,11 +1,11 @@
 {
   "name": "thinking-monitor",
-  "version": "1.3.4",
+  "version": "1.3.6",
   "description": "Real-time monitoring dashboard for Claude Code thinking, agents, and tool activity",
   "type": "module",
   "main": "dist/server/index.js",
   "scripts": {
-    "dev": "pnpm build:dashboard && node --watch --experimental-transform-types src/server/index.ts",
+    "dev": "pnpm build:dashboard && node --experimental-transform-types src/server/index.ts",
     "dev:watch": "node scripts/dev-watch.js",
     "build": "pnpm build:server && pnpm build:dashboard",
     "build:server": "node scripts/build-server.js",

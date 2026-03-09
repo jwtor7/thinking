@@ -41,6 +41,8 @@ export interface TeamState {
   teams: Map<string, TeamMemberInfo[]>;
   /** teamId -> tasks */
   teamTasks: Map<string, TaskInfo[]>;
+  /** teamId -> sessionId mapping for session scoping */
+  taskSessionMap: Map<string, string>;
   /** Chronological message log */
   teamMessages: MessageSentEvent[];
   /** teamName -> sessionId mapping for session scoping */
@@ -53,6 +55,7 @@ export interface TeamState {
 export const teamState: TeamState = {
   teams: new Map(),
   teamTasks: new Map(),
+  taskSessionMap: new Map(),
   teamMessages: [],
   teamSessionMap: new Map(),
 };
@@ -112,7 +115,6 @@ export const state: AppState = {
     team: false,
     tasks: false,
     timeline: false,
-    agents: false,
   },
   panelVisibility: {
     thinking: true,
@@ -122,7 +124,6 @@ export const state: AppState = {
     team: true,
     tasks: true,
     timeline: true,
-    agents: true,
   },
 };
 

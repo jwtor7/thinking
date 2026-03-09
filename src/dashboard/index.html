@@ -167,6 +167,36 @@
                 </button>
                 <div class="agent-tree-content team-section-body" id="agent-tree-content"></div>
               </div>
+              <div class="team-agents-section team-section team-section-no-data" id="team-agents-section">
+                <button
+                  class="team-section-toggle"
+                  id="team-agents-toggle"
+                  data-team-section="agents"
+                  type="button"
+                  aria-expanded="true"
+                  aria-label="Collapse team agents section"
+                  title="Collapse section"
+                >
+                  <span class="team-section-label">AGENTS</span>
+                  <span class="team-section-chevron">&#9660;</span>
+                </button>
+                <div class="agents-layout team-section-body">
+                  <div class="agents-sidebar" id="team-agents-sidebar">
+                    <div class="empty-state">
+                      <div class="empty-state-icon">&#129302;</div>
+                      <p class="empty-state-title">No agents</p>
+                      <p class="empty-state-subtitle">Sub-agents appear here for the selected session.</p>
+                    </div>
+                  </div>
+                  <div class="agents-detail" id="team-agents-detail">
+                    <div class="empty-state">
+                      <div class="empty-state-icon">&#129504;</div>
+                      <p class="empty-state-title">Select an agent</p>
+                      <p class="empty-state-subtitle">Select an agent to inspect thinking entries.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div class="team-messages-section">
                 <div class="team-section-label">MESSAGES</div>
                 <div class="team-messages" id="team-messages">
@@ -247,35 +277,6 @@
               <div class="empty-state-icon">&#128337;</div>
               <p class="empty-state-title">No events yet</p>
               <p class="empty-state-subtitle">A chronological feed of all events: thinking, tools, hooks, agents, and more.</p>
-            </div>
-          </div>
-        </section>
-
-        <!-- Agents Panel -->
-        <section class="panel panel-agents panel-hidden" aria-labelledby="agents-panel-title">
-          <header class="panel-header">
-            <button class="panel-collapse-btn" data-panel="agents" aria-expanded="true" aria-label="Collapse Agents panel" title="Collapse panel (Shift+A)">
-              <span class="panel-collapse-icon">&#9660;</span>
-            </button>
-            <h2 class="panel-title" id="agents-panel-title">AGENTS</h2>
-            <div class="panel-header-controls">
-              <span class="panel-badge" id="agents-view-count">0</span>
-            </div>
-          </header>
-          <div class="panel-content agents-layout" id="agents-content">
-            <div class="agents-sidebar" id="agents-sidebar">
-              <div class="empty-state">
-                <div class="empty-state-icon">&#129302;</div>
-                <p class="empty-state-title">No agents</p>
-                <p class="empty-state-subtitle">Sub-agents will appear here when Claude spawns them.</p>
-              </div>
-            </div>
-            <div class="agents-detail" id="agents-detail">
-              <div class="empty-state">
-                <div class="empty-state-icon">&#129504;</div>
-                <p class="empty-state-title">Select an agent</p>
-                <p class="empty-state-subtitle">Click an agent in the sidebar to view its thinking.</p>
-              </div>
             </div>
           </div>
         </section>

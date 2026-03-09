@@ -27,7 +27,7 @@ import { elements } from '../ui/elements.ts';
 // Panel Types (local to this module)
 // ============================================
 
-type PanelName = 'thinking' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline' | 'agents';
+type PanelName = 'thinking' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline';
 
 /**
  * Panel elements mapping for collapse state restoration.
@@ -42,7 +42,6 @@ function getPanelElements(): Record<PanelName, { panel: HTMLElement | null; btn:
     team: { panel: elements.teamPanel, btn: elements.teamCollapseBtn },
     tasks: { panel: elements.tasksPanel, btn: elements.tasksCollapseBtn },
     timeline: { panel: elements.timelinePanel, btn: elements.timelineCollapseBtn },
-    agents: { panel: elements.agentsPanel, btn: elements.agentsCollapseBtn },
   };
 }
 
@@ -64,8 +63,6 @@ function getPanelShortcutKey(panelName: PanelName): string | null {
       return 'K';
     case 'timeline':
       return 'L';
-    case 'agents':
-      return 'A';
     case 'plan':
       return null;
   }
@@ -307,13 +304,12 @@ const DEFAULT_PANEL_VISIBILITY: PanelVisibility = {
   team: true,
   tasks: true,
   timeline: true,
-  agents: true,
 };
 
 /**
  * Valid panel names for validation.
  */
-const VALID_PANEL_NAMES: (keyof PanelVisibility)[] = ['thinking', 'tools', 'hooks', 'plan', 'team', 'tasks', 'timeline', 'agents'];
+const VALID_PANEL_NAMES: (keyof PanelVisibility)[] = ['thinking', 'tools', 'hooks', 'plan', 'team', 'tasks', 'timeline'];
 
 /**
  * Check if a value is a valid panel name.

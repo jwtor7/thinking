@@ -18,7 +18,6 @@ describe('Dashboard Navigation Behavior', () => {
     const timelineIdx = viewsContent.indexOf("{ id: 'timeline', label: 'Timeline'");
     const thinkingIdx = viewsContent.indexOf("{ id: 'thinking', label: 'Thinking'");
     const toolsIdx = viewsContent.indexOf("{ id: 'tools', label: 'Tools'");
-    const agentsIdx = viewsContent.indexOf("{ id: 'agents', label: 'Agents'");
     const hooksIdx = viewsContent.indexOf("{ id: 'hooks', label: 'Hooks'");
     const planIdx = viewsContent.indexOf("{ id: 'plan', label: 'Plan'");
     const tasksIdx = viewsContent.indexOf("{ id: 'tasks', label: 'Tasks'");
@@ -27,8 +26,7 @@ describe('Dashboard Navigation Behavior', () => {
     expect(timelineIdx).toBeGreaterThanOrEqual(0);
     expect(timelineIdx).toBeLessThan(thinkingIdx);
     expect(thinkingIdx).toBeLessThan(toolsIdx);
-    expect(toolsIdx).toBeLessThan(agentsIdx);
-    expect(agentsIdx).toBeLessThan(hooksIdx);
+    expect(toolsIdx).toBeLessThan(hooksIdx);
     expect(hooksIdx).toBeLessThan(planIdx);
     expect(planIdx).toBeLessThan(tasksIdx);
     expect(tasksIdx).toBeLessThan(teamIdx);
@@ -59,7 +57,6 @@ describe('Dashboard Navigation Behavior', () => {
     expect(indexHtmlContent).toContain('title="Collapse panel (Shift+L)"');
     expect(indexHtmlContent).toContain('title="Collapse panel (Shift+T)"');
     expect(indexHtmlContent).toContain('title="Collapse panel (Shift+O)"');
-    expect(indexHtmlContent).toContain('title="Collapse panel (Shift+A)"');
     expect(indexHtmlContent).toContain('title="Collapse panel (Shift+H)"');
     expect(indexHtmlContent).toContain('title="Collapse panel (Shift+M)"');
     expect(indexHtmlContent).toContain('title="Collapse panel (Shift+K)"');

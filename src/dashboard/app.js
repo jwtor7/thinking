@@ -10,6 +10,7 @@
   var teamState = {
     teams: /* @__PURE__ */ new Map(),
     teamTasks: /* @__PURE__ */ new Map(),
+    taskSessionMap: /* @__PURE__ */ new Map(),
     teamMessages: [],
     teamSessionMap: /* @__PURE__ */ new Map()
   };
@@ -58,8 +59,7 @@
       plan: false,
       team: false,
       tasks: false,
-      timeline: false,
-      agents: false
+      timeline: false
     },
     panelVisibility: {
       thinking: true,
@@ -68,8 +68,7 @@
       plan: true,
       team: true,
       tasks: true,
-      timeline: true,
-      agents: true
+      timeline: true
     }
   };
   var agentContextStack = ["main"];
@@ -166,6 +165,10 @@
     teamMemberGrid: document.getElementById("team-member-grid"),
     teamAgentTreeSection: document.getElementById("agent-tree-section"),
     teamAgentTreeToggle: document.getElementById("agent-tree-toggle"),
+    teamAgentsSection: document.getElementById("team-agents-section"),
+    teamAgentsToggle: document.getElementById("team-agents-toggle"),
+    teamAgentsSidebar: document.getElementById("team-agents-sidebar"),
+    teamAgentsDetail: document.getElementById("team-agents-detail"),
     teamMessages: document.getElementById("team-messages"),
     teamCollapseBtn: document.querySelector(".panel-team .panel-collapse-btn"),
     // Tasks panel elements
@@ -194,11 +197,6 @@
     activityPulseRate: document.querySelector(".activity-pulse-rate"),
     // Duration histogram
     durationHistogram: document.getElementById("tool-duration-histogram"),
-    // Agents panel elements
-    agentsPanel: document.querySelector(".panel-agents"),
-    agentsSidebar: document.getElementById("agents-sidebar"),
-    agentsDetail: document.getElementById("agents-detail"),
-    agentsCollapseBtn: document.querySelector(".panel-agents .panel-collapse-btn"),
     // Stats bar
     statsBar: document.getElementById("stats-bar")
   };
@@ -212,8 +210,7 @@
       plan: { panel: elements.planPanel, btn: elements.planCollapseBtn },
       team: { panel: elements.teamPanel, btn: elements.teamCollapseBtn },
       tasks: { panel: elements.tasksPanel, btn: elements.tasksCollapseBtn },
-      timeline: { panel: elements.timelinePanel, btn: elements.timelineCollapseBtn },
-      agents: { panel: elements.agentsPanel, btn: elements.agentsCollapseBtn }
+      timeline: { panel: elements.timelinePanel, btn: elements.timelineCollapseBtn }
     };
   }
   function getPanelShortcutKey(panelName) {
@@ -230,8 +227,6 @@
         return "K";
       case "timeline":
         return "L";
-      case "agents":
-        return "A";
       case "plan":
         return null;
     }
@@ -372,10 +367,9 @@
     plan: true,
     team: true,
     tasks: true,
-    timeline: true,
-    agents: true
+    timeline: true
   };
-  var VALID_PANEL_NAMES = ["thinking", "tools", "hooks", "plan", "team", "tasks", "timeline", "agents"];
+  var VALID_PANEL_NAMES = ["thinking", "tools", "hooks", "plan", "team", "tasks", "timeline"];
   function isValidPanelName(value) {
     return typeof value === "string" && VALID_PANEL_NAMES.includes(value);
   }
@@ -1145,7 +1139,6 @@
       { id: "timeline", label: "Timeline", shortcut: "l" },
       { id: "thinking", label: "Thinking", shortcut: "t" },
       { id: "tools", label: "Tools", shortcut: "o" },
-      { id: "agents", label: "Agents", shortcut: "a" },
       { id: "hooks", label: "Hooks", shortcut: "h" },
       { id: "plan", label: "Plan", shortcut: "p" },
       { id: "tasks", label: "Tasks", shortcut: "k" },
@@ -1220,7 +1213,7 @@
   function applyViewFilter() {
     const panels = elements.panels;
     if (!panels) return;
-    panels.classList.remove("view-thinking", "view-tools", "view-hooks", "view-plan", "view-team", "view-tasks", "view-timeline", "view-agents");
+    panels.classList.remove("view-thinking", "view-tools", "view-hooks", "view-plan", "view-team", "view-tasks", "view-timeline");
     panels.classList.add(`view-${state.activeView}`);
     panels.dataset.view = state.activeView;
     const pv = state.panelVisibility;
@@ -1241,7 +1234,6 @@
     applyVisibility(elements.teamPanel, pv.team && state.activeView === "team");
     applyVisibility(elements.tasksPanel, pv.tasks && state.activeView === "tasks");
     applyVisibility(elements.timelinePanel, pv.timeline && state.activeView === "timeline");
-    applyVisibility(elements.agentsPanel, pv.agents && state.activeView === "agents");
     panels.classList.add("single-view");
     const panelName = state.activeView;
     if (state.panelCollapseState[panelName]) {
@@ -1253,8 +1245,7 @@
         plan: elements.planPanel,
         team: elements.teamPanel,
         tasks: elements.tasksPanel,
-        timeline: elements.timelinePanel,
-        agents: elements.agentsPanel
+        timeline: elements.timelinePanel
       };
       const panel = panelElements[panelName];
       if (panel) {
@@ -1305,8 +1296,7 @@
       plan: { panel: elements.planPanel, btn: elements.planCollapseBtn },
       team: { panel: elements.teamPanel, btn: elements.teamCollapseBtn },
       tasks: { panel: elements.tasksPanel, btn: elements.tasksCollapseBtn },
-      timeline: { panel: elements.timelinePanel, btn: elements.timelineCollapseBtn },
-      agents: { panel: elements.agentsPanel, btn: elements.agentsCollapseBtn }
+      timeline: { panel: elements.timelinePanel, btn: elements.timelineCollapseBtn }
     };
   }
   function getShortcutKey(panelName) {
@@ -1326,8 +1316,6 @@
         return "K";
       case "timeline":
         return "L";
-      case "agents":
-        return "A";
     }
   }
   function togglePanelCollapse(panelName) {
@@ -1618,21 +1606,26 @@
 
   // src/dashboard/handlers/team.ts
   var MAX_MESSAGES = 200;
+  var MAX_ENTRIES_PER_AGENT = 200;
   var TEAM_SECTION_STORAGE_KEY = "thinking-monitor-team-section-collapse";
   var TEAM_SECTION_LABELS = {
     members: "team members section",
-    hierarchy: "agent hierarchy section"
+    hierarchy: "agent hierarchy section",
+    agents: "team agents section"
   };
   var teamSectionCollapseState = {
     members: false,
-    hierarchy: false
+    hierarchy: false,
+    agents: false
   };
+  var agentThinkingEntries = /* @__PURE__ */ new Map();
+  var selectedViewAgent = null;
   var callbacks4 = null;
   function initTeam(cbs) {
     callbacks4 = cbs;
     loadTeamSectionCollapseState();
     initTeamSectionToggles();
-    for (const sectionName of ["members", "hierarchy"]) {
+    for (const sectionName of ["members", "hierarchy", "agents"]) {
       applyTeamSectionCollapse(sectionName, false);
     }
   }
@@ -1643,9 +1636,15 @@
         toggle: elements.teamMemberToggle
       };
     }
+    if (sectionName === "hierarchy") {
+      return {
+        section: elements.teamAgentTreeSection,
+        toggle: elements.teamAgentTreeToggle
+      };
+    }
     return {
-      section: elements.teamAgentTreeSection,
-      toggle: elements.teamAgentTreeToggle
+      section: elements.teamAgentsSection,
+      toggle: elements.teamAgentsToggle
     };
   }
   function saveTeamSectionCollapseState() {
@@ -1665,6 +1664,9 @@
       }
       if (typeof parsed.hierarchy === "boolean") {
         teamSectionCollapseState.hierarchy = parsed.hierarchy;
+      }
+      if (typeof parsed.agents === "boolean") {
+        teamSectionCollapseState.agents = parsed.agents;
       }
     } catch {
     }
@@ -1692,7 +1694,7 @@
     applyTeamSectionCollapse(sectionName, true);
   }
   function initTeamSectionToggles() {
-    const sections = ["members", "hierarchy"];
+    const sections = ["members", "hierarchy", "agents"];
     for (const sectionName of sections) {
       const { toggle } = getTeamSectionElements(sectionName);
       if (!toggle || toggle.dataset.initialized === "true") {
@@ -1755,6 +1757,174 @@
       teamNameEl.textContent = teamName;
     }
   }
+  function getSelectedSessionId() {
+    return state.selectedSession === "all" ? null : state.selectedSession;
+  }
+  function thinkingKey(sessionId, agentId) {
+    return `${sessionId}::${agentId}`;
+  }
+  function renderTeamAgentEmptyState() {
+    const sidebar = elements.teamAgentsSidebar;
+    if (sidebar) {
+      sidebar.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">&#129302;</div>
+        <p class="empty-state-title">No agents</p>
+        <p class="empty-state-subtitle">Sub-agents appear here for the selected session.</p>
+      </div>
+    `;
+    }
+    const detail = elements.teamAgentsDetail;
+    if (detail) {
+      detail.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">&#129504;</div>
+        <p class="empty-state-title">Select an agent</p>
+        <p class="empty-state-subtitle">Select an agent to inspect thinking entries.</p>
+      </div>
+    `;
+    }
+  }
+  function renderTeamAgentDetail() {
+    const detail = elements.teamAgentsDetail;
+    if (!detail) return;
+    const sessionId = getSelectedSessionId();
+    if (!sessionId) {
+      detail.innerHTML = `<div class="empty-state"><p>Select a session to inspect agent thinking</p></div>`;
+      return;
+    }
+    if (!selectedViewAgent) {
+      detail.innerHTML = `<div class="empty-state"><p>Select an agent to view its thinking</p></div>`;
+      return;
+    }
+    const entries = agentThinkingEntries.get(thinkingKey(sessionId, selectedViewAgent)) || [];
+    if (entries.length === 0) {
+      const label = selectedViewAgent === "main" ? "main" : subagentState.subagents.get(selectedViewAgent)?.agentName || selectedViewAgent.slice(0, 8);
+      detail.innerHTML = `<div class="empty-state"><p>No thinking entries for ${escapeHtml(label)}</p></div>`;
+      return;
+    }
+    detail.innerHTML = entries.map((entry) => {
+      const time = formatTime(entry.timestamp);
+      const preview = entry.content.slice(0, 80).replace(/\n/g, " ");
+      return `
+      <div class="thinking-entry">
+        <div class="thinking-entry-header">
+          <span class="thinking-time">${escapeHtml(time)}</span>
+          <span class="thinking-preview">${escapeHtml(preview)}...</span>
+        </div>
+        <div class="thinking-text">${escapeHtml(entry.content)}</div>
+      </div>
+    `;
+    }).join("");
+    detail.scrollTop = detail.scrollHeight;
+  }
+  function selectTeamAgentInView(agentId) {
+    selectedViewAgent = agentId;
+    renderTeamAgentList();
+    renderTeamAgentDetail();
+  }
+  function countSessionThinkingEntries(sessionId) {
+    let total = 0;
+    for (const [key, entries] of agentThinkingEntries) {
+      if (key.startsWith(`${sessionId}::`)) {
+        total += entries.length;
+      }
+    }
+    return total;
+  }
+  function updateTeamTabCount() {
+    const sessionId = getSelectedSessionId();
+    if (!sessionId) {
+      updateTabBadge("team", 0);
+      const panelBadge2 = document.getElementById("team-count");
+      if (panelBadge2) panelBadge2.textContent = "0";
+      return;
+    }
+    let memberCount = 0;
+    for (const [teamName, mappedSession] of teamState.teamSessionMap) {
+      if (mappedSession === sessionId) {
+        memberCount = (teamState.teams.get(teamName) || []).length;
+        break;
+      }
+    }
+    const messageCount = teamState.teamMessages.filter((message) => message.sessionId === sessionId).length;
+    const thinkingCount = countSessionThinkingEntries(sessionId);
+    const total = memberCount + messageCount + thinkingCount;
+    updateTabBadge("team", total);
+    const panelBadge = document.getElementById("team-count");
+    if (panelBadge) panelBadge.textContent = String(total);
+  }
+  function renderTeamAgentList() {
+    const section = elements.teamAgentsSection;
+    const sidebar = elements.teamAgentsSidebar;
+    if (!section || !sidebar) return;
+    const sessionId = getSelectedSessionId();
+    if (!sessionId) {
+      section.classList.add("team-section-no-data");
+      selectedViewAgent = null;
+      renderTeamAgentEmptyState();
+      updateTeamTabCount();
+      return;
+    }
+    const availableAgentIds = /* @__PURE__ */ new Set();
+    availableAgentIds.add("main");
+    const knownSubagents = subagentState.sessionSubagents.get(sessionId);
+    if (knownSubagents) {
+      for (const agentId of knownSubagents) {
+        availableAgentIds.add(agentId);
+      }
+    }
+    for (const key of agentThinkingEntries.keys()) {
+      if (!key.startsWith(`${sessionId}::`)) continue;
+      const [, agentId] = key.split("::");
+      if (agentId) {
+        availableAgentIds.add(agentId);
+      }
+    }
+    const hasAgentData = availableAgentIds.size > 1 || countSessionThinkingEntries(sessionId) > 0;
+    if (!hasAgentData) {
+      section.classList.add("team-section-no-data");
+      selectedViewAgent = null;
+      renderTeamAgentEmptyState();
+      updateTeamTabCount();
+      return;
+    }
+    section.classList.remove("team-section-no-data");
+    const subagentItems = Array.from(availableAgentIds).filter((agentId) => agentId !== "main").sort((a, b) => {
+      const aName = subagentState.subagents.get(a)?.agentName || a;
+      const bName = subagentState.subagents.get(b)?.agentName || b;
+      return aName.localeCompare(bName);
+    });
+    const orderedAgentIds = ["main", ...subagentItems];
+    if (!selectedViewAgent || !availableAgentIds.has(selectedViewAgent)) {
+      selectedViewAgent = "main";
+    }
+    sidebar.innerHTML = orderedAgentIds.map((agentId) => {
+      const mapping = subagentState.subagents.get(agentId);
+      const name = agentId === "main" ? "main" : mapping?.agentName || agentId.slice(0, 8);
+      const entries = agentThinkingEntries.get(thinkingKey(sessionId, agentId)) || [];
+      const count = entries.length;
+      const selected = selectedViewAgent === agentId ? " selected" : "";
+      const dotClass = agentId === "main" ? "running" : mapping?.status === "running" ? "running" : mapping?.status === "success" || mapping?.status === "failure" || mapping?.status === "cancelled" ? "stopped" : "idle";
+      return `
+      <div class="agent-list-item${selected}" data-agent-id="${escapeHtml(agentId)}">
+        <span class="agent-list-dot ${dotClass}"></span>
+        <span class="agent-list-name">${escapeHtml(name)}</span>
+        <span class="agent-list-count">${count}</span>
+      </div>
+    `;
+    }).join("");
+    sidebar.querySelectorAll(".agent-list-item").forEach((item) => {
+      item.addEventListener("click", () => {
+        const agentId = item.dataset.agentId;
+        if (agentId) {
+          selectTeamAgentInView(agentId);
+        }
+      });
+    });
+    renderTeamAgentDetail();
+    updateTeamTabCount();
+  }
   function handleTeamUpdate(event) {
     if (!callbacks4) return;
     const teamName = event.teamName;
@@ -1764,18 +1934,18 @@
     if (state.selectedSession === "all") {
       return;
     }
-    if (teamSession && teamSession !== state.selectedSession) {
+    if (!teamSession || teamSession !== state.selectedSession) {
       return;
     }
     callbacks4.showTeamPanel();
     updateTeamHeader(teamName);
     renderMemberGrid(teamName);
-    const memberCount = event.members.length;
-    updateTabBadge("team", memberCount);
+    renderTeamAgentList();
   }
   function resolveTeamSession(teamName, sessionId, members) {
     if (sessionId) {
-      teamState.teamSessionMap.set(teamName, sessionId);
+      const resolved = resolveSessionId(sessionId) || sessionId;
+      teamState.teamSessionMap.set(teamName, resolved);
       return;
     }
     if (members) {
@@ -1797,6 +1967,8 @@
       if (teamNameEl) teamNameEl.textContent = "";
       const memberGrid = elements.teamMemberGrid;
       if (memberGrid) memberGrid.innerHTML = "";
+      selectedViewAgent = null;
+      renderTeamAgentList();
       return;
     }
     let matchedTeam = null;
@@ -1819,6 +1991,7 @@
         memberGrid.innerHTML = `<div class="team-empty">No team for this session</div>`;
       }
     }
+    renderTeamAgentList();
   }
   function handleTeammateIdle(event) {
     if (!callbacks4) return;
@@ -1833,11 +2006,12 @@
     }
     const teamSession = teamState.teamSessionMap.get(teamName);
     if (state.selectedSession === "all") return;
-    if (teamSession && teamSession !== state.selectedSession) return;
+    if (!teamSession || teamSession !== state.selectedSession) return;
     if (members) {
       renderMemberGrid(teamName);
     }
     callbacks4.showTeamPanel();
+    updateTeamTabCount();
   }
   function handleMessageSent(event) {
     if (!callbacks4) return;
@@ -1846,7 +2020,7 @@
       teamState.teamMessages.shift();
     }
     if (state.selectedSession === "all") return;
-    if (event.sessionId && event.sessionId !== state.selectedSession) return;
+    if (!event.sessionId || event.sessionId !== state.selectedSession) return;
     callbacks4.showTeamPanel();
     const messagesContainer = elements.teamMessages;
     if (!messagesContainer) return;
@@ -1880,6 +2054,38 @@
     callbacks4.smartScroll(messagesContainer);
     entry.classList.add("new");
     setTimeout(() => entry.classList.remove("new"), 1e3);
+    updateTeamTabCount();
+  }
+  function addTeamAgentThinking(event) {
+    if (!event.sessionId) return;
+    const agentId = event.agentId || "main";
+    const key = thinkingKey(event.sessionId, agentId);
+    let entries = agentThinkingEntries.get(key);
+    if (!entries) {
+      entries = [];
+      agentThinkingEntries.set(key, entries);
+    }
+    entries.push({
+      timestamp: event.timestamp,
+      content: event.content,
+      sessionId: event.sessionId
+    });
+    while (entries.length > MAX_ENTRIES_PER_AGENT) {
+      entries.shift();
+    }
+    if (state.selectedSession === event.sessionId) {
+      renderTeamAgentList();
+    } else {
+      updateTeamTabCount();
+    }
+  }
+  function refreshTeamAgentList() {
+    renderTeamAgentList();
+  }
+  function resetTeamAgentThinking() {
+    selectedViewAgent = null;
+    agentThinkingEntries.clear();
+    renderTeamAgentList();
   }
 
   // src/dashboard/handlers/tasks.ts
@@ -1914,21 +2120,52 @@
     const completedCol = elements.tasksCompleted;
     if (!pendingCol || !progressCol || !completedCol) return;
     const allTasks = [];
+    let hasSessionMapping = false;
     if (state.selectedSession === "all") {
       for (const tasks of teamState.teamTasks.values()) {
         allTasks.push(...tasks);
       }
     } else {
-      for (const [teamName, sessionId] of teamState.teamSessionMap) {
+      for (const [teamId, sessionId] of teamState.taskSessionMap) {
         if (sessionId === state.selectedSession) {
-          const tasks = teamState.teamTasks.get(teamName);
-          if (tasks) allTasks.push(...tasks);
+          hasSessionMapping = true;
+          const tasks = teamState.teamTasks.get(teamId);
+          if (tasks) {
+            allTasks.push(...tasks);
+          }
         }
       }
-      if (allTasks.length === 0) {
-        for (const tasks of teamState.teamTasks.values()) {
-          allTasks.push(...tasks);
+      if (!hasSessionMapping) {
+        for (const [teamName, sessionId] of teamState.teamSessionMap) {
+          if (sessionId === state.selectedSession) {
+            hasSessionMapping = true;
+            const tasks = teamState.teamTasks.get(teamName);
+            if (tasks) {
+              allTasks.push(...tasks);
+            }
+          }
         }
+      }
+      if (!hasSessionMapping) {
+        if (elements.tasksPendingCount) {
+          elements.tasksPendingCount.textContent = "0";
+        }
+        if (elements.tasksInProgressCount) {
+          elements.tasksInProgressCount.textContent = "0";
+        }
+        if (elements.tasksCompletedCount) {
+          elements.tasksCompletedCount.textContent = "0";
+        }
+        const unmappedMessage = "No tasks mapped to this session yet";
+        pendingCol.innerHTML = `<div class="task-column-empty">${unmappedMessage}</div>`;
+        progressCol.innerHTML = `<div class="task-column-empty">${unmappedMessage}</div>`;
+        completedCol.innerHTML = `<div class="task-column-empty">${unmappedMessage}</div>`;
+        updateTabBadge("tasks", 0);
+        const totalCountEl2 = document.getElementById("tasks-total-count");
+        if (totalCountEl2) {
+          totalCountEl2.textContent = "0";
+        }
+        return;
       }
     }
     const pending = allTasks.filter((t) => t.status === "pending");
@@ -1984,6 +2221,9 @@
   }
   function handleTaskUpdate(event) {
     if (!callbacks5) return;
+    if (event.sessionId) {
+      teamState.taskSessionMap.set(event.teamId, event.sessionId);
+    }
     const prev = teamState.teamTasks.get(event.teamId);
     if (prev) {
       const incomingIds = new Set(event.tasks.map((t) => t.id));
@@ -3599,7 +3839,7 @@ Session: ${id}` : `Session: ${id}`;
         { keys: ["l"], desc: "Timeline view" },
         { keys: ["t"], desc: "Thinking view" },
         { keys: ["o"], desc: "Tools view" },
-        { keys: ["a"], desc: "Agents view" },
+        { keys: ["a"], desc: "Team view (alias)" },
         { keys: ["h"], desc: "Hooks view" },
         { keys: ["p"], desc: "Plan view" },
         { keys: ["k"], desc: "Tasks view" },
@@ -3611,6 +3851,7 @@ Session: ${id}` : `Session: ${id}`;
       shortcuts: [
         { keys: ["Shift", "T"], desc: "Toggle Thinking panel" },
         { keys: ["Shift", "O"], desc: "Toggle Tools panel" },
+        { keys: ["Shift", "A"], desc: "Toggle Team panel (alias)" },
         { keys: ["Shift", "H"], desc: "Toggle Hooks panel" },
         { keys: ["Shift", "M"], desc: "Toggle Team panel" },
         { keys: ["Shift", "K"], desc: "Toggle Tasks panel" },
@@ -3818,7 +4059,7 @@ Session: ${id}` : `Session: ${id}`;
           return;
         case "a":
           event.preventDefault();
-          togglePanelCollapse("agents");
+          togglePanelCollapse("team");
           return;
         case "h":
           event.preventDefault();
@@ -3853,7 +4094,7 @@ Session: ${id}` : `Session: ${id}`;
           selectView("tools");
           return;
         case "a":
-          selectView("agents");
+          selectView("team");
           return;
         case "h":
           selectView("hooks");
@@ -3910,10 +4151,9 @@ Session: ${id}` : `Session: ${id}`;
     plan: "Plan",
     team: "Team",
     tasks: "Tasks",
-    timeline: "Timeline",
-    agents: "Agents"
+    timeline: "Timeline"
   };
-  var PANEL_ORDER = ["timeline", "thinking", "tools", "agents", "hooks", "plan", "tasks", "team"];
+  var PANEL_ORDER = ["timeline", "thinking", "tools", "hooks", "plan", "tasks", "team"];
   var modalElement = null;
   var isOpen2 = false;
   var previouslyFocused3 = null;
@@ -4355,7 +4595,7 @@ Session: ${id}` : `Session: ${id}`;
       detectPlanAccess(input, sessionId);
     }
     if (toolName === "SendMessage") {
-      callbacks12.detectSendMessage(input, agentId, event.timestamp);
+      callbacks12.detectSendMessage(input, agentId, event.sessionId, event.timestamp);
     }
     state.toolsCount++;
     updateToolsCount();
@@ -5005,123 +5245,6 @@ Session: ${id}` : `Session: ${id}`;
     showFileContextMenu(event.clientX, event.clientY, planPath);
   }
 
-  // src/dashboard/handlers/agents-view.ts
-  var selectedViewAgent = null;
-  var agentThinkingCounts = /* @__PURE__ */ new Map();
-  var agentThinkingEntries = /* @__PURE__ */ new Map();
-  var MAX_ENTRIES_PER_AGENT = 200;
-  function initAgentsView() {
-  }
-  function renderAgentsList() {
-    const sidebar = elements.agentsSidebar;
-    if (!sidebar) return;
-    const items = [];
-    const mainCount = agentThinkingCounts.get("main") || 0;
-    const mainSelected = selectedViewAgent === "main";
-    items.push(`
-    <div class="agent-list-item${mainSelected ? " selected" : ""}" data-agent-id="main">
-      <span class="agent-list-dot running"></span>
-      <span class="agent-list-name">main</span>
-      <span class="agent-list-count">${mainCount}</span>
-    </div>
-  `);
-    for (const [agentId, mapping] of subagentState.subagents) {
-      const count = agentThinkingCounts.get(agentId) || 0;
-      const isSelected = selectedViewAgent === agentId;
-      const dotClass = mapping.status === "running" ? "running" : mapping.status === "success" || mapping.status === "failure" || mapping.status === "cancelled" ? "stopped" : "idle";
-      const session = state.sessions.get(mapping.parentSessionId);
-      const sessionLabel = getSessionDisplayName(session?.workingDirectory, mapping.parentSessionId);
-      items.push(`
-      <div class="agent-list-item${isSelected ? " selected" : ""}" data-agent-id="${escapeHtml(agentId)}" title="${escapeHtml(mapping.agentName)} (${escapeHtml(mapping.status)})
-Session: ${escapeHtml(sessionLabel)}">
-        <span class="agent-list-dot ${dotClass}"></span>
-        <span class="agent-list-name">${escapeHtml(mapping.agentName)}</span>
-        <span class="agent-list-count">${count}</span>
-      </div>
-    `);
-    }
-    sidebar.innerHTML = items.join("");
-    sidebar.querySelectorAll(".agent-list-item").forEach((item) => {
-      item.addEventListener("click", () => {
-        const agentId = item.dataset.agentId;
-        if (agentId) {
-          selectAgentInView(agentId);
-        }
-      });
-    });
-  }
-  function selectAgentInView(agentId) {
-    selectedViewAgent = agentId;
-    renderAgentsList();
-    renderAgentDetail();
-  }
-  function renderAgentDetail() {
-    const detail = elements.agentsDetail;
-    if (!detail) return;
-    if (!selectedViewAgent) {
-      detail.innerHTML = `<div class="empty-state"><p>Select an agent to view its thinking</p></div>`;
-      return;
-    }
-    const entries = agentThinkingEntries.get(selectedViewAgent) || [];
-    if (entries.length === 0) {
-      const agentName = selectedViewAgent === "main" ? "main" : subagentState.subagents.get(selectedViewAgent)?.agentName || selectedViewAgent;
-      detail.innerHTML = `<div class="empty-state"><p>No thinking entries for ${escapeHtml(agentName)}</p></div>`;
-      return;
-    }
-    const html = entries.map((entry) => {
-      const time = formatTime(entry.timestamp);
-      const preview = entry.content.slice(0, 80).replace(/\n/g, " ");
-      return `
-      <div class="thinking-entry">
-        <div class="thinking-entry-header">
-          <span class="thinking-time">${escapeHtml(time)}</span>
-          <span class="thinking-preview">${escapeHtml(preview)}...</span>
-        </div>
-        <div class="thinking-text">${escapeHtml(entry.content)}</div>
-      </div>
-    `;
-    }).join("");
-    detail.innerHTML = html;
-    detail.scrollTop = detail.scrollHeight;
-  }
-  function addAgentThinking(event) {
-    const eventAgentId = event.agentId;
-    let agentId = eventAgentId || "main";
-    if (!eventAgentId && event.sessionId) {
-      agentId = "main";
-    }
-    agentThinkingCounts.set(agentId, (agentThinkingCounts.get(agentId) || 0) + 1);
-    let entries = agentThinkingEntries.get(agentId);
-    if (!entries) {
-      entries = [];
-      agentThinkingEntries.set(agentId, entries);
-    }
-    entries.push({
-      timestamp: event.timestamp,
-      content: event.content,
-      sessionId: event.sessionId || ""
-    });
-    while (entries.length > MAX_ENTRIES_PER_AGENT) {
-      entries.shift();
-    }
-    const totalCount = Array.from(agentThinkingCounts.values()).reduce((a, b) => a + b, 0);
-    updateTabBadge("agents", totalCount);
-    if (selectedViewAgent === agentId) {
-      renderAgentDetail();
-    }
-    renderAgentsList();
-  }
-  function resetAgentsView() {
-    selectedViewAgent = null;
-    agentThinkingCounts.clear();
-    agentThinkingEntries.clear();
-    renderAgentsList();
-    const detail = elements.agentsDetail;
-    if (detail) {
-      detail.innerHTML = `<div class="empty-state"><p>Select an agent to view its thinking</p></div>`;
-    }
-  }
-
   // src/dashboard/ui/stats-bar.ts
   var MAX_SESSION_STATS = 50;
   var STAT_TOOLTIPS = {
@@ -5322,7 +5445,7 @@ Session: ${escapeHtml(sessionLabel)}">
           break;
         case "thinking":
           handleThinking(event);
-          addAgentThinking(event);
+          addTeamAgentThinking(event);
           if (event.sessionId) {
             updateSessionActivity(event.sessionId);
           }
@@ -5369,6 +5492,7 @@ Session: ${escapeHtml(sessionLabel)}">
         case "subagent_mapping":
           handleSubagentMapping(event);
           updateSessionFilter();
+          refreshTeamAgentList();
           break;
         case "team_update":
           handleTeamUpdate(event);
@@ -6209,8 +6333,6 @@ Session: ${escapeHtml(sessionLabel)}">
         return emptyState("&#128203;", "No task activity", "Task boards appear when Claude creates and manages tasks for team coordination.");
       case "timeline":
         return emptyState("&#128337;", "No events yet", "A chronological feed of all events: thinking, tools, hooks, agents, and more.");
-      case "agents":
-        return emptyState("&#129302;", "No agents", "Sub-agents will appear here when Claude spawns them.");
       default:
         return emptyState("&#9679;", "No data", "Waiting for events...");
     }
@@ -6243,8 +6365,7 @@ Session: ${escapeHtml(sessionLabel)}">
       plan: "plan-content",
       team: "team-content",
       tasks: "tasks-content",
-      timeline: "timeline-entries",
-      agents: "agents-detail"
+      timeline: "timeline-entries"
     };
     const panelId = panelMap[view];
     if (panelId) {
@@ -6310,6 +6431,7 @@ Session: ${escapeHtml(sessionLabel)}">
     updateStatusBarSession();
     teamState.teams.clear();
     teamState.teamTasks.clear();
+    teamState.taskSessionMap.clear();
     teamState.teamMessages = [];
     state.selectedAgentId = null;
     elements.eventCount.textContent = "Events: 0";
@@ -6335,7 +6457,7 @@ Session: ${escapeHtml(sessionLabel)}">
     }
     resetHistogram();
     resetStats();
-    resetAgentsView();
+    resetTeamAgentThinking();
     showToast("Panels cleared", "info");
     announceStatus("All panels cleared");
     updateExportButtonState();
@@ -6455,7 +6577,7 @@ Session: ${escapeHtml(sessionLabel)}">
   initTools({
     getCurrentAgentContext,
     getAgentDisplayName,
-    detectSendMessage: (input, agentId, timestamp) => {
+    detectSendMessage: (input, agentId, sessionId, timestamp) => {
       if (!input) return;
       try {
         const parsed = JSON.parse(input);
@@ -6466,6 +6588,8 @@ Session: ${escapeHtml(sessionLabel)}">
         handleMessageSent({
           type: "message_sent",
           timestamp,
+          sessionId,
+          agentId,
           sender,
           recipient,
           messageType: msgType,
@@ -6516,7 +6640,6 @@ Session: ${escapeHtml(sessionLabel)}">
     smartScroll,
     selectSession
   });
-  initAgentsView();
   initDurationHistogram();
   initViews({
     announceStatus,
@@ -6603,6 +6726,6 @@ Session: ${escapeHtml(sessionLabel)}">
     }
   }, ACTIVITY_UPDATE_INTERVAL_MS);
   debug("[Dashboard] Thinking Monitor initialized");
-  debug("[Dashboard] Keyboard shortcuts: l/t/o/a/h/p/k/m=views, Shift+T/O/A/H/M/K/L=collapse, Shift+P=panel settings, c=clear, s=scroll, /=search, Esc=clear filters");
+  debug("[Dashboard] Keyboard shortcuts: l/t/o/a/h/p/k/m=views (a aliases team), Shift+T/O/A/H/M/K/L=collapse, Shift+P=panel settings, c=clear, s=scroll, /=search, Esc=clear filters");
   debug("[Dashboard] Plan shortcuts: Cmd+O=open, Cmd+Shift+R=reveal, Cmd+E=export, right-click=context menu");
 })();

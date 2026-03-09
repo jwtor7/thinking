@@ -63,6 +63,10 @@ export const elements = {
   teamMemberGrid: document.getElementById('team-member-grid'),
   teamAgentTreeSection: document.getElementById('agent-tree-section'),
   teamAgentTreeToggle: document.getElementById('agent-tree-toggle') as HTMLButtonElement | null,
+  teamAgentsSection: document.getElementById('team-agents-section'),
+  teamAgentsToggle: document.getElementById('team-agents-toggle') as HTMLButtonElement | null,
+  teamAgentsSidebar: document.getElementById('team-agents-sidebar'),
+  teamAgentsDetail: document.getElementById('team-agents-detail'),
   teamMessages: document.getElementById('team-messages'),
   teamCollapseBtn: document.querySelector('.panel-team .panel-collapse-btn') as HTMLButtonElement,
   // Tasks panel elements
@@ -91,11 +95,6 @@ export const elements = {
   activityPulseRate: document.querySelector('.activity-pulse-rate'),
   // Duration histogram
   durationHistogram: document.getElementById('tool-duration-histogram'),
-  // Agents panel elements
-  agentsPanel: document.querySelector('.panel-agents') as HTMLElement,
-  agentsSidebar: document.getElementById('agents-sidebar'),
-  agentsDetail: document.getElementById('agents-detail'),
-  agentsCollapseBtn: document.querySelector('.panel-agents .panel-collapse-btn') as HTMLButtonElement,
   // Stats bar
   statsBar: document.getElementById('stats-bar'),
 };

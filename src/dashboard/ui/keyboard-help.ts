@@ -15,7 +15,7 @@ const SHORTCUT_GROUPS = [
       { keys: ['l'], desc: 'Timeline view' },
       { keys: ['t'], desc: 'Thinking view' },
       { keys: ['o'], desc: 'Tools view' },
-      { keys: ['a'], desc: 'Agents view' },
+      { keys: ['a'], desc: 'Team view (alias)' },
       { keys: ['h'], desc: 'Hooks view' },
       { keys: ['p'], desc: 'Plan view' },
       { keys: ['k'], desc: 'Tasks view' },
@@ -27,6 +27,7 @@ const SHORTCUT_GROUPS = [
     shortcuts: [
       { keys: ['Shift', 'T'], desc: 'Toggle Thinking panel' },
       { keys: ['Shift', 'O'], desc: 'Toggle Tools panel' },
+      { keys: ['Shift', 'A'], desc: 'Toggle Team panel (alias)' },
       { keys: ['Shift', 'H'], desc: 'Toggle Hooks panel' },
       { keys: ['Shift', 'M'], desc: 'Toggle Team panel' },
       { keys: ['Shift', 'K'], desc: 'Toggle Tasks panel' },

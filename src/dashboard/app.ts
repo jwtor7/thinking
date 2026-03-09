@@ -101,10 +101,9 @@ import {
   handleContextMenuReveal,
 } from './handlers/plans.ts';
 import { initHooks } from './handlers/hooks.ts';
-import { initTeam, handleMessageSent } from './handlers/team.ts';
+import { initTeam, handleMessageSent, resetTeamAgentThinking } from './handlers/team.ts';
 import { initTasks } from './handlers/tasks.ts';
 import { initTimeline, resetTypeChips } from './handlers/timeline.ts';
-import { initAgentsView, resetAgentsView } from './handlers/agents-view.ts';
 import {
   initExportModal,
   updateExportButtonState,
@@ -145,7 +144,6 @@ function focusActivePanel(view: ViewType): void {
     team: 'team-content',
     tasks: 'tasks-content',
     timeline: 'timeline-entries',
-    agents: 'agents-detail',
   };
 
   const panelId = panelMap[view];
@@ -250,6 +248,8 @@ function clearAllPanels(): void {
   // Clear team/task state
   teamState.teams.clear();
   teamState.teamTasks.clear();
+  teamState.taskSessionMap.clear();
+  teamState.teamSessionMap.clear();
   teamState.teamMessages = [];
   state.selectedAgentId = null;
 
@@ -288,8 +288,8 @@ function clearAllPanels(): void {
   // Reset stats bar
   resetStats();
 
-  // Reset agents view
-  resetAgentsView();
+  // Reset team-collaboration agent view
+  resetTeamAgentThinking();
 
   // Show feedback toast
   showToast('Panels cleared', 'info');
@@ -480,7 +480,12 @@ initThinking({
 initTools({
   getCurrentAgentContext,
   getAgentDisplayName,
-  detectSendMessage: (input: string | undefined, agentId: string | undefined, timestamp: string) => {
+  detectSendMessage: (
+    input: string | undefined,
+    agentId: string | undefined,
+    sessionId: string | undefined,
+    timestamp: string
+  ) => {
     if (!input) return;
     try {
       // Parse the SendMessage tool input (JSON format)
@@ -493,6 +498,8 @@ initTools({
       handleMessageSent({
         type: 'message_sent',
         timestamp,
+        sessionId,
+        agentId,
         sender,
         recipient,
         messageType: msgType,
@@ -553,8 +560,6 @@ initTimeline({
   smartScroll,
   selectSession,
 });
-
-initAgentsView();
 
 initDurationHistogram();
 
@@ -697,5 +702,5 @@ setInterval(() => {
 }, ACTIVITY_UPDATE_INTERVAL_MS);
 
 debug('[Dashboard] Thinking Monitor initialized');
-debug('[Dashboard] Keyboard shortcuts: l/t/o/a/h/p/k/m=views, Shift+T/O/A/H/M/K/L=collapse, Shift+P=panel settings, c=clear, s=scroll, /=search, Esc=clear filters');
+debug('[Dashboard] Keyboard shortcuts: l/t/o/a/h/p/k/m=views (a aliases team), Shift+T/O/A/H/M/K/L=collapse, Shift+P=panel settings, c=clear, s=scroll, /=search, Esc=clear filters');
 debug('[Dashboard] Plan shortcuts: Cmd+O=open, Cmd+Shift+R=reveal, Cmd+E=export, right-click=context menu');

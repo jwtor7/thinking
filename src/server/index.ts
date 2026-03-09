@@ -12,6 +12,8 @@
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { stat, readFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { WebSocketHub } from './websocket-hub.ts';
 import { EventReceiver } from './event-receiver.ts';
 import { StaticServer } from './static-server.ts';
@@ -30,6 +32,87 @@ const dashboardDir = join(__dirname, '..', 'dashboard');
 
 // For development with --experimental-strip-types, use src path
 const srcDashboardDir = join(__dirname, '..', '..', 'src', 'dashboard');
+const repoRootDir = join(__dirname, '..', '..');
+const repoHooksDir = join(repoRootDir, 'hooks');
+
+interface StartupCheck {
+  label: string;
+  path: string;
+  exists: boolean;
+}
+
+async function checkPath(path: string, label: string): Promise<StartupCheck> {
+  try {
+    await stat(path);
+    return { label, path, exists: true };
+  } catch {
+    return { label, path, exists: false };
+  }
+}
+
+function isMonitorHookInstalled(settings: Record<string, unknown>, hookType: string, expectedCommand: string): boolean {
+  const hookEntries = settings[hookType];
+  if (!Array.isArray(hookEntries)) {
+    return false;
+  }
+
+  for (const entry of hookEntries) {
+    const hooks = (entry as { hooks?: unknown }).hooks;
+    if (!Array.isArray(hooks)) {
+      continue;
+    }
+    for (const hook of hooks) {
+      const command = (hook as { command?: unknown }).command;
+      if (typeof command === 'string' && command.includes(expectedCommand)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+async function logStartupPreflight(): Promise<void> {
+  const claudeRoot = join(homedir(), '.claude');
+  const checks = await Promise.all([
+    checkPath(join(claudeRoot, 'projects'), 'projects'),
+    checkPath(join(claudeRoot, 'plans'), 'plans'),
+    checkPath(join(claudeRoot, 'teams'), 'teams'),
+    checkPath(join(claudeRoot, 'tasks'), 'tasks'),
+  ]);
+
+  const checkSummary = checks
+    .map((check) => `${check.label}=${check.exists ? 'ok' : 'missing'}`)
+    .join(', ');
+  logger.info(`[Preflight] Claude directories: ${checkSummary}`);
+
+  const missingChecks = checks.filter((check) => !check.exists);
+  for (const check of missingChecks) {
+    logger.warn(`[Preflight] Missing ${check.label} directory: ${check.path}`);
+  }
+
+  const settingsPath = join(claudeRoot, 'settings.json');
+  try {
+    const raw = await readFile(settingsPath, 'utf-8');
+    const parsed = JSON.parse(raw) as { hooks?: Record<string, unknown> };
+    const hooks = parsed.hooks || {};
+    const requiredHooks: Record<string, string> = {
+      PreToolUse: join(repoHooksDir, 'pre-tool-use.sh'),
+      PostToolUse: join(repoHooksDir, 'post-tool-use.sh'),
+      SubagentStart: join(repoHooksDir, 'subagent-start.sh'),
+      SubagentStop: join(repoHooksDir, 'subagent-stop.sh'),
+      SessionStart: join(repoHooksDir, 'session-start.sh'),
+      SessionEnd: join(repoHooksDir, 'session-stop.sh'),
+    };
+
+    const hookSummary = Object.entries(requiredHooks)
+      .map(([hookType, command]) => `${hookType}=${isMonitorHookInstalled(hooks, hookType, command) ? 'ok' : 'missing'}`)
+      .join(', ');
+    logger.info(`[Preflight] Hook registration: ${hookSummary}`);
+  } catch {
+    logger.warn(`[Preflight] Unable to read Claude settings: ${settingsPath}`);
+  }
+}
 
 /**
  * Start the thinking monitor server.
@@ -42,6 +125,8 @@ async function main(): Promise<void> {
 ║  Real-time monitoring for Claude Code thinking & tools    ║
 ╚═══════════════════════════════════════════════════════════╝
 `);
+
+  await logStartupPreflight();
 
   // Create WebSocket hub
   const hub = new WebSocketHub();
@@ -133,6 +218,9 @@ async function main(): Promise<void> {
   const teamWatcher = new TeamWatcher(hub);
   await teamWatcher.start();
   logger.info(`[Server] Team/task watcher started`);
+  logger.info(
+    `[Preflight] Watchers ready: transcript=${transcriptWatcher.isRunning()}(${transcriptWatcher.getTrackedFileCount()} files), plan=${planWatcher.isRunning()}(${planWatcher.getTrackedPlanCount()} files), team=${teamWatcher.getTrackedTeamCount()} teams/${teamWatcher.getTrackedTaskDirCount()} task dirs`
+  );
 
   // Send current state to newly connected clients
   hub.onClientConnect(async (sendEvent) => {

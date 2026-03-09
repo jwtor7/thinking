@@ -89,7 +89,7 @@ export interface AppState {
   // Context menu state
   contextMenuFilePath: string | null;
   // Active view tab for navigation
-  activeView: 'thinking' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline' | 'agents';
+  activeView: 'thinking' | 'tools' | 'hooks' | 'plan' | 'team' | 'tasks' | 'timeline';
   // Per-agent event filtering - null means show all agents
   selectedAgentId: string | null;
   // Session-plan associations - maps session ID to the plan path that session uses
@@ -116,7 +116,6 @@ export interface PanelVisibility {
   team: boolean;
   tasks: boolean;
   timeline: boolean;
-  agents: boolean;
 }
 
 // ============================================
@@ -227,4 +226,3 @@ export interface ToolInfo {
   startTime: string;
   element?: HTMLElement;
 }
-

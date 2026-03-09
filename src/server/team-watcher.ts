@@ -45,6 +45,7 @@ interface TrackedTeam {
   teamName: string;
   contentHash: string;
   members: TeamMemberInfo[];
+  sessionId?: string;
   detectedAt: string;
 }
 
@@ -53,6 +54,7 @@ interface TrackedTaskDir {
   teamId: string;
   contentHash: string;
   tasks: TaskInfo[];
+  sessionId?: string;
   detectedAt: string;
 }
 
@@ -118,6 +120,7 @@ export class TeamWatcher {
       events.push({
         type: 'team_update',
         timestamp: team.detectedAt,
+        sessionId: team.sessionId,
         teamName: team.teamName,
         members: team.members,
       });
@@ -134,6 +137,7 @@ export class TeamWatcher {
       events.push({
         type: 'task_update',
         timestamp: taskDir.detectedAt,
+        sessionId: taskDir.sessionId,
         teamId: taskDir.teamId,
         tasks: taskDir.tasks,
       });
@@ -145,10 +149,8 @@ export class TeamWatcher {
    * Poll both directories for changes.
    */
   private async poll(): Promise<void> {
-    await Promise.all([
-      this.pollTeams(),
-      this.pollTasks(),
-    ]);
+    await this.pollTeams();
+    await this.pollTasks();
   }
 
   /**
@@ -182,17 +184,24 @@ export class TeamWatcher {
           const content = await readFile(configPath, 'utf-8');
           const contentHash = hashContent(content);
           const existing = this.trackedTeams.get(teamName);
+          const parsed = this.parseTeamConfig(content);
 
           if (!existing || existing.contentHash !== contentHash) {
-            const members = this.parseTeamConfig(content);
             this.trackedTeams.set(teamName, {
               teamName,
               contentHash,
-              members,
+              members: parsed.members,
+              sessionId: parsed.sessionId,
               detectedAt: existing?.detectedAt || new Date().toISOString(),
             });
 
-            this.broadcastTeamUpdate(teamName, members);
+            this.broadcastTeamUpdate(teamName, parsed.members, parsed.sessionId);
+          }
+
+          const trackedTasks = this.trackedTaskDirs.get(teamName);
+          if (trackedTasks && trackedTasks.sessionId !== parsed.sessionId) {
+            trackedTasks.sessionId = parsed.sessionId;
+            this.broadcastTaskUpdate(teamName, trackedTasks.tasks, parsed.sessionId);
           }
         } catch {
           // config.json doesn't exist or can't be read, skip
@@ -202,9 +211,10 @@ export class TeamWatcher {
       // Remove teams that no longer exist
       for (const [teamName] of this.trackedTeams) {
         if (!currentTeamNames.has(teamName)) {
+          const removed = this.trackedTeams.get(teamName);
           this.trackedTeams.delete(teamName);
           // Broadcast empty team to signal removal
-          this.broadcastTeamUpdate(teamName, []);
+          this.broadcastTeamUpdate(teamName, [], removed?.sessionId);
         }
       }
     } catch (error) {
@@ -283,16 +293,18 @@ export class TeamWatcher {
 
           const contentHash = hashContentParts(hashParts);
           const existing = this.trackedTaskDirs.get(teamId);
+          const sessionId = this.resolveTaskSessionId(teamId);
 
           if (!existing || existing.contentHash !== contentHash) {
             this.trackedTaskDirs.set(teamId, {
               teamId,
               contentHash,
               tasks,
+              sessionId,
               detectedAt: existing?.detectedAt || new Date().toISOString(),
             });
 
-            this.broadcastTaskUpdate(teamId, tasks);
+            this.broadcastTaskUpdate(teamId, tasks, sessionId);
           }
         } catch {
           // Can't read task directory contents, skip
@@ -302,9 +314,10 @@ export class TeamWatcher {
       // Remove task dirs that no longer exist
       for (const [teamId] of this.trackedTaskDirs) {
         if (!currentTeamIds.has(teamId)) {
+          const removed = this.trackedTaskDirs.get(teamId);
           this.trackedTaskDirs.delete(teamId);
           // Broadcast empty tasks to signal removal
-          this.broadcastTaskUpdate(teamId, []);
+          this.broadcastTaskUpdate(teamId, [], removed?.sessionId);
         }
       }
     } catch (error) {
@@ -317,14 +330,17 @@ export class TeamWatcher {
   /**
    * Parse a team config.json into TeamMemberInfo[].
    */
-  private parseTeamConfig(content: string): TeamMemberInfo[] {
+  private parseTeamConfig(content: string): { members: TeamMemberInfo[]; sessionId?: string } {
     try {
       const config = JSON.parse(content);
+      const sessionId = typeof config.leadSessionId === 'string' && config.leadSessionId
+        ? config.leadSessionId
+        : undefined;
       if (!config.members || !Array.isArray(config.members)) {
-        return [];
+        return { members: [], sessionId };
       }
 
-      return config.members
+      const members = config.members
         .filter((m: Record<string, unknown>) => m && typeof m.name === 'string')
         .map((m: Record<string, unknown>) => ({
           name: String(m.name),
@@ -332,9 +348,17 @@ export class TeamWatcher {
           agentType: String(m.agentType || ''),
           status: m.status as TeamMemberInfo['status'],
         }));
+      return { members, sessionId };
     } catch {
-      return [];
+      return { members: [] };
     }
+  }
+
+  /**
+   * Resolve session ID for a task directory via its team identity.
+   */
+  private resolveTaskSessionId(teamId: string): string | undefined {
+    return this.trackedTeams.get(teamId)?.sessionId;
   }
 
   /**
@@ -383,10 +407,11 @@ export class TeamWatcher {
   /**
    * Broadcast a team update event.
    */
-  private broadcastTeamUpdate(teamName: string, members: TeamMemberInfo[]): void {
+  private broadcastTeamUpdate(teamName: string, members: TeamMemberInfo[], sessionId?: string): void {
     const event: TeamUpdateEvent = {
       type: 'team_update',
       timestamp: new Date().toISOString(),
+      sessionId,
       teamName,
       members,
     };
@@ -398,15 +423,30 @@ export class TeamWatcher {
   /**
    * Broadcast a task update event.
    */
-  private broadcastTaskUpdate(teamId: string, tasks: TaskInfo[]): void {
+  private broadcastTaskUpdate(teamId: string, tasks: TaskInfo[], sessionId?: string): void {
     const event: TaskUpdateEvent = {
       type: 'task_update',
       timestamp: new Date().toISOString(),
+      sessionId,
       teamId,
       tasks,
     };
 
     this.hub.broadcast(event);
     logger.debug(`[TeamWatcher] Broadcast task update: ${teamId} (${tasks.length} tasks)`);
+  }
+
+  /**
+   * Number of tracked team configs.
+   */
+  getTrackedTeamCount(): number {
+    return this.trackedTeams.size;
+  }
+
+  /**
+   * Number of tracked task directories.
+   */
+  getTrackedTaskDirCount(): number {
+    return this.trackedTaskDirs.size;
   }
 }
