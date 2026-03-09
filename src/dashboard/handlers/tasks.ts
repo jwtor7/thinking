@@ -12,22 +12,16 @@ import { getAgentBadgeColors } from '../ui/colors.ts';
 import { selectAgentFilter } from './sessions.ts';
 import type { TaskUpdateEvent, TaskCompletedEvent, TaskInfo } from '../types.ts';
 import { updateTabBadge } from '../ui/views.ts';
+import type { Disposable } from '../services/lifecycle.ts';
 
-// ============================================
-// Callback Interface
-// ============================================
-
-export interface TasksCallbacks {
-  showTasksPanel: () => void;
-}
-
-let callbacks: TasksCallbacks | null = null;
+let showTasksPanel: (() => void) | null = null;
 
 /**
- * Initialize the tasks handler with required callbacks.
+ * Initialize the tasks handler.
  */
-export function initTasks(cbs: TasksCallbacks): void {
-  callbacks = cbs;
+export function initTasks(extras: { showTasksPanel: () => void }): Disposable {
+  showTasksPanel = extras.showTasksPanel;
+  return { dispose: () => { showTasksPanel = null; } };
 }
 
 // ============================================
@@ -225,7 +219,7 @@ export function filterTasksBySession(): void {
  * tasks in memory so they stay visible on the dashboard.
  */
 export function handleTaskUpdate(event: TaskUpdateEvent): void {
-  if (!callbacks) return;
+  if (!showTasksPanel) return;
 
   if (event.sessionId) {
     teamState.taskSessionMap.set(event.teamId, event.sessionId);
@@ -242,7 +236,7 @@ export function handleTaskUpdate(event: TaskUpdateEvent): void {
     teamState.teamTasks.set(event.teamId, event.tasks);
   }
 
-  callbacks.showTasksPanel();
+  showTasksPanel?.();
   renderTaskBoard();
 }
 
@@ -250,7 +244,7 @@ export function handleTaskUpdate(event: TaskUpdateEvent): void {
  * Handle a task_completed event.
  */
 export function handleTaskCompleted(event: TaskCompletedEvent): void {
-  if (!callbacks) return;
+  if (!showTasksPanel) return;
 
   const teamId = event.teamId || '';
   const tasks = teamState.teamTasks.get(teamId);
@@ -261,6 +255,6 @@ export function handleTaskCompleted(event: TaskCompletedEvent): void {
     }
   }
 
-  callbacks.showTasksPanel();
+  showTasksPanel?.();
   renderTaskBoard();
 }

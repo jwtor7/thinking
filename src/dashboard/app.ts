@@ -44,6 +44,7 @@ import {
   ViewType,
   initViews,
   initViewTabs,
+  selectView,
   updateSessionViewTabs,
 } from './ui/views.ts';
 import {
@@ -72,6 +73,8 @@ import {
   getAgentDisplayName,
   findActiveAgent,
 } from './handlers/agents.ts';
+import type { AppContext } from './services/app-context.ts';
+import { DisposableGroup } from './services/lifecycle.ts';
 import {
   initSessions,
   updateSessionFilter,
@@ -469,17 +472,23 @@ if (state.selectedSession === 'all') {
   elements.tasksPanel?.classList.add('session-hidden');
 }
 
-// Initialize handler modules with callbacks
-initThinking({
-  getCurrentAgentContext,
-  getAgentDisplayName,
-  appendAndTrim,
-  smartScroll,
-});
+// Create unified application context
+const appContext: AppContext = {
+  ui: { appendAndTrim, smartScroll, showToast, announceStatus },
+  navigation: { selectSession, selectView: (view: string) => selectView(view as ViewType) },
+  agents: {
+    getCurrentContext: getCurrentAgentContext,
+    getDisplayName: getAgentDisplayName,
+    findActive: findActiveAgent,
+  },
+};
 
-initTools({
-  getCurrentAgentContext,
-  getAgentDisplayName,
+// Initialize handler modules with AppContext, collect disposables
+const handlerDisposables = new DisposableGroup();
+
+handlerDisposables.add(initThinking(appContext));
+
+handlerDisposables.add(initTools(appContext, {
   detectSendMessage: (
     input: string | undefined,
     agentId: string | undefined,
@@ -488,7 +497,6 @@ initTools({
   ) => {
     if (!input) return;
     try {
-      // Parse the SendMessage tool input (JSON format)
       const parsed = JSON.parse(input);
       const msgType = parsed.type || 'message';
       const sender = agentId || 'unknown';
@@ -509,57 +517,38 @@ initTools({
       // Not valid JSON, skip
     }
   },
-  appendAndTrim,
-  smartScroll,
-});
+}));
 
-initSessions({
+handlerDisposables.add(initSessions(appContext, {
   displayPlan,
   displayEmptyPlan,
   displaySessionPlanEmpty,
-  showToast,
   updateExportButtonState,
   clearAllPanels,
   setStatsSource,
-});
+}));
 
-initPlans({
-  findActiveAgent,
-  showToast,
-  announceStatus,
-});
+handlerDisposables.add(initPlans(appContext));
 
-initHooks({
-  appendAndTrim,
-  smartScroll,
-});
+handlerDisposables.add(initHooks(appContext));
 
-initTeam({
-  appendAndTrim,
-  smartScroll,
+handlerDisposables.add(initTeam(appContext, {
   showTeamPanel: () => {
-    // Show team panel when first team event arrives (remove panel-hidden)
     if (elements.teamPanel?.classList.contains('panel-hidden')) {
       elements.teamPanel.classList.remove('panel-hidden');
-      // Only show if currently in team view or will be visible
     }
   },
-});
+}));
 
-initTasks({
+handlerDisposables.add(initTasks({
   showTasksPanel: () => {
-    // Show tasks panel when first task event arrives (remove panel-hidden)
     if (elements.tasksPanel?.classList.contains('panel-hidden')) {
       elements.tasksPanel.classList.remove('panel-hidden');
     }
   },
-});
+}));
 
-initTimeline({
-  appendAndTrim,
-  smartScroll,
-  selectSession,
-});
+handlerDisposables.add(initTimeline(appContext));
 
 initDurationHistogram();
 
@@ -641,7 +630,7 @@ const ACTIVITY_UPDATE_INTERVAL_MS = 2_000; // Update every 2 seconds
 const ACTIVITY_IDLE_THRESHOLD_MS = 10_000; // Consider idle after 10s of no events
 
 // Set up activity pulse update interval
-setInterval(() => {
+const activityInterval = setInterval(() => {
   // Render stats bar on 2-second interval
   renderStats();
 
@@ -684,6 +673,7 @@ setInterval(() => {
     }
   }
 }, ACTIVITY_UPDATE_INTERVAL_MS);
+handlerDisposables.addInterval(activityInterval);
 
 debug('[Dashboard] Thinking Monitor initialized');
 debug('[Dashboard] Keyboard shortcuts: l/t/o/a/h/p/k/m=views (a aliases team), Shift+T/O/A/H/M/K/L=collapse, Shift+P=panel settings, c=clear, s=scroll, /=search, Esc=clear filters');

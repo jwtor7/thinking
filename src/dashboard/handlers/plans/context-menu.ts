@@ -7,15 +7,18 @@
 
 import { state } from '../../state.ts';
 import { elements } from '../../ui/elements.ts';
-import type { PlanCallbacks } from './index.ts';
-
 // ============================================
 // Module State
 // ============================================
 
-let callbacks: PlanCallbacks | null = null;
+interface ContextMenuCallbacks {
+  showToast: (message: string, type: 'success' | 'error' | 'info', duration?: number) => void;
+  announceStatus: (message: string) => void;
+}
 
-export function setContextMenuCallbacks(cbs: PlanCallbacks): void {
+let callbacks: ContextMenuCallbacks | null = null;
+
+export function setContextMenuCallbacks(cbs: ContextMenuCallbacks): void {
   callbacks = cbs;
 }
 

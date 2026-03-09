@@ -20,50 +20,18 @@ import {
 import { updateTabBadge } from '../ui/views.ts';
 import { getAgentBadgeColors, getSessionColorByFolder, getSessionColorByHash } from '../ui/colors.ts';
 import { getSessionDisplayName } from './sessions.ts';
+import type { AppContext } from '../services/app-context.ts';
+import type { Disposable } from '../services/lifecycle.ts';
+
+let ctx: AppContext | null = null;
 
 /**
- * Callback interface for functions that would cause circular imports.
- * Implemented in app.ts and passed via initThinking().
- */
-export interface ThinkingCallbacks {
-  /**
-   * Get the current agent context from the stack.
-   * Returns the agent ID of the most recently started active agent.
-   */
-  getCurrentAgentContext: () => string;
-
-  /**
-   * Get the display name for an agent ID.
-   * First looks up in the agents map, then falls back to truncated ID.
-   */
-  getAgentDisplayName: (agentId: string) => string;
-
-  /**
-   * Append an element to a container and trim old entries if needed.
-   * Maintains a maximum number of entries in the container.
-   */
-  appendAndTrim: (container: HTMLElement, element: HTMLElement) => void;
-
-  /**
-   * Smart scroll the container to the bottom if auto-scroll is enabled.
-   * Respects user scroll position and won't force scroll if user scrolled up.
-   */
-  smartScroll: (container: HTMLElement) => void;
-}
-
-/**
- * Callbacks instance - initialized via initThinking().
- */
-let callbacks: ThinkingCallbacks | null = null;
-
-/**
- * Initialize the thinking handler with required callbacks.
+ * Initialize the thinking handler with app context.
  * Must be called before any thinking events are processed.
- *
- * @param cbs Callbacks for functions that would cause circular imports
  */
-export function initThinking(cbs: ThinkingCallbacks): void {
-  callbacks = cbs;
+export function initThinking(appCtx: AppContext): Disposable {
+  ctx = appCtx;
+  return { dispose: () => { ctx = null; } };
 }
 
 /**
@@ -75,8 +43,8 @@ export function initThinking(cbs: ThinkingCallbacks): void {
  */
 export function handleThinking(event: ThinkingEvent): void {
   // Validate callbacks have been initialized
-  if (!callbacks) {
-    console.error('[Thinking Handler] Callbacks not initialized - call initThinking() first');
+  if (!ctx) {
+    console.error('[Thinking Handler] Not initialized - call initThinking() first');
     return;
   }
 
@@ -95,7 +63,7 @@ export function handleThinking(event: ThinkingEvent): void {
   const eventAgentId = event.agentId;
   let agentId = eventAgentId;
   if (!agentId) {
-    const contextAgentId = callbacks.getCurrentAgentContext();
+    const contextAgentId = ctx.agents.getCurrentContext();
     // Check if context agent belongs to this session
     const contextAgent = subagentState.subagents.get(contextAgentId);
     if (contextAgent && contextAgent.parentSessionId === sessionId) {
@@ -104,7 +72,7 @@ export function handleThinking(event: ThinkingEvent): void {
       agentId = 'main';
     }
   }
-  const agentDisplayName = callbacks.getAgentDisplayName(agentId);
+  const agentDisplayName = ctx.agents.getDisplayName(agentId);
 
   // Clear empty state if present
   const emptyState = elements.thinkingContent.querySelector('.empty-state');
@@ -173,10 +141,10 @@ export function handleThinking(event: ThinkingEvent): void {
   applyThinkingFilter(entry);
 
   // Append to container and maintain max entries
-  callbacks.appendAndTrim(elements.thinkingContent, entry);
+  ctx.ui.appendAndTrim(elements.thinkingContent, entry);
 
   // Smart scroll if auto-scroll is enabled
-  callbacks.smartScroll(elements.thinkingContent);
+  ctx.ui.smartScroll(elements.thinkingContent);
 
   // Remove 'new' class after animation
   setTimeout(() => entry.classList.remove('new'), 1000);

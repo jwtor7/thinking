@@ -16,6 +16,8 @@ import { selectAgentFilter, resolveSessionId } from './sessions.ts';
 import type { TeamUpdateEvent, TeammateIdleEvent, MessageSentEvent, ThinkingEvent } from '../types.ts';
 import { updateTabBadge } from '../ui/views.ts';
 import { BoundedMap } from '../../shared/bounded-map.ts';
+import type { AppContext } from '../services/app-context.ts';
+import type { Disposable } from '../services/lifecycle.ts';
 
 // ============================================
 // Constants
@@ -47,28 +49,21 @@ interface AgentThinkingEntry {
 const agentThinkingEntries: BoundedMap<string, AgentThinkingEntry[]> = new BoundedMap(100);
 let selectedViewAgent: string | null = null;
 
-// ============================================
-// Callback Interface
-// ============================================
-
-export interface TeamCallbacks {
-  appendAndTrim: (container: HTMLElement, element: HTMLElement) => void;
-  smartScroll: (container: HTMLElement) => void;
-  showTeamPanel: () => void;
-}
-
-let callbacks: TeamCallbacks | null = null;
+let ctx: AppContext | null = null;
+let showTeamPanel: (() => void) | null = null;
 
 /**
- * Initialize the team handler with required callbacks.
+ * Initialize the team handler with app context.
  */
-export function initTeam(cbs: TeamCallbacks): void {
-  callbacks = cbs;
+export function initTeam(appCtx: AppContext, extras: { showTeamPanel: () => void }): Disposable {
+  ctx = appCtx;
+  showTeamPanel = extras.showTeamPanel;
   loadTeamSectionCollapseState();
   initTeamSectionToggles();
   for (const sectionName of ['members', 'hierarchy', 'agents'] as const) {
     applyTeamSectionCollapse(sectionName, false);
   }
+  return { dispose: () => { ctx = null; showTeamPanel = null; } };
 }
 
 function getTeamSectionElements(sectionName: TeamSectionName): {
@@ -450,7 +445,7 @@ function renderTeamAgentList(): void {
  * Handle a team_update event.
  */
 export function handleTeamUpdate(event: TeamUpdateEvent): void {
-  if (!callbacks) return;
+  if (!ctx) return;
 
   const teamName = event.teamName;
   teamState.teams.set(teamName, event.members);
@@ -467,7 +462,7 @@ export function handleTeamUpdate(event: TeamUpdateEvent): void {
     return;
   }
 
-  callbacks.showTeamPanel();
+  showTeamPanel?.();
   updateTeamHeader(teamName);
   renderMemberGrid(teamName);
   renderTeamAgentList();
@@ -545,7 +540,7 @@ export function filterTeamBySession(): void {
  * Handle a teammate_idle event.
  */
 export function handleTeammateIdle(event: TeammateIdleEvent): void {
-  if (!callbacks) return;
+  if (!ctx) return;
 
   const teamName = event.teamName;
   if (!teamName) return;
@@ -565,7 +560,7 @@ export function handleTeammateIdle(event: TeammateIdleEvent): void {
   if (members) {
     renderMemberGrid(teamName);
   }
-  callbacks.showTeamPanel();
+  showTeamPanel?.();
   updateTeamTabCount();
 }
 
@@ -573,7 +568,7 @@ export function handleTeammateIdle(event: TeammateIdleEvent): void {
  * Handle a message_sent event.
  */
 export function handleMessageSent(event: MessageSentEvent): void {
-  if (!callbacks) return;
+  if (!ctx) return;
 
   teamState.teamMessages.push(event);
 
@@ -581,7 +576,7 @@ export function handleMessageSent(event: MessageSentEvent): void {
   if (state.selectedSession === 'all') return;
   if (!event.sessionId || event.sessionId !== state.selectedSession) return;
 
-  callbacks.showTeamPanel();
+  showTeamPanel?.();
 
   const messagesContainer = elements.teamMessages;
   if (!messagesContainer) return;
@@ -621,8 +616,8 @@ export function handleMessageSent(event: MessageSentEvent): void {
     ${event.summary ? `<div class="team-message-summary">${escapeHtml(event.summary)}</div>` : ''}
   `;
 
-  callbacks.appendAndTrim(messagesContainer, entry);
-  callbacks.smartScroll(messagesContainer);
+  ctx?.ui.appendAndTrim(messagesContainer, entry);
+  ctx?.ui.smartScroll(messagesContainer);
 
   entry.classList.add('new');
   setTimeout(() => entry.classList.remove('new'), 1000);

@@ -9,4 +9,3 @@ export {
   resetTypeChips,
   refreshSessionChips,
 } from './timeline/index.ts';
-export type { TimelineCallbacks } from './timeline/index.ts';

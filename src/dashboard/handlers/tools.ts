@@ -20,6 +20,8 @@ import { updateTabBadge } from '../ui/views.ts';
 import { saveSessionPlanAssociation } from '../storage/persistence.ts';
 import { debug } from '../utils/debug.ts';
 import type { ToolStartEvent, ToolEndEvent } from '../types.ts';
+import type { AppContext } from '../services/app-context.ts';
+import type { Disposable } from '../services/lifecycle.ts';
 
 // ============================================
 // Utilities
@@ -38,24 +40,16 @@ function processEscapes(str: string): string {
 }
 
 // ============================================
-// Callback Interface
+// Handler-specific callbacks
 // ============================================
 
-/**
- * Callbacks for functions that cannot be directly imported
- * due to circular dependency concerns.
- */
-export interface ToolsCallbacks {
-  getCurrentAgentContext: () => string;
-  getAgentDisplayName: (agentId: string) => string;
+export interface ToolsSpecific {
   detectSendMessage: (
     input: string | undefined,
     agentId: string | undefined,
     sessionId: string | undefined,
     timestamp: string
   ) => void;
-  appendAndTrim: (container: HTMLElement, element: HTMLElement) => void;
-  smartScroll: (container: HTMLElement) => void;
 }
 
 // ============================================
@@ -88,14 +82,17 @@ function detectPlanAccess(input: string, sessionId: string): void {
   }
 }
 
-let callbacks: ToolsCallbacks | null = null;
+let ctx: AppContext | null = null;
+let specific: ToolsSpecific | null = null;
 
 /**
- * Initialize the tools handler with required callbacks.
+ * Initialize the tools handler with app context.
  * Must be called before handling any tool events.
  */
-export function initTools(cbs: ToolsCallbacks): void {
-  callbacks = cbs;
+export function initTools(appCtx: AppContext, extras: ToolsSpecific): Disposable {
+  ctx = appCtx;
+  specific = extras;
+  return { dispose: () => { ctx = null; specific = null; } };
 }
 
 // ============================================
@@ -115,7 +112,7 @@ export function initTools(cbs: ToolsCallbacks): void {
  * - Read/Write/Edit: Detects plan file access for session association
  */
 export function handleToolStart(event: ToolStartEvent): void {
-  if (!callbacks) {
+  if (!ctx || !specific) {
     console.error('[Tools] Handler not initialized - call initTools first');
     return;
   }
@@ -132,7 +129,7 @@ export function handleToolStart(event: ToolStartEvent): void {
   const eventAgentId = event.agentId;
   let agentId = eventAgentId;
   if (!agentId) {
-    const contextAgentId = callbacks.getCurrentAgentContext();
+    const contextAgentId = ctx.agents.getCurrentContext();
     // Check if context agent belongs to this session
     const contextAgent = subagentState.subagents.get(contextAgentId);
     if (contextAgent && contextAgent.parentSessionId === sessionId) {
@@ -150,7 +147,7 @@ export function handleToolStart(event: ToolStartEvent): void {
 
   // Detect SendMessage tool calls for inter-agent message tracking
   if (toolName === 'SendMessage') {
-    callbacks.detectSendMessage(input, agentId, event.sessionId, event.timestamp);
+    specific.detectSendMessage(input, agentId, event.sessionId, event.timestamp);
   }
 
   state.toolsCount++;
@@ -186,7 +183,7 @@ export function handleToolStart(event: ToolStartEvent): void {
   const preview = summarizeInput(input, toolName);
 
   // Get the display name for this agent
-  const agentDisplayName = callbacks.getAgentDisplayName(agentId);
+  const agentDisplayName = ctx.agents.getDisplayName(agentId);
 
   // Get agent badge colors for visual distinction (WCAG AA compliant)
   const agentBadgeColors = getAgentBadgeColors(agentDisplayName);
@@ -249,8 +246,8 @@ export function handleToolStart(event: ToolStartEvent): void {
   // Apply filter
   applyToolsFilter(entry);
 
-  callbacks.appendAndTrim(elements.toolsContent, entry);
-  callbacks.smartScroll(elements.toolsContent);
+  ctx.ui.appendAndTrim(elements.toolsContent, entry);
+  ctx.ui.smartScroll(elements.toolsContent);
 
   // Remove 'new' class after animation
   setTimeout(() => entry.classList.remove('new'), 1000);

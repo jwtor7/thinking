@@ -8,6 +8,8 @@
 import { state, ALL_SESSIONS } from '../../state.ts';
 import { elements } from '../../ui/elements.ts';
 import type { StrictMonitorEvent } from '../../../shared/types.ts';
+import type { AppContext } from '../../services/app-context.ts';
+import type { Disposable } from '../../services/lifecycle.ts';
 
 import {
   TIMELINE_CATEGORIES,
@@ -31,17 +33,12 @@ import {
 // Public API
 // ============================================
 
-export interface TimelineCallbacks {
-  appendAndTrim: (container: HTMLElement, element: HTMLElement) => void;
-  smartScroll: (container: HTMLElement) => void;
-  selectSession: (sessionId: string) => void;
-}
-
-export function initTimeline(cbs: TimelineCallbacks): void {
-  initEntries(cbs);
+export function initTimeline(appCtx: AppContext): Disposable {
+  initEntries(appCtx);
   initTimelineFilter();
   initTypeChips(applyTimelineFilter);
   loadSessionFilterState();
+  return { dispose: () => {} };
 }
 
 export function addTimelineEntry(event: StrictMonitorEvent): void {

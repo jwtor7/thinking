@@ -11,37 +11,24 @@
 
 import { setInternalCallbacks } from './state.ts';
 import { setContextMenuCallbacks } from './context-menu.ts';
-
-// ============================================
-// Types
-// ============================================
-
-/**
- * Callbacks for plan operations that require functions
- * from other modules. This pattern avoids circular imports.
- */
-export interface PlanCallbacks {
-  /** Find the currently active (running) agent */
-  findActiveAgent: () => { id: string } | undefined;
-  /** Show a toast notification */
-  showToast: (message: string, type: 'success' | 'error' | 'info', duration?: number) => void;
-  /** Announce status for screen readers */
-  announceStatus: (message: string) => void;
-}
+import type { AppContext } from '../../services/app-context.ts';
+import type { Disposable } from '../../services/lifecycle.ts';
 
 // ============================================
 // Initialization
 // ============================================
 
 /**
- * Initialize the plans module with callbacks.
+ * Initialize the plans module with app context.
  * Must be called before using functions that depend on other modules.
- *
- * @param cbs - Callback functions for cross-module operations
  */
-export function initPlans(cbs: PlanCallbacks): void {
-  setInternalCallbacks({ findActiveAgent: cbs.findActiveAgent });
-  setContextMenuCallbacks(cbs);
+export function initPlans(appCtx: AppContext): Disposable {
+  setInternalCallbacks({ findActiveAgent: () => appCtx.agents.findActive() });
+  setContextMenuCallbacks({
+    showToast: appCtx.ui.showToast,
+    announceStatus: appCtx.ui.announceStatus,
+  });
+  return { dispose: () => {} };
 }
 
 // ============================================

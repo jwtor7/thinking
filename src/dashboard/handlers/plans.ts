@@ -5,8 +5,6 @@
  * This file preserves the original import paths.
  */
 
-export type { PlanCallbacks } from './plans/index.ts';
-
 export {
   initPlans,
   handlePlanList,

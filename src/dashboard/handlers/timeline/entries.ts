@@ -229,17 +229,13 @@ export function getEventSummary(event: StrictMonitorEvent): string {
 // Entry Creation
 // ============================================
 
-export interface EntryCallbacks {
-  appendAndTrim: (container: HTMLElement, element: HTMLElement) => void;
-  smartScroll: (container: HTMLElement) => void;
-  selectSession: (sessionId: string) => void;
-}
+import type { AppContext } from '../../services/app-context.ts';
 
-let entryCallbacks: EntryCallbacks | null = null;
+let entryCtx: AppContext | null = null;
 let timelineCount = 0;
 
-export function initEntries(cbs: EntryCallbacks): void {
-  entryCallbacks = cbs;
+export function initEntries(appCtx: AppContext): void {
+  entryCtx = appCtx;
 }
 
 export function getTimelineCount(): number {
@@ -251,7 +247,7 @@ export function resetTimelineCount(): void {
 }
 
 export function addTimelineEntry(event: StrictMonitorEvent, applyFilter: () => void): void {
-  if (!entryCallbacks) return;
+  if (!entryCtx) return;
 
   const entriesContainer = elements.timelineEntries;
   if (!entriesContainer) return;
@@ -366,14 +362,14 @@ export function addTimelineEntry(event: StrictMonitorEvent, applyFilter: () => v
 
   entriesContainer.appendChild(entry);
   applyFilter();
-  entryCallbacks.smartScroll(entriesContainer);
+  entryCtx.ui.smartScroll(entriesContainer);
 
   setTimeout(() => entry.classList.remove('new'), 1000);
 }
 
 function navigateToThinkingEntry(eventTimestamp: string, sessionId?: string): void {
-  if (sessionId && entryCallbacks) {
-    entryCallbacks.selectSession(sessionId);
+  if (sessionId && entryCtx) {
+    entryCtx.navigation.selectSession(sessionId);
   }
 
   selectView('thinking');

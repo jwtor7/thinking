@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-03-09 - v1.5.0
+
+### Added
+- **AppContext** - Unified dependency injection interface replacing 7+ separate callback interfaces (`src/dashboard/services/app-context.ts`)
+- **DisposableGroup** - Lifecycle management for intervals, timeouts, and disposable resources (`src/dashboard/services/lifecycle.ts`)
+- 5 unit tests for DisposableGroup (dispose-all, interval cleanup, timeout cleanup, error tolerance, idempotent dispose)
+
+### Changed
+- All handler `init*()` functions now accept `AppContext` instead of individual callback interfaces and return `Disposable`
+- **hooks.ts** - Uses `ctx.ui.appendAndTrim/smartScroll` via AppContext
+- **thinking.ts** - Uses `ctx.agents.getCurrentContext/getDisplayName` and `ctx.ui` via AppContext
+- **tools.ts** - Uses AppContext for common ops, handler-specific `ToolsSpecific` for `detectSendMessage`
+- **team.ts** - Uses AppContext for UI ops, separate `showTeamPanel` callback
+- **tasks.ts** - Simplified init with just `showTasksPanel` callback, returns Disposable
+- **sessions.ts** - Uses AppContext for `showToast`, session-specific callbacks via `SessionSpecific`, timer intervals tracked by DisposableGroup
+- **plans/index.ts** - Uses AppContext for `showToast`, `announceStatus`, and `agents.findActive`
+- **timeline/entries.ts** - Uses `entryCtx.navigation.selectSession` and `entryCtx.ui.smartScroll` via AppContext
+- **app.ts** - Creates single `AppContext` instance, passes to all handlers, collects `Disposable` returns into `handlerDisposables` group, activity pulse interval tracked
+
+### Removed
+- `HooksCallbacks`, `ThinkingCallbacks`, `ToolsCallbacks`, `TeamCallbacks`, `TasksCallbacks`, `SessionCallbacks`, `PlanCallbacks`, `TimelineCallbacks`, `EntryCallbacks` interfaces (replaced by AppContext)
+
+---
+
 ## 2026-03-09 — v1.4.0
 
 ### Changed

@@ -34,7 +34,7 @@ describe('Collaboration Refactor: Team + Agents Merge', () => {
 
     it('propagates sessionId when converting SendMessage tool calls into message_sent', () => {
       expect(toolsHandlerContent).toContain('sessionId: string | undefined,');
-      expect(toolsHandlerContent).toContain('callbacks.detectSendMessage(input, agentId, event.sessionId, event.timestamp);');
+      expect(toolsHandlerContent).toContain('specific.detectSendMessage(input, agentId, event.sessionId, event.timestamp);');
       expect(appContent).toContain('sessionId: string | undefined,');
       expect(appContent).toContain('sessionId,');
     });

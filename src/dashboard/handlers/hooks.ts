@@ -15,31 +15,20 @@ import { getSessionDisplayName } from './sessions.ts';
 import type { HookExecutionEvent } from '../types.ts';
 import { matchesSessionFilter } from '../services/filter-service.ts';
 import { updateTabBadge, selectView } from '../ui/views.ts';
+import type { AppContext } from '../services/app-context.ts';
+import type { Disposable } from '../services/lifecycle.ts';
 
-// ============================================
-// Callback Interface
-// ============================================
-
-/**
- * Callbacks for functions that cannot be directly imported
- * due to circular dependency concerns.
- */
-export interface HooksCallbacks {
-  appendAndTrim: (container: HTMLElement, element: HTMLElement) => void;
-  smartScroll: (container: HTMLElement) => void;
-}
-
-let callbacks: HooksCallbacks | null = null;
+let ctx: AppContext | null = null;
 
 // Current filter state
 let hooksFilter: string = 'all';
 
 /**
- * Initialize the hooks handler with required callbacks.
+ * Initialize the hooks handler with app context.
  * Must be called before handling any hook events.
  */
-export function initHooks(cbs: HooksCallbacks): void {
-  callbacks = cbs;
+export function initHooks(appCtx: AppContext): Disposable {
+  ctx = appCtx;
 
   // Set up filter change listener
   elements.hooksFilter?.addEventListener('change', (e) => {
@@ -47,6 +36,8 @@ export function initHooks(cbs: HooksCallbacks): void {
     filterAllHooks();
     updateHooksCount();
   });
+
+  return { dispose: () => { ctx = null; } };
 }
 
 // ============================================
@@ -212,7 +203,7 @@ export function updateHooksCount(): void {
  * - Output preview (if present)
  */
 export function handleHookExecution(event: HookExecutionEvent): void {
-  if (!callbacks) {
+  if (!ctx) {
     console.error('[Hooks] Handler not initialized - call initHooks first');
     return;
   }
@@ -391,8 +382,8 @@ export function handleHookExecution(event: HookExecutionEvent): void {
   if (elements.hooksContent) {
     // Apply filter before adding to DOM
     applyHooksFilter(entry);
-    callbacks.appendAndTrim(elements.hooksContent, entry);
-    callbacks.smartScroll(elements.hooksContent);
+    ctx.ui.appendAndTrim(elements.hooksContent, entry);
+    ctx.ui.smartScroll(elements.hooksContent);
   }
 
   // Add click handler for tool name -> scroll to matching tool entry

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 
 const viewsContent = readFileSync(new URL('./ui/views.ts', import.meta.url), 'utf-8');
 const stateContent = readFileSync(new URL('./state.ts', import.meta.url), 'utf-8');
-const timelineIndexContent = readFileSync(new URL('./handlers/timeline/index.ts', import.meta.url), 'utf-8');
 const timelineEntriesContent = readFileSync(new URL('./handlers/timeline/entries.ts', import.meta.url), 'utf-8');
 const sessionsContent = readFileSync(new URL('./handlers/sessions.ts', import.meta.url), 'utf-8');
 const filtersContent = readFileSync(new URL('./ui/filters.ts', import.meta.url), 'utf-8');
@@ -38,9 +37,8 @@ describe('Dashboard Navigation Behavior', () => {
   });
 
   it('should select session when navigating from timeline thinking entries', () => {
-    expect(timelineIndexContent).toContain('selectSession: (sessionId: string) => void;');
     expect(timelineEntriesContent).toContain('navigateToThinkingEntry(event.timestamp, resolvedSessionId)');
-    expect(timelineEntriesContent).toContain('entryCallbacks.selectSession(sessionId);');
+    expect(timelineEntriesContent).toContain('entryCtx.navigation.selectSession(sessionId);');
   });
 
   it('should clear stale selected agent when session changes', () => {

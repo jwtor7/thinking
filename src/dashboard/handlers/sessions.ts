@@ -18,6 +18,8 @@ import { filterTeamBySession } from './team.ts';
 import { filterTasksBySession } from './tasks.ts';
 import { applyTimelineFilter, refreshSessionChips } from './timeline.ts';
 import type { SessionStartEvent, SessionStopEvent } from '../types.ts';
+import type { AppContext } from '../services/app-context.ts';
+import { DisposableGroup, type Disposable } from '../services/lifecycle.ts';
 
 // ============================================
 // Activity Tracking Constants
@@ -36,36 +38,42 @@ let activityCheckerInterval: ReturnType<typeof setInterval> | null = null;
 let durationInterval: ReturnType<typeof setInterval> | null = null;
 
 // ============================================
-// Callback Pattern for Circular Import Prevention
+// Session-specific callbacks
 // ============================================
 
-/**
- * Callbacks for functions that live in other modules.
- * This prevents circular imports while allowing session handlers
- * to trigger plan and todo updates.
- */
-export interface SessionCallbacks {
+export interface SessionSpecific {
   displayPlan: (planPath: string) => void;
   displayEmptyPlan: () => void;
   displaySessionPlanEmpty: (sessionId: string) => void;
-  showToast: (message: string, type: 'success' | 'error' | 'info', duration?: number) => void;
   updateExportButtonState: () => void;
   clearAllPanels: () => void;
   setStatsSource: (sessionId: string) => void;
 }
 
-let callbacks: SessionCallbacks | null = null;
+let ctx: AppContext | null = null;
+let specific: SessionSpecific | null = null;
 
 /**
- * Initialize session handlers with callbacks to other modules.
+ * Initialize session handlers with app context.
  * Must be called before any session events are processed.
  */
-export function initSessions(cbs: SessionCallbacks): void {
-  callbacks = cbs;
+export function initSessions(appCtx: AppContext, extras: SessionSpecific): Disposable {
+  ctx = appCtx;
+  specific = extras;
+  const disposables = new DisposableGroup();
   // Start the activity checker when sessions are initialized
   startActivityChecker();
+  if (activityCheckerInterval) disposables.addInterval(activityCheckerInterval);
   // Start the session duration timer (updates footer every 60s)
   startDurationTimer();
+  if (durationInterval) disposables.addInterval(durationInterval);
+  return {
+    dispose: () => {
+      disposables.dispose();
+      ctx = null;
+      specific = null;
+    },
+  };
 }
 
 // ============================================
@@ -420,7 +428,7 @@ export function updateSessionFilter(): void {
   const clearBtn = filterEl.querySelector('.session-filter-clear-btn');
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
-      if (callbacks) callbacks.clearAllPanels();
+      if (specific) specific.clearAllPanels();
     });
   }
 
@@ -505,30 +513,22 @@ export function selectSession(sessionId: string): void {
     const associatedPlanPath = state.sessionPlanMap.get(resolvedSessionId);
     if (associatedPlanPath) {
       // Show this session's plan
-      if (callbacks) {
-        callbacks.displayPlan(associatedPlanPath);
-      }
+      specific?.displayPlan(associatedPlanPath);
     } else {
       // No plan associated with this session - show a helpful message
-      if (callbacks) {
-        callbacks.displaySessionPlanEmpty(resolvedSessionId);
-      }
+      specific?.displaySessionPlanEmpty(resolvedSessionId);
     }
   }
 
   // Update stats bar to show session-specific stats
-  if (callbacks) {
-    callbacks.setStatsSource(resolvedSessionId);
-  }
+  specific?.setStatsSource(resolvedSessionId);
 
   // Filter team and tasks panels by session
   filterTeamBySession();
   filterTasksBySession();
 
   // Update export button state (disabled when "All" is selected)
-  if (callbacks) {
-    callbacks.updateExportButtonState();
-  }
+  specific?.updateExportButtonState();
 }
 
 /**
@@ -615,18 +615,14 @@ export function handleRevealSessionInFinder(): void {
         const text = await response.text();
         console.error('[Dashboard] Reveal in Finder failed:', response.status, text);
         // Fallback: show a toast with the path
-        if (callbacks) {
-          callbacks.showToast(`Path: ${path}`, 'info', 5000);
-        }
+        ctx?.ui.showToast(`Path: ${path}`, 'info', 5000);
       } else {
         debug('[Dashboard] Reveal in Finder succeeded');
       }
     })
     .catch(err => {
       console.error('[Dashboard] Reveal in Finder fetch error:', err);
-      if (callbacks) {
-        callbacks.showToast(`Path: ${path}`, 'info', 5000);
-      }
+      ctx?.ui.showToast(`Path: ${path}`, 'info', 5000);
     });
 
   hideSessionContextMenu();

@@ -1772,14 +1772,20 @@
   };
   var agentThinkingEntries = new BoundedMap(100);
   var selectedViewAgent = null;
-  var callbacks4 = null;
-  function initTeam(cbs) {
-    callbacks4 = cbs;
+  var ctx = null;
+  var showTeamPanel = null;
+  function initTeam(appCtx, extras) {
+    ctx = appCtx;
+    showTeamPanel = extras.showTeamPanel;
     loadTeamSectionCollapseState();
     initTeamSectionToggles();
     for (const sectionName of ["members", "hierarchy", "agents"]) {
       applyTeamSectionCollapse(sectionName, false);
     }
+    return { dispose: () => {
+      ctx = null;
+      showTeamPanel = null;
+    } };
   }
   function getTeamSectionElements(sectionName) {
     if (sectionName === "members") {
@@ -2078,7 +2084,7 @@
     updateTeamTabCount();
   }
   function handleTeamUpdate(event) {
-    if (!callbacks4) return;
+    if (!ctx) return;
     const teamName = event.teamName;
     teamState.teams.set(teamName, event.members);
     resolveTeamSession(teamName, event.sessionId, event.members);
@@ -2089,7 +2095,7 @@
     if (!teamSession || teamSession !== state.selectedSession) {
       return;
     }
-    callbacks4.showTeamPanel();
+    showTeamPanel?.();
     updateTeamHeader(teamName);
     renderMemberGrid(teamName);
     renderTeamAgentList();
@@ -2146,7 +2152,7 @@
     renderTeamAgentList();
   }
   function handleTeammateIdle(event) {
-    if (!callbacks4) return;
+    if (!ctx) return;
     const teamName = event.teamName;
     if (!teamName) return;
     const members = teamState.teams.get(teamName);
@@ -2162,15 +2168,15 @@
     if (members) {
       renderMemberGrid(teamName);
     }
-    callbacks4.showTeamPanel();
+    showTeamPanel?.();
     updateTeamTabCount();
   }
   function handleMessageSent(event) {
-    if (!callbacks4) return;
+    if (!ctx) return;
     teamState.teamMessages.push(event);
     if (state.selectedSession === "all") return;
     if (!event.sessionId || event.sessionId !== state.selectedSession) return;
-    callbacks4.showTeamPanel();
+    showTeamPanel?.();
     const messagesContainer = elements.teamMessages;
     if (!messagesContainer) return;
     const emptyState2 = messagesContainer.querySelector(".empty-state");
@@ -2199,8 +2205,8 @@
     </div>
     ${event.summary ? `<div class="team-message-summary">${escapeHtml(event.summary)}</div>` : ""}
   `;
-    callbacks4.appendAndTrim(messagesContainer, entry);
-    callbacks4.smartScroll(messagesContainer);
+    ctx?.ui.appendAndTrim(messagesContainer, entry);
+    ctx?.ui.smartScroll(messagesContainer);
     entry.classList.add("new");
     setTimeout(() => entry.classList.remove("new"), 1e3);
     updateTeamTabCount();
@@ -2238,9 +2244,12 @@
   }
 
   // src/dashboard/handlers/tasks.ts
-  var callbacks5 = null;
-  function initTasks(cbs) {
-    callbacks5 = cbs;
+  var showTasksPanel = null;
+  function initTasks(extras) {
+    showTasksPanel = extras.showTasksPanel;
+    return { dispose: () => {
+      showTasksPanel = null;
+    } };
   }
   function renderTaskCard(task) {
     const ownerBadge = task.owner ? (() => {
@@ -2369,7 +2378,7 @@
     renderTaskBoard();
   }
   function handleTaskUpdate(event) {
-    if (!callbacks5) return;
+    if (!showTasksPanel) return;
     if (event.sessionId) {
       teamState.taskSessionMap.set(event.teamId, event.sessionId);
     }
@@ -2383,11 +2392,11 @@
     } else {
       teamState.teamTasks.set(event.teamId, event.tasks);
     }
-    callbacks5.showTasksPanel();
+    showTasksPanel?.();
     renderTaskBoard();
   }
   function handleTaskCompleted(event) {
-    if (!callbacks5) return;
+    if (!showTasksPanel) return;
     const teamId = event.teamId || "";
     const tasks = teamState.teamTasks.get(teamId);
     if (tasks) {
@@ -2396,7 +2405,7 @@
         task.status = "completed";
       }
     }
-    callbacks5.showTasksPanel();
+    showTasksPanel?.();
     renderTaskBoard();
   }
 
@@ -2776,16 +2785,16 @@
         return "Unknown event";
     }
   }
-  var entryCallbacks = null;
+  var entryCtx = null;
   var timelineCount = 0;
-  function initEntries(cbs) {
-    entryCallbacks = cbs;
+  function initEntries(appCtx) {
+    entryCtx = appCtx;
   }
   function getTimelineCount() {
     return timelineCount;
   }
   function addTimelineEntry(event, applyFilter) {
-    if (!entryCallbacks) return;
+    if (!entryCtx) return;
     const entriesContainer = elements.timelineEntries;
     if (!entriesContainer) return;
     if (event.type === "connection_status" || event.type === "subagent_mapping" || event.type === "plan_list") {
@@ -2883,12 +2892,12 @@ Session: ${resolvedSessionId || ""}`;
     }
     entriesContainer.appendChild(entry);
     applyFilter();
-    entryCallbacks.smartScroll(entriesContainer);
+    entryCtx.ui.smartScroll(entriesContainer);
     setTimeout(() => entry.classList.remove("new"), 1e3);
   }
   function navigateToThinkingEntry(eventTimestamp, sessionId) {
-    if (sessionId && entryCallbacks) {
-      entryCallbacks.selectSession(sessionId);
+    if (sessionId && entryCtx) {
+      entryCtx.navigation.selectSession(sessionId);
     }
     selectView("thinking");
     const thinkingContent = elements.thinkingContent;
@@ -2915,11 +2924,13 @@ Session: ${resolvedSessionId || ""}`;
   }
 
   // src/dashboard/handlers/timeline/index.ts
-  function initTimeline(cbs) {
-    initEntries(cbs);
+  function initTimeline(appCtx) {
+    initEntries(appCtx);
     initTimelineFilter();
     initTypeChips(applyTimelineFilter);
     loadSessionFilterState();
+    return { dispose: () => {
+    } };
   }
   function addTimelineEntry2(event) {
     addTimelineEntry(event, applyTimelineFilter);
@@ -3010,16 +3021,69 @@ Session: ${resolvedSessionId || ""}`;
     }
   }
 
+  // src/dashboard/services/lifecycle.ts
+  var DisposableGroup = class {
+    disposables = [];
+    /**
+     * Add a disposable resource to the group.
+     */
+    add(disposable) {
+      this.disposables.push(disposable);
+    }
+    /**
+     * Register an interval and track it for disposal.
+     */
+    addInterval(id) {
+      this.disposables.push({ dispose: () => clearInterval(id) });
+    }
+    /**
+     * Register a timeout and track it for disposal.
+     */
+    addTimeout(id) {
+      this.disposables.push({ dispose: () => clearTimeout(id) });
+    }
+    /**
+     * Dispose all tracked resources.
+     */
+    dispose() {
+      for (const d of this.disposables) {
+        try {
+          d.dispose();
+        } catch {
+        }
+      }
+      this.disposables = [];
+    }
+    /**
+     * Get the number of tracked disposables (for debugging).
+     */
+    get size() {
+      return this.disposables.length;
+    }
+  };
+
   // src/dashboard/handlers/sessions.ts
   var ACTIVITY_THRESHOLD_MS = 1e4;
   var ACTIVITY_CHECK_INTERVAL_MS = 5e3;
   var activityCheckerInterval = null;
   var durationInterval = null;
-  var callbacks6 = null;
-  function initSessions(cbs) {
-    callbacks6 = cbs;
+  var ctx2 = null;
+  var specific = null;
+  function initSessions(appCtx, extras) {
+    ctx2 = appCtx;
+    specific = extras;
+    const disposables = new DisposableGroup();
     startActivityChecker();
+    if (activityCheckerInterval) disposables.addInterval(activityCheckerInterval);
     startDurationTimer();
+    if (durationInterval) disposables.addInterval(durationInterval);
+    return {
+      dispose: () => {
+        disposables.dispose();
+        ctx2 = null;
+        specific = null;
+      }
+    };
   }
   function getSessionDisplayName(workingDirectory, sessionId) {
     if (workingDirectory) {
@@ -3224,7 +3288,7 @@ Session: ${resolvedSessionId || ""}`;
     const clearBtn = filterEl.querySelector(".session-filter-clear-btn");
     if (clearBtn) {
       clearBtn.addEventListener("click", () => {
-        if (callbacks6) callbacks6.clearAllPanels();
+        if (specific) specific.clearAllPanels();
       });
     }
     const dropdown = filterEl.querySelector(".session-dropdown");
@@ -3275,23 +3339,15 @@ Session: ${resolvedSessionId || ""}`;
     } else {
       const associatedPlanPath = state.sessionPlanMap.get(resolvedSessionId);
       if (associatedPlanPath) {
-        if (callbacks6) {
-          callbacks6.displayPlan(associatedPlanPath);
-        }
+        specific?.displayPlan(associatedPlanPath);
       } else {
-        if (callbacks6) {
-          callbacks6.displaySessionPlanEmpty(resolvedSessionId);
-        }
+        specific?.displaySessionPlanEmpty(resolvedSessionId);
       }
     }
-    if (callbacks6) {
-      callbacks6.setStatsSource(resolvedSessionId);
-    }
+    specific?.setStatsSource(resolvedSessionId);
     filterTeamBySession();
     filterTasksBySession();
-    if (callbacks6) {
-      callbacks6.updateExportButtonState();
-    }
+    specific?.updateExportButtonState();
   }
   function selectAgentFilter(agentId) {
     state.selectedAgentId = agentId;
@@ -3320,17 +3376,13 @@ Session: ${resolvedSessionId || ""}`;
       if (!response.ok) {
         const text = await response.text();
         console.error("[Dashboard] Reveal in Finder failed:", response.status, text);
-        if (callbacks6) {
-          callbacks6.showToast(`Path: ${path}`, "info", 5e3);
-        }
+        ctx2?.ui.showToast(`Path: ${path}`, "info", 5e3);
       } else {
         debug("[Dashboard] Reveal in Finder succeeded");
       }
     }).catch((err) => {
       console.error("[Dashboard] Reveal in Finder fetch error:", err);
-      if (callbacks6) {
-        callbacks6.showToast(`Path: ${path}`, "info", 5e3);
-      }
+      ctx2?.ui.showToast(`Path: ${path}`, "info", 5e3);
     });
     hideSessionContextMenu();
   }
@@ -3411,15 +3463,18 @@ Session: ${id}` : `Session: ${id}`;
   }
 
   // src/dashboard/handlers/hooks.ts
-  var callbacks7 = null;
+  var ctx3 = null;
   var hooksFilter = "all";
-  function initHooks(cbs) {
-    callbacks7 = cbs;
+  function initHooks(appCtx) {
+    ctx3 = appCtx;
     elements.hooksFilter?.addEventListener("change", (e) => {
       hooksFilter = e.target.value;
       filterAllHooks();
       updateHooksCount();
     });
+    return { dispose: () => {
+      ctx3 = null;
+    } };
   }
   function getDecisionClass(decision) {
     switch (decision) {
@@ -3526,7 +3581,7 @@ Session: ${id}` : `Session: ${id}`;
     updateTabBadge("hooks", state.hooksCount);
   }
   function handleHookExecution(event) {
-    if (!callbacks7) {
+    if (!ctx3) {
       console.error("[Hooks] Handler not initialized - call initHooks first");
       return;
     }
@@ -3641,8 +3696,8 @@ Session: ${id}` : `Session: ${id}`;
   `;
     if (elements.hooksContent) {
       applyHooksFilter(entry);
-      callbacks7.appendAndTrim(elements.hooksContent, entry);
-      callbacks7.smartScroll(elements.hooksContent);
+      ctx3.ui.appendAndTrim(elements.hooksContent, entry);
+      ctx3.ui.smartScroll(elements.hooksContent);
     }
     const toolEl = entry.querySelector(".hook-tool");
     if (toolEl && toolName && !isSubagentHook) {
@@ -4140,9 +4195,9 @@ Session: ${id}` : `Session: ${id}`;
   }
 
   // src/dashboard/ui/keyboard.ts
-  var callbacks8 = null;
+  var callbacks4 = null;
   function initKeyboard(cbs) {
-    callbacks8 = cbs;
+    callbacks4 = cbs;
     document.addEventListener("keydown", handleKeydown2);
   }
   function handleKeydown2(event) {
@@ -4160,8 +4215,8 @@ Session: ${id}` : `Session: ${id}`;
       document.body.classList.add("keyboard-mode");
     }
     if (event.key === "c" && !event.ctrlKey && !event.metaKey) {
-      if (callbacks8) {
-        callbacks8.clearAllPanels();
+      if (callbacks4) {
+        callbacks4.clearAllPanels();
       }
       return;
     }
@@ -4228,8 +4283,8 @@ Session: ${id}` : `Session: ${id}`;
           return;
         case "p":
           event.preventDefault();
-          if (callbacks8) {
-            callbacks8.togglePanelSelector();
+          if (callbacks4) {
+            callbacks4.togglePanelSelector();
           }
           return;
       }
@@ -4270,22 +4325,22 @@ Session: ${id}` : `Session: ${id}`;
       }
       if (event.key.toLowerCase() === "e" && !event.shiftKey) {
         event.preventDefault();
-        if (callbacks8) {
-          callbacks8.tryOpenExportModal();
+        if (callbacks4) {
+          callbacks4.tryOpenExportModal();
         }
         return;
       }
       if (event.key.toLowerCase() === "o" && !event.shiftKey) {
-        if (state.currentPlanPath && callbacks8) {
+        if (state.currentPlanPath && callbacks4) {
           event.preventDefault();
-          callbacks8.handlePlanOpenClick();
+          callbacks4.handlePlanOpenClick();
         }
         return;
       }
       if (event.key.toLowerCase() === "r" && event.shiftKey) {
-        if (state.currentPlanPath && callbacks8) {
+        if (state.currentPlanPath && callbacks4) {
           event.preventDefault();
-          callbacks8.handlePlanRevealClick();
+          callbacks4.handlePlanRevealClick();
         }
         return;
       }
@@ -4306,9 +4361,9 @@ Session: ${id}` : `Session: ${id}`;
   var modalElement = null;
   var isOpen2 = false;
   var previouslyFocused3 = null;
-  var callbacks9 = null;
+  var callbacks5 = null;
   function initPanelSelector(cbs) {
-    callbacks9 = cbs;
+    callbacks5 = cbs;
   }
   function createModal2() {
     const backdrop = document.createElement("div");
@@ -4366,8 +4421,8 @@ Session: ${id}` : `Session: ${id}`;
     applyViewFilter();
     rebuildResizers();
     savePanelVisibility();
-    if (callbacks9) {
-      callbacks9.announceStatus(`${PANEL_LABELS[panelName]} panel ${visible ? "shown" : "hidden"}`);
+    if (callbacks5) {
+      callbacks5.announceStatus(`${PANEL_LABELS[panelName]} panel ${visible ? "shown" : "hidden"}`);
     }
   }
   function applyAllPanelVisibility() {
@@ -4442,13 +4497,16 @@ Session: ${id}` : `Session: ${id}`;
   }
 
   // src/dashboard/handlers/thinking.ts
-  var callbacks10 = null;
-  function initThinking(cbs) {
-    callbacks10 = cbs;
+  var ctx4 = null;
+  function initThinking(appCtx) {
+    ctx4 = appCtx;
+    return { dispose: () => {
+      ctx4 = null;
+    } };
   }
   function handleThinking(event) {
-    if (!callbacks10) {
-      console.error("[Thinking Handler] Callbacks not initialized - call initThinking() first");
+    if (!ctx4) {
+      console.error("[Thinking Handler] Not initialized - call initThinking() first");
       return;
     }
     state.thinkingCount++;
@@ -4461,7 +4519,7 @@ Session: ${id}` : `Session: ${id}`;
     const eventAgentId = event.agentId;
     let agentId = eventAgentId;
     if (!agentId) {
-      const contextAgentId = callbacks10.getCurrentAgentContext();
+      const contextAgentId = ctx4.agents.getCurrentContext();
       const contextAgent = subagentState.subagents.get(contextAgentId);
       if (contextAgent && contextAgent.parentSessionId === sessionId) {
         agentId = contextAgentId;
@@ -4469,7 +4527,7 @@ Session: ${id}` : `Session: ${id}`;
         agentId = "main";
       }
     }
-    const agentDisplayName = callbacks10.getAgentDisplayName(agentId);
+    const agentDisplayName = ctx4.agents.getDisplayName(agentId);
     const emptyState2 = elements.thinkingContent.querySelector(".empty-state");
     if (emptyState2) {
       emptyState2.remove();
@@ -4505,8 +4563,8 @@ Session: ${id}` : `Session: ${id}`;
     <div class="thinking-text">${escapeHtml(content)}</div>
   `;
     applyThinkingFilter(entry);
-    callbacks10.appendAndTrim(elements.thinkingContent, entry);
-    callbacks10.smartScroll(elements.thinkingContent);
+    ctx4.ui.appendAndTrim(elements.thinkingContent, entry);
+    ctx4.ui.smartScroll(elements.thinkingContent);
     setTimeout(() => entry.classList.remove("new"), 1e3);
   }
 
@@ -4715,12 +4773,18 @@ Session: ${id}` : `Session: ${id}`;
       }
     }
   }
-  var callbacks11 = null;
-  function initTools(cbs) {
-    callbacks11 = cbs;
+  var ctx5 = null;
+  var specific2 = null;
+  function initTools(appCtx, extras) {
+    ctx5 = appCtx;
+    specific2 = extras;
+    return { dispose: () => {
+      ctx5 = null;
+      specific2 = null;
+    } };
   }
   function handleToolStart(event) {
-    if (!callbacks11) {
+    if (!ctx5 || !specific2) {
       console.error("[Tools] Handler not initialized - call initTools first");
       return;
     }
@@ -4732,7 +4796,7 @@ Session: ${id}` : `Session: ${id}`;
     const eventAgentId = event.agentId;
     let agentId = eventAgentId;
     if (!agentId) {
-      const contextAgentId = callbacks11.getCurrentAgentContext();
+      const contextAgentId = ctx5.agents.getCurrentContext();
       const contextAgent = subagentState.subagents.get(contextAgentId);
       if (contextAgent && contextAgent.parentSessionId === sessionId) {
         agentId = contextAgentId;
@@ -4744,7 +4808,7 @@ Session: ${id}` : `Session: ${id}`;
       detectPlanAccess(input, sessionId);
     }
     if (toolName === "SendMessage") {
-      callbacks11.detectSendMessage(input, agentId, event.sessionId, event.timestamp);
+      specific2.detectSendMessage(input, agentId, event.sessionId, event.timestamp);
     }
     state.toolsCount++;
     updateToolsCount();
@@ -4758,7 +4822,7 @@ Session: ${id}` : `Session: ${id}`;
     const folderBadge = sessionId && folderName ? `<span class="entry-folder-badge" style="background: ${escapeCssValue(getSessionColorByFolder(folderName))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(folderName)}</span>` : "";
     const sessionBadge = sessionId && !folderName ? `<span class="entry-session-badge" style="background: ${escapeCssValue(getSessionColorByHash(sessionId))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>` : "";
     const preview = summarizeInput(input, toolName);
-    const agentDisplayName = callbacks11.getAgentDisplayName(agentId);
+    const agentDisplayName = ctx5.agents.getDisplayName(agentId);
     const agentBadgeColors = getAgentBadgeColors(agentDisplayName);
     const entry = document.createElement("div");
     entry.className = "tool-entry collapsed new";
@@ -4807,8 +4871,8 @@ Session: ${id}` : `Session: ${id}`;
       element: entry
     });
     applyToolsFilter(entry);
-    callbacks11.appendAndTrim(elements.toolsContent, entry);
-    callbacks11.smartScroll(elements.toolsContent);
+    ctx5.ui.appendAndTrim(elements.toolsContent, entry);
+    ctx5.ui.smartScroll(elements.toolsContent);
     setTimeout(() => entry.classList.remove("new"), 1e3);
   }
   function handleToolEnd(event) {
@@ -5149,9 +5213,9 @@ Session: ${id}` : `Session: ${id}`;
   }
 
   // src/dashboard/handlers/plans/context-menu.ts
-  var callbacks12 = null;
+  var callbacks6 = null;
   function setContextMenuCallbacks(cbs) {
-    callbacks12 = cbs;
+    callbacks6 = cbs;
   }
   function showFileContextMenu(x, y, filePath) {
     state.contextMenuFilePath = filePath;
@@ -5187,14 +5251,14 @@ Session: ${id}` : `Session: ${id}`;
       const result = await response.json();
       if (!result.success) {
         console.error(`[Dashboard] File action failed: ${result.error}`);
-        callbacks12?.showToast(result.error || "Action failed", "error");
+        callbacks6?.showToast(result.error || "Action failed", "error");
       } else {
         const actionText = action === "open" ? "Opened in default app" : "Revealed in Finder";
-        callbacks12?.showToast(actionText, "success");
+        callbacks6?.showToast(actionText, "success");
       }
     } catch (error) {
       console.error("[Dashboard] Failed to execute file action:", error);
-      callbacks12?.showToast("Failed to connect to server", "error");
+      callbacks6?.showToast("Failed to connect to server", "error");
     }
   }
   function handlePlanOpenClick() {
@@ -5405,9 +5469,14 @@ Session: ${id}` : `Session: ${id}`;
   }
 
   // src/dashboard/handlers/plans/index.ts
-  function initPlans(cbs) {
-    setInternalCallbacks({ findActiveAgent: cbs.findActiveAgent });
-    setContextMenuCallbacks(cbs);
+  function initPlans(appCtx) {
+    setInternalCallbacks({ findActiveAgent: () => appCtx.agents.findActive() });
+    setContextMenuCallbacks({
+      showToast: appCtx.ui.showToast,
+      announceStatus: appCtx.ui.announceStatus
+    });
+    return { dispose: () => {
+    } };
   }
 
   // src/dashboard/ui/stats-bar.ts
@@ -6099,7 +6168,7 @@ Session: ${id}` : `Session: ${id}`;
   }
 
   // src/dashboard/ui/export/modal.ts
-  var callbacks13 = null;
+  var callbacks7 = null;
   var modalElement2 = null;
   var isOpen3 = false;
   var previouslyFocused4 = null;
@@ -6109,7 +6178,7 @@ Session: ${id}` : `Session: ${id}`;
     includeHooks: true
   };
   function initExportModal(cbs) {
-    callbacks13 = cbs;
+    callbacks7 = cbs;
   }
   function createModal3() {
     const backdrop = document.createElement("div");
@@ -6290,23 +6359,23 @@ Session: ${id}` : `Session: ${id}`;
     if (!input || !submitBtn) return;
     const filename = input.value.trim();
     if (!filename) {
-      if (callbacks13) {
-        callbacks13.showToast("Please enter a filename", "error");
+      if (callbacks7) {
+        callbacks7.showToast("Please enter a filename", "error");
       }
       input.focus();
       return;
     }
     if (/[/\\:*?"<>|]/.test(filename)) {
-      if (callbacks13) {
-        callbacks13.showToast("Filename contains invalid characters", "error");
+      if (callbacks7) {
+        callbacks7.showToast("Filename contains invalid characters", "error");
       }
       input.focus();
       return;
     }
     const path = getFullExportPath();
     if (!path) {
-      if (callbacks13) {
-        callbacks13.showToast("Invalid export path", "error");
+      if (callbacks7) {
+        callbacks7.showToast("Invalid export path", "error");
       }
       return;
     }
@@ -6322,9 +6391,9 @@ Session: ${id}` : `Session: ${id}`;
       });
       const result = await response.json();
       if (result.success) {
-        if (callbacks13) {
-          callbacks13.showToast(`Exported to ${result.path}`, "success", 5e3);
-          callbacks13.announceStatus("Export successful");
+        if (callbacks7) {
+          callbacks7.showToast(`Exported to ${result.path}`, "success", 5e3);
+          callbacks7.announceStatus("Export successful");
         }
         closeExportModal();
         if (result.path) {
@@ -6343,14 +6412,14 @@ Session: ${id}` : `Session: ${id}`;
           }
         }
       } else {
-        if (callbacks13) {
-          callbacks13.showToast(result.error || "Export failed", "error");
+        if (callbacks7) {
+          callbacks7.showToast(result.error || "Export failed", "error");
         }
       }
     } catch (error) {
       console.error("[Export] Failed:", error);
-      if (callbacks13) {
-        callbacks13.showToast("Export failed. Check console for details.", "error");
+      if (callbacks7) {
+        callbacks7.showToast("Export failed. Check console for details.", "error");
       }
     } finally {
       submitBtn.disabled = false;
@@ -6452,8 +6521,8 @@ Session: ${id}` : `Session: ${id}`;
   }
   function tryOpenExportModal() {
     if (!isExportAllowed()) {
-      if (callbacks13) {
-        callbacks13.showToast("Select a session to export", "info");
+      if (callbacks7) {
+        callbacks7.showToast("Select a session to export", "info");
       }
       return false;
     }
@@ -6470,8 +6539,8 @@ Session: ${id}` : `Session: ${id}`;
       selectedSession: state.selectedSession
     };
   }
-  function getEmptyStateHTML(panel, ctx) {
-    const context = ctx || getEmptyStateContext();
+  function getEmptyStateHTML(panel, ctx6) {
+    const context = ctx6 || getEmptyStateContext();
     switch (panel) {
       case "thinking":
         if (!context.connected) {
@@ -6739,15 +6808,18 @@ Session: ${id}` : `Session: ${id}`;
     elements.teamPanel?.classList.add("session-hidden");
     elements.tasksPanel?.classList.add("session-hidden");
   }
-  initThinking({
-    getCurrentAgentContext,
-    getAgentDisplayName,
-    appendAndTrim,
-    smartScroll
-  });
-  initTools({
-    getCurrentAgentContext,
-    getAgentDisplayName,
+  var appContext = {
+    ui: { appendAndTrim, smartScroll, showToast, announceStatus },
+    navigation: { selectSession, selectView: (view) => selectView(view) },
+    agents: {
+      getCurrentContext: getCurrentAgentContext,
+      getDisplayName: getAgentDisplayName,
+      findActive: findActiveAgent
+    }
+  };
+  var handlerDisposables = new DisposableGroup();
+  handlerDisposables.add(initThinking(appContext));
+  handlerDisposables.add(initTools(appContext, {
     detectSendMessage: (input, agentId, sessionId, timestamp) => {
       if (!input) return;
       try {
@@ -6768,49 +6840,33 @@ Session: ${id}` : `Session: ${id}`;
         });
       } catch {
       }
-    },
-    appendAndTrim,
-    smartScroll
-  });
-  initSessions({
+    }
+  }));
+  handlerDisposables.add(initSessions(appContext, {
     displayPlan,
     displayEmptyPlan,
     displaySessionPlanEmpty,
-    showToast,
     updateExportButtonState,
     clearAllPanels,
     setStatsSource
-  });
-  initPlans({
-    findActiveAgent,
-    showToast,
-    announceStatus
-  });
-  initHooks({
-    appendAndTrim,
-    smartScroll
-  });
-  initTeam({
-    appendAndTrim,
-    smartScroll,
+  }));
+  handlerDisposables.add(initPlans(appContext));
+  handlerDisposables.add(initHooks(appContext));
+  handlerDisposables.add(initTeam(appContext, {
     showTeamPanel: () => {
       if (elements.teamPanel?.classList.contains("panel-hidden")) {
         elements.teamPanel.classList.remove("panel-hidden");
       }
     }
-  });
-  initTasks({
+  }));
+  handlerDisposables.add(initTasks({
     showTasksPanel: () => {
       if (elements.tasksPanel?.classList.contains("panel-hidden")) {
         elements.tasksPanel.classList.remove("panel-hidden");
       }
     }
-  });
-  initTimeline({
-    appendAndTrim,
-    smartScroll,
-    selectSession
-  });
+  }));
+  handlerDisposables.add(initTimeline(appContext));
   initDurationHistogram();
   initViews({
     announceStatus,
@@ -6859,7 +6915,7 @@ Session: ${id}` : `Session: ${id}`;
   var ACTIVITY_WINDOW_MS = 6e4;
   var ACTIVITY_UPDATE_INTERVAL_MS = 2e3;
   var ACTIVITY_IDLE_THRESHOLD_MS = 1e4;
-  setInterval(() => {
+  var activityInterval = setInterval(() => {
     renderStats();
     const now = Date.now();
     const cutoff = now - ACTIVITY_WINDOW_MS;
@@ -6889,6 +6945,7 @@ Session: ${id}` : `Session: ${id}`;
       }
     }
   }, ACTIVITY_UPDATE_INTERVAL_MS);
+  handlerDisposables.addInterval(activityInterval);
   debug("[Dashboard] Thinking Monitor initialized");
   debug("[Dashboard] Keyboard shortcuts: l/t/o/a/h/p/k/m=views (a aliases team), Shift+T/O/A/H/M/K/L=collapse, Shift+P=panel settings, c=clear, s=scroll, /=search, Esc=clear filters");
   debug("[Dashboard] Plan shortcuts: Cmd+O=open, Cmd+Shift+R=reveal, Cmd+E=export, right-click=context menu");
