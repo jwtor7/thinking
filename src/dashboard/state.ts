@@ -2,9 +2,12 @@
  * Global State Management
  *
  * Centralized state for the Thinking Monitor dashboard.
+ * Uses bounded collections to prevent memory leaks in long sessions.
  */
 
 import type { AppState, AgentContextStack, SubagentMappingInfo, TeamMemberInfo, TaskInfo, MessageSentEvent } from './types.ts';
+import { BoundedMap } from '../shared/bounded-map.ts';
+import { BoundedArray } from '../shared/bounded-array.ts';
 
 /** Sentinel value for "all sessions" filter. */
 export const ALL_SESSIONS = 'all' as const;
@@ -43,8 +46,8 @@ export interface TeamState {
   teamTasks: Map<string, TaskInfo[]>;
   /** teamId -> sessionId mapping for session scoping */
   taskSessionMap: Map<string, string>;
-  /** Chronological message log */
-  teamMessages: MessageSentEvent[];
+  /** Chronological message log (bounded ring buffer) */
+  teamMessages: BoundedArray<MessageSentEvent>;
   /** teamName -> sessionId mapping for session scoping */
   teamSessionMap: Map<string, string>;
 }
@@ -56,7 +59,7 @@ export const teamState: TeamState = {
   teams: new Map(),
   teamTasks: new Map(),
   taskSessionMap: new Map(),
-  teamMessages: [],
+  teamMessages: new BoundedArray<MessageSentEvent>(200),
   teamSessionMap: new Map(),
 };
 
@@ -65,12 +68,7 @@ export const teamState: TeamState = {
  * Ring buffer of event timestamps from the last 60 seconds.
  */
 export const activityTracker = {
-  timestamps: [] as number[],
-  /**
-   * Head pointer for O(1) amortized pruning of old timestamps.
-   * Avoids expensive Array.shift() in the activity loop.
-   */
-  headIndex: 0,
+  timestamps: new BoundedArray<number>(2000),
   eventsPerSec: 0,
 };
 
@@ -87,8 +85,8 @@ export const state: AppState = {
   toolsCount: 0,
   hooksCount: 0,
   agentsCount: 0,
-  agents: new Map(),
-  pendingTools: new Map(),
+  agents: new BoundedMap(200),
+  pendingTools: new BoundedMap(5000),
   thinkingFilter: '',
   toolsFilter: '',
   timelineFilter: '',
@@ -96,10 +94,10 @@ export const state: AppState = {
   reconnectCountdown: 0,
   keyboardMode: false,
   theme: 'system',
-  sessions: new Map(),
+  sessions: new BoundedMap(100),
   currentSessionId: null,
   selectedSession: 'all',
-  plans: new Map(),
+  plans: new BoundedMap(50),
   currentPlanPath: null,
   planList: [],
   planSelectorOpen: false,

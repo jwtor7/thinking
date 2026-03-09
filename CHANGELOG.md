@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-03-08 — v1.3.7
+
+### Added
+- **BoundedMap** - LRU-evicting Map with configurable max size and optional onEvict callback (`src/shared/bounded-map.ts`)
+- **BoundedArray** - Fixed-capacity ring buffer with O(1) push and ordered iteration (`src/shared/bounded-array.ts`)
+- 27 unit tests for bounded collections
+
+### Changed
+- **Dashboard state** - `agents` (200), `pendingTools` (5000), `sessions` (100), `plans` (50) now use BoundedMap with LRU eviction
+- **Activity tracker** - Replaced manual head-index ring buffer with BoundedArray(2000), removing splice/compact logic
+- **Team messages** - Replaced manual shift-on-overflow with BoundedArray(200)
+- **Agent thinking entries** - Bounded to 100 session-agent keys via BoundedMap
+- **Server event receiver** - `toolStartTimes` and `eventsByType` now use BoundedMap, removing manual cleanup interval and ad-hoc eviction code
+
+---
+
 ## 2026-03-08 — v1.3.6
 
 ### Fixed

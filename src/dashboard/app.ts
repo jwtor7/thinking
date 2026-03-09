@@ -250,7 +250,7 @@ function clearAllPanels(): void {
   teamState.teamTasks.clear();
   teamState.taskSessionMap.clear();
   teamState.teamSessionMap.clear();
-  teamState.teamMessages = [];
+  teamState.teamMessages.clear();
   state.selectedAgentId = null;
 
   // Update counters
@@ -648,25 +648,9 @@ setInterval(() => {
   const now = Date.now();
   const cutoff = now - ACTIVITY_WINDOW_MS;
 
-  // Remove timestamps older than the window using an index pointer.
-  // This avoids O(n^2) behavior from repeated Array.shift() calls.
-  while (
-    activityTracker.headIndex < activityTracker.timestamps.length &&
-    activityTracker.timestamps[activityTracker.headIndex] < cutoff
-  ) {
-    activityTracker.headIndex++;
-  }
-
-  // Periodically compact consumed prefix to cap memory.
-  if (
-    activityTracker.headIndex > 512 &&
-    activityTracker.headIndex > activityTracker.timestamps.length / 2
-  ) {
-    activityTracker.timestamps.splice(0, activityTracker.headIndex);
-    activityTracker.headIndex = 0;
-  }
-
-  const activeEventCount = activityTracker.timestamps.length - activityTracker.headIndex;
+  // Count timestamps within the activity window.
+  // BoundedArray caps at 2000 entries, so this is bounded.
+  const activeEventCount = activityTracker.timestamps.filter(ts => ts >= cutoff).length;
 
   // Calculate events per second
   activityTracker.eventsPerSec = activeEventCount / (ACTIVITY_WINDOW_MS / 1000);
@@ -678,7 +662,7 @@ setInterval(() => {
 
   if (pulseEl && dotEl && rateEl) {
     const lastTimestamp = activeEventCount > 0
-      ? activityTracker.timestamps[activityTracker.timestamps.length - 1] || 0
+      ? (activityTracker.timestamps.at(activityTracker.timestamps.length - 1) || 0)
       : 0;
     const isIdle = now - lastTimestamp > ACTIVITY_IDLE_THRESHOLD_MS;
 

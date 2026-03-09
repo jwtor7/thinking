@@ -1,5 +1,163 @@
 "use strict";
 (() => {
+  // src/shared/bounded-map.ts
+  var BoundedMap = class {
+    map = /* @__PURE__ */ new Map();
+    maxSize;
+    onEvict;
+    constructor(maxSize, onEvict) {
+      if (maxSize < 1) throw new RangeError("BoundedMap maxSize must be >= 1");
+      this.maxSize = maxSize;
+      this.onEvict = onEvict;
+    }
+    get size() {
+      return this.map.size;
+    }
+    get [Symbol.toStringTag]() {
+      return "BoundedMap";
+    }
+    has(key) {
+      return this.map.has(key);
+    }
+    /**
+     * Get a value and promote it to most-recently-used.
+     */
+    get(key) {
+      const value = this.map.get(key);
+      if (value !== void 0) {
+        this.map.delete(key);
+        this.map.set(key, value);
+      }
+      return value;
+    }
+    /**
+     * Set a value. If the key exists, it's promoted to most-recently-used.
+     * If the map is full, the least-recently-used entry is evicted.
+     */
+    set(key, value) {
+      if (this.map.has(key)) {
+        this.map.delete(key);
+      } else if (this.map.size >= this.maxSize) {
+        const oldest = this.map.keys().next().value;
+        if (oldest !== void 0) {
+          const evictedValue = this.map.get(oldest);
+          this.map.delete(oldest);
+          this.onEvict?.(oldest, evictedValue);
+        }
+      }
+      this.map.set(key, value);
+      return this;
+    }
+    delete(key) {
+      return this.map.delete(key);
+    }
+    clear() {
+      this.map.clear();
+    }
+    forEach(callbackfn, thisArg) {
+      this.map.forEach((value, key) => callbackfn.call(thisArg, value, key, this));
+    }
+    keys() {
+      return this.map.keys();
+    }
+    values() {
+      return this.map.values();
+    }
+    entries() {
+      return this.map.entries();
+    }
+    [Symbol.iterator]() {
+      return this.map[Symbol.iterator]();
+    }
+  };
+
+  // src/shared/bounded-array.ts
+  var BoundedArray = class {
+    buffer;
+    head = 0;
+    // Next write position
+    count = 0;
+    capacity;
+    constructor(capacity) {
+      if (capacity < 1) throw new RangeError("BoundedArray capacity must be >= 1");
+      this.capacity = capacity;
+      this.buffer = new Array(capacity);
+    }
+    get length() {
+      return this.count;
+    }
+    /**
+     * Push an element. If at capacity, overwrites the oldest.
+     */
+    push(item) {
+      this.buffer[this.head] = item;
+      this.head = (this.head + 1) % this.capacity;
+      if (this.count < this.capacity) {
+        this.count++;
+      }
+    }
+    /**
+     * Get element at logical index (0 = oldest).
+     */
+    at(index) {
+      if (index < 0 || index >= this.count) return void 0;
+      const start = this.count < this.capacity ? 0 : this.head;
+      const realIndex = (start + index) % this.capacity;
+      return this.buffer[realIndex];
+    }
+    /**
+     * Clear all elements.
+     */
+    clear() {
+      this.buffer.fill(void 0);
+      this.head = 0;
+      this.count = 0;
+    }
+    /**
+     * Iterate from oldest to newest.
+     */
+    *[Symbol.iterator]() {
+      const start = this.count < this.capacity ? 0 : this.head;
+      for (let i = 0; i < this.count; i++) {
+        yield this.buffer[(start + i) % this.capacity];
+      }
+    }
+    /**
+     * Convert to a plain array (oldest to newest).
+     */
+    toArray() {
+      return Array.from(this);
+    }
+    /**
+     * Filter elements, returning a plain array.
+     */
+    filter(predicate) {
+      const result = [];
+      for (const item of this) {
+        if (predicate(item)) result.push(item);
+      }
+      return result;
+    }
+    /**
+     * Find the first element matching a predicate.
+     */
+    find(predicate) {
+      for (const item of this) {
+        if (predicate(item)) return item;
+      }
+      return void 0;
+    }
+    /**
+     * Execute a callback for each element (oldest to newest).
+     */
+    forEach(callback) {
+      let i = 0;
+      for (const item of this) {
+        callback(item, i++);
+      }
+    }
+  };
+
   // src/dashboard/state.ts
   var ALL_SESSIONS = "all";
   var subagentState = {
@@ -11,16 +169,11 @@
     teams: /* @__PURE__ */ new Map(),
     teamTasks: /* @__PURE__ */ new Map(),
     taskSessionMap: /* @__PURE__ */ new Map(),
-    teamMessages: [],
+    teamMessages: new BoundedArray(200),
     teamSessionMap: /* @__PURE__ */ new Map()
   };
   var activityTracker = {
-    timestamps: [],
-    /**
-     * Head pointer for O(1) amortized pruning of old timestamps.
-     * Avoids expensive Array.shift() in the activity loop.
-     */
-    headIndex: 0,
+    timestamps: new BoundedArray(2e3),
     eventsPerSec: 0
   };
   var state = {
@@ -32,8 +185,8 @@
     toolsCount: 0,
     hooksCount: 0,
     agentsCount: 0,
-    agents: /* @__PURE__ */ new Map(),
-    pendingTools: /* @__PURE__ */ new Map(),
+    agents: new BoundedMap(200),
+    pendingTools: new BoundedMap(5e3),
     thinkingFilter: "",
     toolsFilter: "",
     timelineFilter: "",
@@ -41,10 +194,10 @@
     reconnectCountdown: 0,
     keyboardMode: false,
     theme: "system",
-    sessions: /* @__PURE__ */ new Map(),
+    sessions: new BoundedMap(100),
     currentSessionId: null,
     selectedSession: "all",
-    plans: /* @__PURE__ */ new Map(),
+    plans: new BoundedMap(50),
     currentPlanPath: null,
     planList: [],
     planSelectorOpen: false,
@@ -1605,7 +1758,6 @@
   }
 
   // src/dashboard/handlers/team.ts
-  var MAX_MESSAGES = 200;
   var MAX_ENTRIES_PER_AGENT = 200;
   var TEAM_SECTION_STORAGE_KEY = "thinking-monitor-team-section-collapse";
   var TEAM_SECTION_LABELS = {
@@ -1618,7 +1770,7 @@
     hierarchy: false,
     agents: false
   };
-  var agentThinkingEntries = /* @__PURE__ */ new Map();
+  var agentThinkingEntries = new BoundedMap(100);
   var selectedViewAgent = null;
   var callbacks4 = null;
   function initTeam(cbs) {
@@ -2016,9 +2168,6 @@
   function handleMessageSent(event) {
     if (!callbacks4) return;
     teamState.teamMessages.push(event);
-    if (teamState.teamMessages.length > MAX_MESSAGES) {
-      teamState.teamMessages.shift();
-    }
     if (state.selectedSession === "all") return;
     if (!event.sessionId || event.sessionId !== state.selectedSession) return;
     callbacks4.showTeamPanel();
@@ -6432,7 +6581,8 @@ Session: ${id}` : `Session: ${id}`;
     teamState.teams.clear();
     teamState.teamTasks.clear();
     teamState.taskSessionMap.clear();
-    teamState.teamMessages = [];
+    teamState.teamSessionMap.clear();
+    teamState.teamMessages.clear();
     state.selectedAgentId = null;
     elements.eventCount.textContent = "Events: 0";
     elements.thinkingCount.textContent = "0";
@@ -6692,20 +6842,13 @@ Session: ${id}` : `Session: ${id}`;
     renderStats();
     const now = Date.now();
     const cutoff = now - ACTIVITY_WINDOW_MS;
-    while (activityTracker.headIndex < activityTracker.timestamps.length && activityTracker.timestamps[activityTracker.headIndex] < cutoff) {
-      activityTracker.headIndex++;
-    }
-    if (activityTracker.headIndex > 512 && activityTracker.headIndex > activityTracker.timestamps.length / 2) {
-      activityTracker.timestamps.splice(0, activityTracker.headIndex);
-      activityTracker.headIndex = 0;
-    }
-    const activeEventCount = activityTracker.timestamps.length - activityTracker.headIndex;
+    const activeEventCount = activityTracker.timestamps.filter((ts) => ts >= cutoff).length;
     activityTracker.eventsPerSec = activeEventCount / (ACTIVITY_WINDOW_MS / 1e3);
     const pulseEl = document.getElementById("activity-pulse");
     const dotEl = pulseEl?.querySelector(".activity-pulse-dot");
     const rateEl = pulseEl?.querySelector(".activity-pulse-rate");
     if (pulseEl && dotEl && rateEl) {
-      const lastTimestamp = activeEventCount > 0 ? activityTracker.timestamps[activityTracker.timestamps.length - 1] || 0 : 0;
+      const lastTimestamp = activeEventCount > 0 ? activityTracker.timestamps.at(activityTracker.timestamps.length - 1) || 0 : 0;
       const isIdle = now - lastTimestamp > ACTIVITY_IDLE_THRESHOLD_MS;
       if (isIdle) {
         dotEl.classList.remove("active");

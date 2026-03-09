@@ -18,6 +18,7 @@ import type { WebSocketHub } from './websocket-hub.ts';
 import { RateLimiter, type RateLimiterConfig } from './rate-limiter.ts';
 import { SubagentMapper } from './subagent-mapper.ts';
 import { logger } from './logger.ts';
+import { BoundedMap } from '../shared/bounded-map.ts';
 
 /**
  * Default rate limit: 100 events per second per IP.
@@ -34,22 +35,16 @@ const DEFAULT_EVENT_RATE_LIMIT: RateLimiterConfig = {
 export class EventReceiver {
   private hub: WebSocketHub;
   private rateLimiter: RateLimiter;
-  /** Track tool start times for duration calculation */
-  private toolStartTimes: Map<string, number> = new Map();
-  /** Cleanup interval handle for stale tool starts */
-  private toolStartCleanupInterval: ReturnType<typeof setInterval> | null = null;
-  /** Max age for pending tool starts (5 minutes) */
-  private readonly TOOL_START_TTL_MS = 5 * 60 * 1000;
-  /** Maximum number of pending tool starts to track */
-  private readonly MAX_PENDING_TOOLS = 10_000;
+  /** Track tool start times for duration calculation (LRU-bounded) */
+  private toolStartTimes = new BoundedMap<string, number>(10_000);
   /** Subagent mapper for tracking parent-child relationships */
   private subagentMapper: SubagentMapper;
   /** Server start time for uptime calculation */
   private readonly startTime = Date.now();
   /** Total events received counter */
   private eventsReceived = 0;
-  /** Events received by type */
-  private eventsByType: Map<string, number> = new Map();
+  /** Events received by type (bounded to number of event types) */
+  private eventsByType = new BoundedMap<string, number>(50);
 
   constructor(hub: WebSocketHub, rateLimitConfig?: Partial<RateLimiterConfig>) {
     this.hub = hub;
@@ -58,20 +53,6 @@ export class EventReceiver {
       ...rateLimitConfig,
     });
     this.subagentMapper = new SubagentMapper();
-    // Periodically clean up stale tool start times
-    this.toolStartCleanupInterval = setInterval(() => this.cleanupStaleToolStarts(), 60000);
-  }
-
-  /**
-   * Clean up tool start times older than TTL.
-   */
-  private cleanupStaleToolStarts(): void {
-    const now = Date.now();
-    for (const [id, startTime] of this.toolStartTimes) {
-      if (now - startTime > this.TOOL_START_TTL_MS) {
-        this.toolStartTimes.delete(id);
-      }
-    }
   }
 
   /**
@@ -80,10 +61,6 @@ export class EventReceiver {
   destroy(): void {
     this.rateLimiter.destroy();
     this.subagentMapper.destroy();
-    if (this.toolStartCleanupInterval) {
-      clearInterval(this.toolStartCleanupInterval);
-      this.toolStartCleanupInterval = null;
-    }
     this.toolStartTimes.clear();
   }
 
@@ -264,13 +241,7 @@ export class EventReceiver {
       if (this.toolStartTimes.has(event.toolCallId)) {
         logger.warn(`[EventReceiver] Duplicate tool_start for toolCallId=${event.toolCallId}; resetting start time`);
       }
-      // Cap pending tools to prevent unbounded memory growth
-      if (this.toolStartTimes.size >= this.MAX_PENDING_TOOLS) {
-        // Evict oldest entry
-        const oldestKey = this.toolStartTimes.keys().next().value;
-        if (oldestKey) this.toolStartTimes.delete(oldestKey);
-      }
-      // Record start time for duration calculation
+      // Record start time for duration calculation (BoundedMap handles eviction)
       this.toolStartTimes.set(event.toolCallId, Date.now());
     } else if (event.type === 'tool_end' && 'toolCallId' in event && typeof event.toolCallId === 'string') {
       // Calculate duration if we have a start time

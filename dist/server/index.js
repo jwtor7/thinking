@@ -23,7 +23,7 @@ function isClientRequest(obj) {
 }
 function getVersion() {
   if (true) {
-    return "1.3.5";
+    return "1.3.6";
   }
   try {
     const packagePath = join(process.cwd(), "package.json");
@@ -1027,6 +1027,77 @@ var SubagentMapper = class {
   }
 };
 
+// src/shared/bounded-map.ts
+var BoundedMap = class {
+  map = /* @__PURE__ */ new Map();
+  maxSize;
+  onEvict;
+  constructor(maxSize, onEvict) {
+    if (maxSize < 1) throw new RangeError("BoundedMap maxSize must be >= 1");
+    this.maxSize = maxSize;
+    this.onEvict = onEvict;
+  }
+  get size() {
+    return this.map.size;
+  }
+  get [Symbol.toStringTag]() {
+    return "BoundedMap";
+  }
+  has(key) {
+    return this.map.has(key);
+  }
+  /**
+   * Get a value and promote it to most-recently-used.
+   */
+  get(key) {
+    const value = this.map.get(key);
+    if (value !== void 0) {
+      this.map.delete(key);
+      this.map.set(key, value);
+    }
+    return value;
+  }
+  /**
+   * Set a value. If the key exists, it's promoted to most-recently-used.
+   * If the map is full, the least-recently-used entry is evicted.
+   */
+  set(key, value) {
+    if (this.map.has(key)) {
+      this.map.delete(key);
+    } else if (this.map.size >= this.maxSize) {
+      const oldest = this.map.keys().next().value;
+      if (oldest !== void 0) {
+        const evictedValue = this.map.get(oldest);
+        this.map.delete(oldest);
+        this.onEvict?.(oldest, evictedValue);
+      }
+    }
+    this.map.set(key, value);
+    return this;
+  }
+  delete(key) {
+    return this.map.delete(key);
+  }
+  clear() {
+    this.map.clear();
+  }
+  forEach(callbackfn, thisArg) {
+    this.map.forEach((value, key) => callbackfn.call(thisArg, value, key, this));
+  }
+  keys() {
+    return this.map.keys();
+  }
+  values() {
+    return this.map.values();
+  }
+  entries() {
+    return this.map.entries();
+  }
+  [Symbol.iterator]() {
+    return this.map[Symbol.iterator]();
+  }
+};
+
 // src/server/event-receiver.ts
 var DEFAULT_EVENT_RATE_LIMIT = {
   maxRequests: 100,
@@ -1036,22 +1107,16 @@ var DEFAULT_EVENT_RATE_LIMIT = {
 var EventReceiver = class _EventReceiver {
   hub;
   rateLimiter;
-  /** Track tool start times for duration calculation */
-  toolStartTimes = /* @__PURE__ */ new Map();
-  /** Cleanup interval handle for stale tool starts */
-  toolStartCleanupInterval = null;
-  /** Max age for pending tool starts (5 minutes) */
-  TOOL_START_TTL_MS = 5 * 60 * 1e3;
-  /** Maximum number of pending tool starts to track */
-  MAX_PENDING_TOOLS = 1e4;
+  /** Track tool start times for duration calculation (LRU-bounded) */
+  toolStartTimes = new BoundedMap(1e4);
   /** Subagent mapper for tracking parent-child relationships */
   subagentMapper;
   /** Server start time for uptime calculation */
   startTime = Date.now();
   /** Total events received counter */
   eventsReceived = 0;
-  /** Events received by type */
-  eventsByType = /* @__PURE__ */ new Map();
+  /** Events received by type (bounded to number of event types) */
+  eventsByType = new BoundedMap(50);
   constructor(hub, rateLimitConfig) {
     this.hub = hub;
     this.rateLimiter = new RateLimiter({
@@ -1059,18 +1124,6 @@ var EventReceiver = class _EventReceiver {
       ...rateLimitConfig
     });
     this.subagentMapper = new SubagentMapper();
-    this.toolStartCleanupInterval = setInterval(() => this.cleanupStaleToolStarts(), 6e4);
-  }
-  /**
-   * Clean up tool start times older than TTL.
-   */
-  cleanupStaleToolStarts() {
-    const now = Date.now();
-    for (const [id, startTime] of this.toolStartTimes) {
-      if (now - startTime > this.TOOL_START_TTL_MS) {
-        this.toolStartTimes.delete(id);
-      }
-    }
   }
   /**
    * Clean up resources (rate limiter timer, subagent mapper, etc.).
@@ -1078,10 +1131,6 @@ var EventReceiver = class _EventReceiver {
   destroy() {
     this.rateLimiter.destroy();
     this.subagentMapper.destroy();
-    if (this.toolStartCleanupInterval) {
-      clearInterval(this.toolStartCleanupInterval);
-      this.toolStartCleanupInterval = null;
-    }
     this.toolStartTimes.clear();
   }
   /**
@@ -1218,10 +1267,6 @@ var EventReceiver = class _EventReceiver {
     if (event.type === "tool_start" && "toolCallId" in event && typeof event.toolCallId === "string") {
       if (this.toolStartTimes.has(event.toolCallId)) {
         logger.warn(`[EventReceiver] Duplicate tool_start for toolCallId=${event.toolCallId}; resetting start time`);
-      }
-      if (this.toolStartTimes.size >= this.MAX_PENDING_TOOLS) {
-        const oldestKey = this.toolStartTimes.keys().next().value;
-        if (oldestKey) this.toolStartTimes.delete(oldestKey);
       }
       this.toolStartTimes.set(event.toolCallId, Date.now());
     } else if (event.type === "tool_end" && "toolCallId" in event && typeof event.toolCallId === "string") {
@@ -2685,10 +2730,8 @@ var TeamWatcher = class {
    * Poll both directories for changes.
    */
   async poll() {
-    await Promise.all([
-      this.pollTeams(),
-      this.pollTasks()
-    ]);
+    await this.pollTeams();
+    await this.pollTasks();
   }
   /**
    * Poll ~/.claude/teams/ for team config changes.

@@ -15,12 +15,12 @@ import { getAgentBadgeColors } from '../ui/colors.ts';
 import { selectAgentFilter, resolveSessionId } from './sessions.ts';
 import type { TeamUpdateEvent, TeammateIdleEvent, MessageSentEvent, ThinkingEvent } from '../types.ts';
 import { updateTabBadge } from '../ui/views.ts';
+import { BoundedMap } from '../../shared/bounded-map.ts';
 
 // ============================================
 // Constants
 // ============================================
 
-const MAX_MESSAGES = 200;
 const MAX_ENTRIES_PER_AGENT = 200;
 const TEAM_SECTION_STORAGE_KEY = 'thinking-monitor-team-section-collapse';
 
@@ -44,7 +44,7 @@ interface AgentThinkingEntry {
   sessionId: string;
 }
 
-const agentThinkingEntries: Map<string, AgentThinkingEntry[]> = new Map();
+const agentThinkingEntries: BoundedMap<string, AgentThinkingEntry[]> = new BoundedMap(100);
 let selectedViewAgent: string | null = null;
 
 // ============================================
@@ -576,9 +576,6 @@ export function handleMessageSent(event: MessageSentEvent): void {
   if (!callbacks) return;
 
   teamState.teamMessages.push(event);
-  if (teamState.teamMessages.length > MAX_MESSAGES) {
-    teamState.teamMessages.shift();
-  }
 
   // Strict session filtering for render: event must include selected session.
   if (state.selectedSession === 'all') return;
