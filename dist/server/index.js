@@ -1914,8 +1914,16 @@ var TranscriptWatcher = class _TranscriptWatcher {
       if (!stats.isFile()) return;
       const sessionId = extractSessionIdFromPath(filePath);
       const workingDirectory = extractWorkingDirectory(filePath);
-      if (!this.isInitialScan && sessionId && !this.announcedSessions.has(sessionId)) {
-        this.announcedSessions.set(sessionId, workingDirectory);
+      if (this.isInitialScan) {
+        if (sessionId) {
+          const mtime = stats.mtimeMs;
+          const existing = this.announcedSessions.get(sessionId);
+          if (!existing || mtime > existing.lastSeen) {
+            this.announcedSessions.set(sessionId, { workingDirectory, lastSeen: mtime });
+          }
+        }
+      } else if (sessionId && !this.announcedSessions.has(sessionId)) {
+        this.announcedSessions.set(sessionId, { workingDirectory, lastSeen: Date.now() });
         this.broadcastSessionStart(sessionId, workingDirectory);
       }
       if (this.isInitialScan) {
@@ -1984,9 +1992,13 @@ var TranscriptWatcher = class _TranscriptWatcher {
       return;
     }
     const workingDirectory = extractWorkingDirectory(filePath);
+    const now = Date.now();
     if (parsed.sessionId && !this.announcedSessions.has(parsed.sessionId)) {
-      this.announcedSessions.set(parsed.sessionId, workingDirectory);
+      this.announcedSessions.set(parsed.sessionId, { workingDirectory, lastSeen: now });
       this.broadcastSessionStart(parsed.sessionId, workingDirectory, parsed.timestamp);
+    } else if (parsed.sessionId) {
+      const existing = this.announcedSessions.get(parsed.sessionId);
+      if (existing) existing.lastSeen = now;
     }
     if (!filePath.includes("/subagents/") && parsed.sessionId) {
       const discoveredAgentIds = /* @__PURE__ */ new Set();
@@ -2034,11 +2046,20 @@ var TranscriptWatcher = class _TranscriptWatcher {
     this.hub.broadcast(event);
     logger.debug(`[TranscriptWatcher] Broadcast thinking (${safeContent.slice(0, 50)}...)`);
   }
+  /**
+   * Get sessions to send on client connect.
+   * Only returns sessions seen in the last 24 hours to avoid
+   * overwhelming the dashboard with hundreds of stale sessions.
+   */
   getKnownSessions() {
-    return Array.from(this.announcedSessions.entries()).map(([sessionId, workingDirectory]) => ({
-      sessionId,
-      workingDirectory
-    }));
+    const cutoff = Date.now() - 24 * 60 * 60 * 1e3;
+    const results = [];
+    for (const [sessionId, info] of this.announcedSessions) {
+      if (info.lastSeen >= cutoff) {
+        results.push({ sessionId, workingDirectory: info.workingDirectory });
+      }
+    }
+    return results;
   }
   stop() {
     this.isShuttingDown = true;
@@ -3436,6 +3457,7 @@ async function main() {
   );
   hub.onClientConnect(async (sendEvent) => {
     const knownSessions = transcriptWatcher.getKnownSessions();
+    logger.info(`[Server] Sending ${knownSessions.length} recent sessions to new client`);
     for (const { sessionId, workingDirectory } of knownSessions) {
       sendEvent({
         type: "session_start",

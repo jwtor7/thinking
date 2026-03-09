@@ -224,8 +224,9 @@ async function main(): Promise<void> {
 
   // Send current state to newly connected clients
   hub.onClientConnect(async (sendEvent) => {
-    // Send session_start events for all known sessions (with working directories)
+    // Send session_start events for recent sessions (24h window)
     const knownSessions = transcriptWatcher.getKnownSessions();
+    logger.info(`[Server] Sending ${knownSessions.length} recent sessions to new client`);
     for (const { sessionId, workingDirectory } of knownSessions) {
       sendEvent({
         type: 'session_start',

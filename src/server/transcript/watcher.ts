@@ -48,7 +48,7 @@ export class TranscriptWatcher {
   private watcherReconcileInterval: ReturnType<typeof setInterval> | null = null;
   private isShuttingDown = false;
   private isInitialScan = true;
-  private announcedSessions: Map<string, string | undefined> = new Map();
+  private announcedSessions: Map<string, { workingDirectory?: string; lastSeen: number }> = new Map();
   private static readonly WATCHER_RECONCILE_INTERVAL_MS = 5 * 60 * 1000;
 
   constructor(hub: WebSocketHub, options?: TranscriptWatcherOptions) {
@@ -288,8 +288,17 @@ export class TranscriptWatcher {
       const sessionId = extractSessionIdFromPath(filePath);
       const workingDirectory = extractWorkingDirectory(filePath);
 
-      if (!this.isInitialScan && sessionId && !this.announcedSessions.has(sessionId)) {
-        this.announcedSessions.set(sessionId, workingDirectory);
+      if (this.isInitialScan) {
+        // Pre-populate recent sessions using file mtime (no broadcast during scan)
+        if (sessionId) {
+          const mtime = stats.mtimeMs;
+          const existing = this.announcedSessions.get(sessionId);
+          if (!existing || mtime > existing.lastSeen) {
+            this.announcedSessions.set(sessionId, { workingDirectory, lastSeen: mtime });
+          }
+        }
+      } else if (sessionId && !this.announcedSessions.has(sessionId)) {
+        this.announcedSessions.set(sessionId, { workingDirectory, lastSeen: Date.now() });
         this.broadcastSessionStart(sessionId, workingDirectory);
       }
 
@@ -369,9 +378,14 @@ export class TranscriptWatcher {
 
     const workingDirectory = extractWorkingDirectory(filePath);
 
+    const now = Date.now();
     if (parsed.sessionId && !this.announcedSessions.has(parsed.sessionId)) {
-      this.announcedSessions.set(parsed.sessionId, workingDirectory);
+      this.announcedSessions.set(parsed.sessionId, { workingDirectory, lastSeen: now });
       this.broadcastSessionStart(parsed.sessionId, workingDirectory, parsed.timestamp);
+    } else if (parsed.sessionId) {
+      // Update lastSeen for existing sessions
+      const existing = this.announcedSessions.get(parsed.sessionId);
+      if (existing) existing.lastSeen = now;
     }
 
     if (!filePath.includes('/subagents/') && parsed.sessionId) {
@@ -442,11 +456,20 @@ export class TranscriptWatcher {
     logger.debug(`[TranscriptWatcher] Broadcast thinking (${safeContent.slice(0, 50)}...)`);
   }
 
+  /**
+   * Get sessions to send on client connect.
+   * Only returns sessions seen in the last 24 hours to avoid
+   * overwhelming the dashboard with hundreds of stale sessions.
+   */
   getKnownSessions(): Array<{ sessionId: string; workingDirectory?: string }> {
-    return Array.from(this.announcedSessions.entries()).map(([sessionId, workingDirectory]) => ({
-      sessionId,
-      workingDirectory,
-    }));
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const results: Array<{ sessionId: string; workingDirectory?: string }> = [];
+    for (const [sessionId, info] of this.announcedSessions) {
+      if (info.lastSeen >= cutoff) {
+        results.push({ sessionId, workingDirectory: info.workingDirectory });
+      }
+    }
+    return results;
   }
 
   stop(): void {
