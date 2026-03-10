@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-03-09 — v1.5.2 (Post-Merge)
+
+### Changed
+- **Hook secondary event forwarding** - `hooks/thinking-monitor-hook.sh` now supports `THINKING_MONITOR_SECONDARY_URL` environment variable for side-by-side server comparison (all events POST to secondary URL if set)
+
+---
+
 ## 2026-03-09 — v1.5.2
 
 ### Fixed
