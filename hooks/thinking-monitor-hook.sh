@@ -30,8 +30,10 @@
 
 set -e
 
-# Monitor server endpoint
+# Monitor server endpoints (supports side-by-side comparison)
+# Primary is always 3355; secondary (if set) gets a copy of every event
 MONITOR_URL="http://127.0.0.1:3355/event"
+MONITOR_URL_SECONDARY="${THINKING_MONITOR_SECONDARY_URL:-}"
 
 # Timeout for curl requests (seconds)
 CURL_TIMEOUT=1
@@ -86,6 +88,17 @@ send_event() {
         --connect-timeout "$CURL_TIMEOUT" \
         "$MONITOR_URL" \
         >/dev/null 2>&1 &
+
+    # Send to secondary server if configured (for side-by-side comparison)
+    if [ -n "$MONITOR_URL_SECONDARY" ]; then
+        curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d "$event_json" \
+            --max-time "$CURL_TIMEOUT" \
+            --connect-timeout "$CURL_TIMEOUT" \
+            "$MONITOR_URL_SECONDARY" \
+            >/dev/null 2>&1 &
+    fi
 
     # Don't wait for curl to complete
     disown 2>/dev/null || true
