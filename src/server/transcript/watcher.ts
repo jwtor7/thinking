@@ -442,7 +442,10 @@ export class TranscriptWatcher {
     agentId?: string,
     timestamp?: string
   ): void {
-    const safeContent = redactSecrets(truncatePayload(content) ?? '');
+    // Claude Code ≥2.1.86 writes empty thinking blocks to transcripts.
+    // Broadcast with placeholder so the dashboard shows thinking occurred.
+    const displayContent = content || '[Extended thinking]';
+    const safeContent = redactSecrets(truncatePayload(displayContent) ?? '');
 
     const event: ThinkingEvent = {
       type: 'thinking',

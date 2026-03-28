@@ -53,9 +53,10 @@ export function handleThinking(event: ThinkingEvent): void {
   updateTabBadge('thinking', state.thinkingCount);
 
   const content = event.content;
+  const isRedacted = content === '[Extended thinking]';
   const time = formatTime(event.timestamp);
   const sessionId = event.sessionId;
-  const preview = content.slice(0, 80).replace(/\n/g, ' ');
+  const preview = isRedacted ? 'Extended thinking' : content.slice(0, 80).replace(/\n/g, ' ');
 
   // Determine agent context
   // IMPORTANT: Only use global agent context if the agent belongs to this session
@@ -87,7 +88,8 @@ export function handleThinking(event: ThinkingEvent): void {
 
   // Create thinking entry (non-collapsible, always expanded)
   const entry = document.createElement('div');
-  entry.className = isSubagentThinking ? 'thinking-entry subagent-entry new' : 'thinking-entry new';
+  const baseClass = isSubagentThinking ? 'thinking-entry subagent-entry new' : 'thinking-entry new';
+  entry.className = isRedacted ? `${baseClass} redacted` : baseClass;
   entry.dataset.agent = agentId;
   entry.dataset.session = sessionId || '';
   entry.dataset.content = content.toLowerCase(); // For filtering
@@ -132,9 +134,12 @@ export function handleThinking(event: ThinkingEvent): void {
       ${sessionBadge}
       ${subagentBadge}
       <span class="thinking-agent" style="background: ${escapeCssValue(agentBadgeColors.bg)}; color: ${escapeCssValue(agentBadgeColors.text)}">${escapeHtml(agentDisplayName)}</span>
-      <span class="thinking-preview">${escapeHtml(preview)}...</span>
+      <span class="thinking-preview">${escapeHtml(preview)}${isRedacted ? '' : '...'}</span>
     </div>
-    <div class="thinking-text">${escapeHtml(content)}</div>
+    ${isRedacted
+      ? '<div class="thinking-text thinking-redacted">Thinking content not available in transcript (Claude Code \u22652.1.86)</div>'
+      : `<div class="thinking-text">${escapeHtml(content)}</div>`
+    }
   `;
 
   // Apply filter visibility

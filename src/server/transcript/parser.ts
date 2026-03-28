@@ -105,6 +105,10 @@ export function extractSessionIdFromPath(filePath: string): string | undefined {
 
 /**
  * Extract thinking content from a transcript message.
+ *
+ * Claude Code ≥2.1.86 writes thinking blocks with empty content to transcripts.
+ * We still extract these so the dashboard can show that thinking occurred,
+ * even without the actual text.
  */
 export function extractThinking(message: TranscriptLine['message']): string[] {
   const thinkingBlocks: string[] = [];
@@ -114,8 +118,8 @@ export function extractThinking(message: TranscriptLine['message']): string[] {
   }
 
   for (const block of message.content) {
-    if (block.type === 'thinking' && block.thinking) {
-      thinkingBlocks.push(block.thinking);
+    if (block.type === 'thinking') {
+      thinkingBlocks.push(block.thinking || '');
     }
   }
 

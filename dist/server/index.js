@@ -1639,8 +1639,8 @@ function extractThinking(message) {
     return thinkingBlocks;
   }
   for (const block of message.content) {
-    if (block.type === "thinking" && block.thinking) {
-      thinkingBlocks.push(block.thinking);
+    if (block.type === "thinking") {
+      thinkingBlocks.push(block.thinking || "");
     }
   }
   return thinkingBlocks;
@@ -2043,7 +2043,8 @@ var TranscriptWatcher = class _TranscriptWatcher {
     logger.debug(`[TranscriptWatcher] Broadcast session_start for ${sessionId} (${workingDirectory || "no path"})`);
   }
   broadcastThinking(content, sessionId, agentId, timestamp) {
-    const safeContent = redactSecrets(truncatePayload(content) ?? "");
+    const displayContent = content || "[Extended thinking]";
+    const safeContent = redactSecrets(truncatePayload(displayContent) ?? "");
     const event = {
       type: "thinking",
       timestamp: timestamp || (/* @__PURE__ */ new Date()).toISOString(),

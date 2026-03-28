@@ -10,7 +10,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { TranscriptWatcher, extractWorkingDirectory, isValidClaudePathWithinRoot } from './transcript-watcher.ts';
-import { extractSessionIdFromPath } from './transcript/parser.ts';
+import { extractSessionIdFromPath, extractThinking } from './transcript/parser.ts';
 import type { WebSocketHub } from './websocket-hub.ts';
 import type { ThinkingEvent, MonitorEvent } from './types.ts';
 
@@ -447,6 +447,19 @@ describe('Error Handling', () => {
 });
 
 describe('Edge Cases', () => {
+  it('should extract empty thinking blocks (Claude Code >=2.1.86)', () => {
+    const message = {
+      role: 'assistant' as const,
+      content: [
+        { type: 'thinking', thinking: '' },
+        { type: 'text', text: 'Response' },
+      ],
+    };
+    const blocks = extractThinking(message);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]).toBe('');
+  });
+
   it('should handle empty thinking content', () => {
     const emptyThinking = {
       type: 'thinking',
