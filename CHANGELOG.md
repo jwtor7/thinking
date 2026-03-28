@@ -3,8 +3,9 @@
 ## 2026-03-28 — v1.5.4
 
 ### Fixed
-- **Thinking view broken with Claude Code >=2.1.86** - Claude Code stopped writing thinking text to transcript JSONL files (writes `thinking: ""` instead). Parser now accepts empty thinking blocks and displays them as "[Extended thinking]" markers with timestamps, session badges, and agent context
-- Thinking entries with redacted content render with muted styling to distinguish from full-content entries
+- **Thinking view broken with Claude Code >=2.1.69** - Claude Code stopped writing thinking text to transcript JSONL files (writes `thinking: ""` instead). Parser now accepts empty thinking blocks and broadcasts them as "[Extended thinking]" placeholders
+- **Compact aggregated markers for redacted thinking** - Consecutive empty thinking blocks per session+agent now aggregate into a single compact marker showing block count and time range, rather than flooding the thinking view with individual entries
+- Full thinking content (local models that surface full text) still renders as expanded entries unchanged
 
 ---
 
