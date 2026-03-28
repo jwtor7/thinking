@@ -5,7 +5,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.5.4-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.5.5-purple)](./CHANGELOG.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 [![GitHub Stars](https://img.shields.io/github/stars/jwtor7/thinking?style=social)](https://github.com/jwtor7/thinking)
 
@@ -175,8 +175,8 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
+- **v1.5.5** (2026-03-28 19:33) — Plan tab progress bar: live X/Y fraction and 48px bar parsed from checkbox state in plan files; turns green when complete.
 - **v1.5.4** (2026-03-28 19:09) — Fixed thinking view broken with Claude Code >=2.1.69: parser now accepts empty thinking blocks; redacted entries render as compact aggregated markers with count and time range.
 - **v1.5.3** (2026-03-28 17:38) — Fixed orphaned session chips: race condition in dispatcher ordering, alias chip resurrection, and chip overflow (collapse to "+N more"). Reduced session window to 4h, added session pruning for chips with no timeline events.
-- **v1.5.2** (2026-03-09) — Merged refactor branch (phases 1-4: state safety, filter service unification, module decomposition, DI/lifecycle); fixed infinite loop in BoundedMap LRU promotion and dashboard hang on session filtering; added secondary event forwarding to hook script for side-by-side comparison.
 
 *[Full changelog →](./CHANGELOG.md)*

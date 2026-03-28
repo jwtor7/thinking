@@ -259,6 +259,52 @@
 }
 
 /* ========================================
+   Plan Progress Indicator
+   ======================================== */
+
+.plan-progress {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin-left: var(--spacing-sm);
+  vertical-align: middle;
+}
+
+.plan-progress.visible {
+  display: inline-flex;
+}
+
+.plan-progress-bar {
+  display: inline-block;
+  width: 48px;
+  height: 6px;
+  background: var(--color-surface-2);
+  border-radius: 3px;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.plan-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-accent-blue);
+  border-radius: 3px;
+  transition: width var(--duration-normal) var(--ease-default);
+}
+
+.plan-progress-fill.plan-progress-complete {
+  background: var(--color-accent-green);
+}
+
+.plan-progress-text {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+  letter-spacing: 0.3px;
+}
+
+/* ========================================
    Theme Toggle Dropdown
    ======================================== */
 

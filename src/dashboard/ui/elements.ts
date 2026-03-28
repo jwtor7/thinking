@@ -28,6 +28,7 @@ export const elements = {
   hooksCount: document.getElementById('hooks-count'),
   hooksFilter: document.getElementById('hooks-filter') as HTMLSelectElement | null,
   hooksCollapseBtn: document.querySelector('.panel-hooks .panel-collapse-btn') as HTMLButtonElement,
+  planProgress: document.getElementById('plan-progress'),
   planContent: document.getElementById('plan-content')!,
   planMeta: document.getElementById('plan-meta')!,
   planOpenBtn: document.getElementById('plan-open-btn') as HTMLButtonElement,

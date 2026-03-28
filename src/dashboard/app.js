@@ -291,6 +291,7 @@
     hooksCount: document.getElementById("hooks-count"),
     hooksFilter: document.getElementById("hooks-filter"),
     hooksCollapseBtn: document.querySelector(".panel-hooks .panel-collapse-btn"),
+    planProgress: document.getElementById("plan-progress"),
     planContent: document.getElementById("plan-content"),
     planMeta: document.getElementById("plan-meta"),
     planOpenBtn: document.getElementById("plan-open-btn"),
@@ -5286,6 +5287,27 @@ Session: ${id}` : `Session: ${id}`;
   }
 
   // src/dashboard/handlers/plans/display.ts
+  function parsePlanCheckboxes(content) {
+    const unchecked = content.match(/^[\t ]*- \[ \]/gm);
+    const checked = content.match(/^[\t ]*- \[[xX]\]/gm);
+    const checkedCount = checked ? checked.length : 0;
+    const total = checkedCount + (unchecked ? unchecked.length : 0);
+    return { checked: checkedCount, total };
+  }
+  function updatePlanProgress(progress) {
+    const el = elements.planProgress;
+    if (!el) return;
+    if (progress.total === 0) {
+      el.classList.remove("visible");
+      el.innerHTML = "";
+      return;
+    }
+    const pct = Math.round(progress.checked / progress.total * 100);
+    const allDone = progress.checked === progress.total;
+    el.innerHTML = `<span class="plan-progress-bar"><span class="plan-progress-fill${allDone ? " plan-progress-complete" : ""}" style="width: ${pct}%"></span></span><span class="plan-progress-text">${progress.checked}/${progress.total}</span>`;
+    el.classList.add("visible");
+    el.setAttribute("aria-label", `Plan completion: ${progress.checked} of ${progress.total} items done`);
+  }
   function displayMostRecentPlan() {
     if (state.plans.size === 0) {
       displayEmptyPlan();
@@ -5307,6 +5329,7 @@ Session: ${id}` : `Session: ${id}`;
     const plan = state.plans.get(planPath);
     if (!plan) {
       state.currentPlanPath = planPath;
+      updatePlanProgress({ checked: 0, total: 0 });
       const listItem = state.planList.find((p) => p.path === planPath);
       elements.planSelectorText.textContent = listItem?.filename || "Loading...";
       elements.planContent.innerHTML = `
@@ -5325,6 +5348,7 @@ Session: ${id}` : `Session: ${id}`;
     elements.planContent.innerHTML = `
     <div class="plan-markdown">${renderSimpleMarkdown(plan.content)}</div>
   `;
+    updatePlanProgress(parsePlanCheckboxes(plan.content));
     updatePlanMeta(plan);
     updatePlanActionButtons();
     renderPlanSelector();
@@ -5332,6 +5356,7 @@ Session: ${id}` : `Session: ${id}`;
   function displayEmptyPlan() {
     state.currentPlanPath = null;
     elements.planSelectorText.textContent = "No active plan";
+    updatePlanProgress({ checked: 0, total: 0 });
     const message = state.selectedSession === "all" && state.sessions.size > 0 ? "Select a session to view its plan" : "No plan file loaded";
     elements.planContent.innerHTML = `
     <div class="empty-state">
@@ -5345,6 +5370,7 @@ Session: ${id}` : `Session: ${id}`;
   }
   function displaySessionPlanEmpty(sessionId) {
     state.currentPlanPath = null;
+    updatePlanProgress({ checked: 0, total: 0 });
     const shortId = sessionId.slice(0, 8);
     elements.planSelectorText.textContent = "No plan for session";
     elements.planContent.innerHTML = `

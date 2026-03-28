@@ -14,6 +14,49 @@ import { renderPlanSelector, requestPlanContent } from './state.ts';
 import { formatTimeAgo } from './utils.ts';
 
 // ============================================
+// Checkbox Progress
+// ============================================
+
+interface CheckboxProgress {
+  checked: number;
+  total: number;
+}
+
+/**
+ * Parse plan content for checkbox items and return progress.
+ * Matches GitHub-flavored markdown task list syntax: `- [ ]` and `- [x]`/`- [X]`.
+ */
+function parsePlanCheckboxes(content: string): CheckboxProgress {
+  const unchecked = content.match(/^[\t ]*- \[ \]/gm);
+  const checked = content.match(/^[\t ]*- \[[xX]\]/gm);
+  const checkedCount = checked ? checked.length : 0;
+  const total = checkedCount + (unchecked ? unchecked.length : 0);
+  return { checked: checkedCount, total };
+}
+
+/**
+ * Update the plan progress indicator in the panel header.
+ * Shows a mini progress bar + fraction when checkboxes exist, hides otherwise.
+ */
+function updatePlanProgress(progress: CheckboxProgress): void {
+  const el = elements.planProgress;
+  if (!el) return;
+
+  if (progress.total === 0) {
+    el.classList.remove('visible');
+    el.innerHTML = '';
+    return;
+  }
+
+  const pct = Math.round((progress.checked / progress.total) * 100);
+  const allDone = progress.checked === progress.total;
+
+  el.innerHTML = `<span class="plan-progress-bar"><span class="plan-progress-fill${allDone ? ' plan-progress-complete' : ''}" style="width: ${pct}%"></span></span><span class="plan-progress-text">${progress.checked}/${progress.total}</span>`;
+  el.classList.add('visible');
+  el.setAttribute('aria-label', `Plan completion: ${progress.checked} of ${progress.total} items done`);
+}
+
+// ============================================
 // Display Functions
 // ============================================
 
@@ -53,6 +96,7 @@ export function displayPlan(planPath: string): void {
   if (!plan) {
     // Plan content not loaded yet, show loading state and request content
     state.currentPlanPath = planPath;
+    updatePlanProgress({ checked: 0, total: 0 });
     const listItem = state.planList.find((p) => p.path === planPath);
     elements.planSelectorText.textContent = listItem?.filename || 'Loading...';
     elements.planContent.innerHTML = `
@@ -75,6 +119,9 @@ export function displayPlan(planPath: string): void {
     <div class="plan-markdown">${renderSimpleMarkdown(plan.content)}</div>
   `;
 
+  // Update progress indicator from checkbox items
+  updatePlanProgress(parsePlanCheckboxes(plan.content));
+
   // Update plan metadata display
   updatePlanMeta(plan);
 
@@ -92,6 +139,7 @@ export function displayPlan(planPath: string): void {
 export function displayEmptyPlan(): void {
   state.currentPlanPath = null;
   elements.planSelectorText.textContent = 'No active plan';
+  updatePlanProgress({ checked: 0, total: 0 });
 
   // Show different message based on whether "All" sessions is selected
   const message = state.selectedSession === 'all' && state.sessions.size > 0
@@ -118,6 +166,7 @@ export function displayEmptyPlan(): void {
  */
 export function displaySessionPlanEmpty(sessionId: string): void {
   state.currentPlanPath = null;
+  updatePlanProgress({ checked: 0, total: 0 });
   const shortId = sessionId.slice(0, 8);
   elements.planSelectorText.textContent = 'No plan for session';
 

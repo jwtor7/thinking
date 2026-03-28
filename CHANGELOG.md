@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-03-28 — v1.5.5
+
+### Added
+- **Plan tab progress bar** — Plan panel header now shows a live `X/Y` fraction and a 48px progress bar parsed from checkbox state in plan files (`[ ]` / `[x]`); bar turns green when all checkboxes are checked
+- `parsePlanCheckboxes()` and `updatePlanProgress()` in `src/dashboard/handlers/plans/display.ts`
+- `planProgress` element reference in `src/dashboard/ui/elements.ts`
+- `plan-progress` span injected into plan panel header in `index.html`
+- Progress bar and fraction styles in `src/dashboard/css/components.css`
+
+---
+
 ## 2026-03-28 — v1.5.4
 
 ### Fixed
