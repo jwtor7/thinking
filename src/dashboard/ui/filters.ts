@@ -140,7 +140,12 @@ export function updateThinkingCount(): void {
     const entries = elements.thinkingContent.querySelectorAll('.thinking-entry');
     let visibleCount = 0;
     entries.forEach((entry: Element) => {
-      if ((entry as HTMLElement).style.display !== 'none') visibleCount++;
+      const el = entry as HTMLElement;
+      if (el.style.display !== 'none') {
+        // Aggregated markers count as their block count
+        const redactedCount = parseInt(el.dataset.redactedCount || '0', 10);
+        visibleCount += redactedCount > 0 ? redactedCount : 1;
+      }
     });
     elements.thinkingCount.textContent = `${visibleCount}/${state.thinkingCount}`;
   } else {

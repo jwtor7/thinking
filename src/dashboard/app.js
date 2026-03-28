@@ -3902,7 +3902,11 @@ Session: ${id}` : `Session: ${id}`;
       const entries = elements.thinkingContent.querySelectorAll(".thinking-entry");
       let visibleCount = 0;
       entries.forEach((entry) => {
-        if (entry.style.display !== "none") visibleCount++;
+        const el = entry;
+        if (el.style.display !== "none") {
+          const redactedCount = parseInt(el.dataset.redactedCount || "0", 10);
+          visibleCount += redactedCount > 0 ? redactedCount : 1;
+        }
       });
       elements.thinkingCount.textContent = `${visibleCount}/${state.thinkingCount}`;
     } else {
@@ -4594,6 +4598,10 @@ Session: ${id}` : `Session: ${id}`;
 
   // src/dashboard/handlers/thinking.ts
   var ctx4 = null;
+  var redactedGroups = /* @__PURE__ */ new Map();
+  function resetRedactedGroups() {
+    redactedGroups.clear();
+  }
   function initThinking(appCtx) {
     ctx4 = appCtx;
     return { dispose: () => {
@@ -4610,9 +4618,7 @@ Session: ${id}` : `Session: ${id}`;
     updateTabBadge("thinking", state.thinkingCount);
     const content = event.content;
     const isRedacted = content === "[Extended thinking]";
-    const time = formatTime(event.timestamp);
     const sessionId = event.sessionId;
-    const preview = isRedacted ? "Extended thinking" : content.slice(0, 80).replace(/\n/g, " ");
     const eventAgentId = event.agentId;
     let agentId = eventAgentId;
     if (!agentId) {
@@ -4624,17 +4630,93 @@ Session: ${id}` : `Session: ${id}`;
         agentId = "main";
       }
     }
-    const agentDisplayName = ctx4.agents.getDisplayName(agentId);
     const emptyState2 = elements.thinkingContent.querySelector(".empty-state");
     if (emptyState2) {
       emptyState2.remove();
     }
     const subagentMapping = eventAgentId ? subagentState.subagents.get(eventAgentId) : void 0;
-    const isSubagentThinking = !!subagentMapping;
     const parentSessionId = subagentMapping?.parentSessionId;
+    const session = state.sessions.get(sessionId || "");
+    const folderName = session?.workingDirectory ? getSessionDisplayName(session.workingDirectory) : null;
+    const folderBadge = sessionId && folderName ? `<span class="entry-folder-badge" style="background: ${escapeCssValue(getSessionColorByFolder(folderName))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(folderName)}</span>` : "";
+    const sessionBadge = sessionId && !folderName ? `<span class="entry-session-badge" style="background: ${escapeCssValue(getSessionColorByHash(sessionId))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>` : "";
+    if (isRedacted) {
+      handleRedactedThinking(event, agentId, sessionId, folderBadge, sessionBadge, parentSessionId);
+    } else {
+      handleFullThinking(event, content, agentId, sessionId, folderBadge, sessionBadge, subagentMapping, parentSessionId);
+    }
+  }
+  function handleRedactedThinking(event, agentId, sessionId, folderBadge, sessionBadge, parentSessionId) {
+    const groupKey = (sessionId || "__none") + ":" + agentId;
+    const group = redactedGroups.get(groupKey);
+    if (group && group.element.parentNode) {
+      group.count++;
+      group.lastTimestamp = event.timestamp;
+      updateRedactedMarker(group);
+      applyThinkingFilter(group.element);
+      ctx4.ui.smartScroll(elements.thinkingContent);
+      return;
+    }
+    redactedGroups.delete(groupKey);
     const entry = document.createElement("div");
-    const baseClass = isSubagentThinking ? "thinking-entry subagent-entry new" : "thinking-entry new";
-    entry.className = isRedacted ? `${baseClass} redacted` : baseClass;
+    entry.className = "thinking-entry thinking-redacted-marker new";
+    entry.dataset.agent = agentId;
+    entry.dataset.session = sessionId || "";
+    entry.dataset.content = "extended thinking";
+    entry.dataset.timestamp = String(Date.now());
+    entry.dataset.eventTimestamp = event.timestamp;
+    entry.dataset.redactedCount = "1";
+    if (parentSessionId) {
+      entry.dataset.parentSession = parentSessionId;
+    }
+    const time = formatTime(event.timestamp);
+    entry.innerHTML = `
+    <div class="redacted-marker-content">
+      <span class="redacted-marker-indicator"></span>
+      <span class="thinking-time">${escapeHtml(time)}</span>
+      ${folderBadge}
+      ${sessionBadge}
+      <span class="redacted-marker-label">1 thinking block</span>
+    </div>
+  `;
+    const newGroup = {
+      element: entry,
+      count: 1,
+      firstTimestamp: event.timestamp,
+      lastTimestamp: event.timestamp
+    };
+    redactedGroups.set(groupKey, newGroup);
+    applyThinkingFilter(entry);
+    ctx4.ui.appendAndTrim(elements.thinkingContent, entry);
+    ctx4.ui.smartScroll(elements.thinkingContent);
+    setTimeout(() => entry.classList.remove("new"), 1e3);
+  }
+  function updateRedactedMarker(group) {
+    const label = group.element.querySelector(".redacted-marker-label");
+    if (label) {
+      label.textContent = `${group.count} thinking blocks`;
+    }
+    const timeEl = group.element.querySelector(".thinking-time");
+    if (timeEl) {
+      const first = formatTime(group.firstTimestamp);
+      const last = formatTime(group.lastTimestamp);
+      timeEl.textContent = first === last ? first : `${first}\u2013${last}`;
+    }
+    group.element.dataset.redactedCount = String(group.count);
+    group.element.classList.add("new");
+    setTimeout(() => group.element.classList.remove("new"), 1e3);
+  }
+  function handleFullThinking(event, content, agentId, sessionId, folderBadge, sessionBadge, subagentMapping, parentSessionId) {
+    const groupKey = (sessionId || "__none") + ":" + agentId;
+    redactedGroups.delete(groupKey);
+    const isSubagentThinking = !!subagentMapping;
+    const agentDisplayName = ctx4.agents.getDisplayName(agentId);
+    const agentBadgeColors = getAgentBadgeColors(agentDisplayName);
+    const time = formatTime(event.timestamp);
+    const preview = content.slice(0, 80).replace(/\n/g, " ");
+    const subagentBadge = isSubagentThinking ? `<span class="entry-subagent-badge" title="Subagent thinking">${escapeHtml(subagentMapping.agentName)}</span>` : "";
+    const entry = document.createElement("div");
+    entry.className = isSubagentThinking ? "thinking-entry subagent-entry new" : "thinking-entry new";
     entry.dataset.agent = agentId;
     entry.dataset.session = sessionId || "";
     entry.dataset.content = content.toLowerCase();
@@ -4643,12 +4725,6 @@ Session: ${id}` : `Session: ${id}`;
     if (parentSessionId) {
       entry.dataset.parentSession = parentSessionId;
     }
-    const session = state.sessions.get(sessionId || "");
-    const folderName = session?.workingDirectory ? getSessionDisplayName(session.workingDirectory) : null;
-    const folderBadge = sessionId && folderName ? `<span class="entry-folder-badge" style="background: ${escapeCssValue(getSessionColorByFolder(folderName))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(folderName)}</span>` : "";
-    const sessionBadge = sessionId && !folderName ? `<span class="entry-session-badge" style="background: ${escapeCssValue(getSessionColorByHash(sessionId))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>` : "";
-    const subagentBadge = isSubagentThinking ? `<span class="entry-subagent-badge" title="Subagent thinking">${escapeHtml(subagentMapping.agentName)}</span>` : "";
-    const agentBadgeColors = getAgentBadgeColors(agentDisplayName);
     entry.innerHTML = `
     <div class="thinking-entry-header">
       <span class="thinking-time">${escapeHtml(time)}</span>
@@ -4656,9 +4732,9 @@ Session: ${id}` : `Session: ${id}`;
       ${sessionBadge}
       ${subagentBadge}
       <span class="thinking-agent" style="background: ${escapeCssValue(agentBadgeColors.bg)}; color: ${escapeCssValue(agentBadgeColors.text)}">${escapeHtml(agentDisplayName)}</span>
-      <span class="thinking-preview">${escapeHtml(preview)}${isRedacted ? "" : "..."}</span>
+      <span class="thinking-preview">${escapeHtml(preview)}...</span>
     </div>
-    ${isRedacted ? '<div class="thinking-text thinking-redacted">Thinking content not available in transcript (Claude Code \u22652.1.86)</div>' : `<div class="thinking-text">${escapeHtml(content)}</div>`}
+    <div class="thinking-text">${escapeHtml(content)}</div>
   `;
     applyThinkingFilter(entry);
     ctx4.ui.appendAndTrim(elements.thinkingContent, entry);
@@ -6753,6 +6829,7 @@ Session: ${id}` : `Session: ${id}`;
   function clearAllPanels() {
     state.eventCount = 0;
     state.thinkingCount = 0;
+    resetRedactedGroups();
     state.toolsCount = 0;
     state.hooksCount = 0;
     state.agentsCount = 0;

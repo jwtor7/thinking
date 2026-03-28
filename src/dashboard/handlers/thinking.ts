@@ -4,7 +4,10 @@
  * Processes thinking events from the monitor server and renders them
  * in the dashboard's thinking panel. Supports filtering and auto-scroll.
  *
- * Uses a callback pattern for functions that would cause circular imports.
+ * Two rendering modes:
+ * - Full content: Local models write actual thinking text (renders as expanded entries)
+ * - Redacted: Claude Code API models (>=2.1.69) write empty thinking blocks
+ *   (renders as compact aggregated markers per session+agent)
  */
 
 import type { ThinkingEvent } from '../types.ts';
@@ -25,6 +28,23 @@ import type { Disposable } from '../services/lifecycle.ts';
 
 let ctx: AppContext | null = null;
 
+/** Tracks the last redacted-thinking aggregate marker per session+agent */
+interface RedactedGroup {
+  element: HTMLElement;
+  count: number;
+  firstTimestamp: string;
+  lastTimestamp: string;
+}
+
+const redactedGroups: Map<string, RedactedGroup> = new Map();
+
+/**
+ * Clear aggregation state. Called on reconnect/panel clear.
+ */
+export function resetRedactedGroups(): void {
+  redactedGroups.clear();
+}
+
 /**
  * Initialize the thinking handler with app context.
  * Must be called before any thinking events are processed.
@@ -36,13 +56,8 @@ export function initThinking(appCtx: AppContext): Disposable {
 
 /**
  * Handle a thinking event from the monitor server.
- * Creates a thinking entry in the dashboard with proper formatting and filtering.
- * Supports agent context tracking and session filtering.
- *
- * @param event The thinking event to process
  */
 export function handleThinking(event: ThinkingEvent): void {
-  // Validate callbacks have been initialized
   if (!ctx) {
     console.error('[Thinking Handler] Not initialized - call initThinking() first');
     return;
@@ -54,18 +69,13 @@ export function handleThinking(event: ThinkingEvent): void {
 
   const content = event.content;
   const isRedacted = content === '[Extended thinking]';
-  const time = formatTime(event.timestamp);
   const sessionId = event.sessionId;
-  const preview = isRedacted ? 'Extended thinking' : content.slice(0, 80).replace(/\n/g, ' ');
 
-  // Determine agent context
-  // IMPORTANT: Only use global agent context if the agent belongs to this session
-  // Otherwise thinking from session A gets incorrectly attributed to session B's agents
+  // Resolve agent context
   const eventAgentId = event.agentId;
   let agentId = eventAgentId;
   if (!agentId) {
     const contextAgentId = ctx.agents.getCurrentContext();
-    // Check if context agent belongs to this session
     const contextAgent = subagentState.subagents.get(contextAgentId);
     if (contextAgent && contextAgent.parentSessionId === sessionId) {
       agentId = contextAgentId;
@@ -73,7 +83,6 @@ export function handleThinking(event: ThinkingEvent): void {
       agentId = 'main';
     }
   }
-  const agentDisplayName = ctx.agents.getDisplayName(agentId);
 
   // Clear empty state if present
   const emptyState = elements.thinkingContent.querySelector('.empty-state');
@@ -81,51 +90,153 @@ export function handleThinking(event: ThinkingEvent): void {
     emptyState.remove();
   }
 
-  // Check if this is from a subagent
+  // Subagent detection
   const subagentMapping = eventAgentId ? subagentState.subagents.get(eventAgentId) : undefined;
-  const isSubagentThinking = !!subagentMapping;
   const parentSessionId = subagentMapping?.parentSessionId;
 
-  // Create thinking entry (non-collapsible, always expanded)
-  const entry = document.createElement('div');
-  const baseClass = isSubagentThinking ? 'thinking-entry subagent-entry new' : 'thinking-entry new';
-  entry.className = isRedacted ? `${baseClass} redacted` : baseClass;
-  entry.dataset.agent = agentId;
-  entry.dataset.session = sessionId || '';
-  entry.dataset.content = content.toLowerCase(); // For filtering
-  entry.dataset.timestamp = String(Date.now());
-  entry.dataset.eventTimestamp = event.timestamp; // For timeline click navigation
-  // Track parent session for subagent filtering
-  if (parentSessionId) {
-    entry.dataset.parentSession = parentSessionId;
-  }
-
-  // Get folder name for folder badge
+  // Build badges (shared by both paths)
   const session = state.sessions.get(sessionId || '');
   const folderName = session?.workingDirectory
     ? getSessionDisplayName(session.workingDirectory)
     : null;
 
-  // Folder badge - same color for all sessions in same folder
-  // SECURITY: escapeCssValue prevents CSS injection in style attributes
-  // This is the PRIMARY identifier when available - shows project/folder name
   const folderBadge = (sessionId && folderName)
     ? `<span class="entry-folder-badge" style="background: ${escapeCssValue(getSessionColorByFolder(folderName))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(folderName)}</span>`
     : '';
 
-  // Session ID badge - ONLY shown when no folder name is available
-  // When folder badge exists, it becomes the primary identifier with session ID in tooltip
   const sessionBadge = (sessionId && !folderName)
     ? `<span class="entry-session-badge" style="background: ${escapeCssValue(getSessionColorByHash(sessionId))}" title="Session: ${escapeHtml(sessionId)}">${escapeHtml(getShortSessionId(sessionId))}</span>`
     : '';
 
-  // Subagent badge - show when this thinking is from a subagent
+  if (isRedacted) {
+    handleRedactedThinking(event, agentId, sessionId, folderBadge, sessionBadge, parentSessionId);
+  } else {
+    handleFullThinking(event, content, agentId, sessionId, folderBadge, sessionBadge, subagentMapping, parentSessionId);
+  }
+}
+
+/**
+ * Handle a redacted thinking event - aggregate into compact markers.
+ */
+function handleRedactedThinking(
+  event: ThinkingEvent,
+  agentId: string,
+  sessionId: string | undefined,
+  folderBadge: string,
+  sessionBadge: string,
+  parentSessionId: string | undefined,
+): void {
+  const groupKey = (sessionId || '__none') + ':' + agentId;
+  const group = redactedGroups.get(groupKey);
+
+  // Merge into existing group if it's still in the DOM
+  if (group && group.element.parentNode) {
+    group.count++;
+    group.lastTimestamp = event.timestamp;
+    updateRedactedMarker(group);
+    applyThinkingFilter(group.element);
+    ctx!.ui.smartScroll(elements.thinkingContent);
+    return;
+  }
+
+  // Create new compact marker
+  redactedGroups.delete(groupKey);
+  const entry = document.createElement('div');
+  entry.className = 'thinking-entry thinking-redacted-marker new';
+  entry.dataset.agent = agentId;
+  entry.dataset.session = sessionId || '';
+  entry.dataset.content = 'extended thinking';
+  entry.dataset.timestamp = String(Date.now());
+  entry.dataset.eventTimestamp = event.timestamp;
+  entry.dataset.redactedCount = '1';
+  if (parentSessionId) {
+    entry.dataset.parentSession = parentSessionId;
+  }
+
+  const time = formatTime(event.timestamp);
+
+  entry.innerHTML = `
+    <div class="redacted-marker-content">
+      <span class="redacted-marker-indicator"></span>
+      <span class="thinking-time">${escapeHtml(time)}</span>
+      ${folderBadge}
+      ${sessionBadge}
+      <span class="redacted-marker-label">1 thinking block</span>
+    </div>
+  `;
+
+  const newGroup: RedactedGroup = {
+    element: entry,
+    count: 1,
+    firstTimestamp: event.timestamp,
+    lastTimestamp: event.timestamp,
+  };
+  redactedGroups.set(groupKey, newGroup);
+
+  applyThinkingFilter(entry);
+  ctx!.ui.appendAndTrim(elements.thinkingContent, entry);
+  ctx!.ui.smartScroll(elements.thinkingContent);
+  setTimeout(() => entry.classList.remove('new'), 1000);
+}
+
+/**
+ * Update a redacted marker's label and time range.
+ */
+function updateRedactedMarker(group: RedactedGroup): void {
+  const label = group.element.querySelector('.redacted-marker-label');
+  if (label) {
+    label.textContent = `${group.count} thinking blocks`;
+  }
+  const timeEl = group.element.querySelector('.thinking-time');
+  if (timeEl) {
+    const first = formatTime(group.firstTimestamp);
+    const last = formatTime(group.lastTimestamp);
+    timeEl.textContent = first === last ? first : `${first}\u2013${last}`;
+  }
+  group.element.dataset.redactedCount = String(group.count);
+
+  // Re-trigger highlight animation
+  group.element.classList.add('new');
+  setTimeout(() => group.element.classList.remove('new'), 1000);
+}
+
+/**
+ * Handle a full thinking event - render as expanded entry with content.
+ */
+function handleFullThinking(
+  event: ThinkingEvent,
+  content: string,
+  agentId: string,
+  sessionId: string | undefined,
+  folderBadge: string,
+  sessionBadge: string,
+  subagentMapping: { agentName: string } | undefined,
+  parentSessionId: string | undefined,
+): void {
+  // Break any active redacted group for this session+agent
+  const groupKey = (sessionId || '__none') + ':' + agentId;
+  redactedGroups.delete(groupKey);
+
+  const isSubagentThinking = !!subagentMapping;
+  const agentDisplayName = ctx!.agents.getDisplayName(agentId);
+  const agentBadgeColors = getAgentBadgeColors(agentDisplayName);
+  const time = formatTime(event.timestamp);
+  const preview = content.slice(0, 80).replace(/\n/g, ' ');
+
   const subagentBadge = isSubagentThinking
-    ? `<span class="entry-subagent-badge" title="Subagent thinking">${escapeHtml(subagentMapping.agentName)}</span>`
+    ? `<span class="entry-subagent-badge" title="Subagent thinking">${escapeHtml(subagentMapping!.agentName)}</span>`
     : '';
 
-  // Get agent badge colors for visual distinction (WCAG AA compliant)
-  const agentBadgeColors = getAgentBadgeColors(agentDisplayName);
+  const entry = document.createElement('div');
+  entry.className = isSubagentThinking ? 'thinking-entry subagent-entry new' : 'thinking-entry new';
+  entry.dataset.agent = agentId;
+  entry.dataset.session = sessionId || '';
+  entry.dataset.content = content.toLowerCase();
+  entry.dataset.timestamp = String(Date.now());
+  entry.dataset.eventTimestamp = event.timestamp;
+  if (parentSessionId) {
+    entry.dataset.parentSession = parentSessionId;
+  }
 
   entry.innerHTML = `
     <div class="thinking-entry-header">
@@ -134,23 +245,13 @@ export function handleThinking(event: ThinkingEvent): void {
       ${sessionBadge}
       ${subagentBadge}
       <span class="thinking-agent" style="background: ${escapeCssValue(agentBadgeColors.bg)}; color: ${escapeCssValue(agentBadgeColors.text)}">${escapeHtml(agentDisplayName)}</span>
-      <span class="thinking-preview">${escapeHtml(preview)}${isRedacted ? '' : '...'}</span>
+      <span class="thinking-preview">${escapeHtml(preview)}...</span>
     </div>
-    ${isRedacted
-      ? '<div class="thinking-text thinking-redacted">Thinking content not available in transcript (Claude Code \u22652.1.86)</div>'
-      : `<div class="thinking-text">${escapeHtml(content)}</div>`
-    }
+    <div class="thinking-text">${escapeHtml(content)}</div>
   `;
 
-  // Apply filter visibility
   applyThinkingFilter(entry);
-
-  // Append to container and maintain max entries
-  ctx.ui.appendAndTrim(elements.thinkingContent, entry);
-
-  // Smart scroll if auto-scroll is enabled
-  ctx.ui.smartScroll(elements.thinkingContent);
-
-  // Remove 'new' class after animation
+  ctx!.ui.appendAndTrim(elements.thinkingContent, entry);
+  ctx!.ui.smartScroll(elements.thinkingContent);
   setTimeout(() => entry.classList.remove('new'), 1000);
 }

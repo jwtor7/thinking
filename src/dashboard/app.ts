@@ -66,7 +66,7 @@ import {
 
 // Import handler modules
 import { handleEvent } from './handlers/dispatcher.ts';
-import { initThinking } from './handlers/thinking.ts';
+import { initThinking, resetRedactedGroups } from './handlers/thinking.ts';
 import { initTools } from './handlers/tools.ts';
 import {
   getCurrentAgentContext,
@@ -224,6 +224,7 @@ function clearAllPanels(): void {
   // Reset state
   state.eventCount = 0;
   state.thinkingCount = 0;
+  resetRedactedGroups();
   state.toolsCount = 0;
   state.hooksCount = 0;
   state.agentsCount = 0;
