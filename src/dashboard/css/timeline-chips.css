@@ -68,3 +68,14 @@
 .timeline-session-chip {
   font-size: 10px;
 }
+
+.timeline-overflow-toggle {
+  font-size: 10px;
+  opacity: 0.7;
+  font-style: italic;
+  cursor: pointer;
+}
+
+.timeline-overflow-toggle:hover {
+  opacity: 1;
+}

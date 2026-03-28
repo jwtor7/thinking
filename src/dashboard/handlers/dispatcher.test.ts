@@ -155,8 +155,10 @@ describe('Event Dispatcher - Static Analysis', () => {
       expect(dispatcherContent).toMatch(/case 'agent_stop':\s+handleAgentStop\(event\)/);
     });
 
-    it('should call handleSessionStart for session_start events', () => {
-      expect(dispatcherContent).toMatch(/case 'session_start':\s+handleSessionStart\(event\)/);
+    it('should call handleSessionStart for session_start events before timeline entry', () => {
+      // handleSessionStart is called early (before addTimelineEntry) so chips get working directory
+      expect(dispatcherContent).toContain('handleSessionStart(event)');
+      expect(dispatcherContent).toMatch(/case 'session_start':\s+\/\/ Already handled above/);
     });
 
     it('should call handleSessionStop for session_stop events', () => {
@@ -449,16 +451,19 @@ describe('Event Dispatcher - Static Analysis', () => {
 
       // Extract indices for key operations
       const countIdx = handlerBody.indexOf('state.eventCount++');
-      const timelineIdx = handlerBody.indexOf('addTimelineEntry');
       const logIdx = handlerBody.indexOf('debug(');
       const sessionTrackIdx = handlerBody.indexOf('trackSession');
+      const sessionStartEarlyIdx = handlerBody.indexOf("event.type === 'session_start'");
+      const timelineIdx = handlerBody.indexOf('addTimelineEntry');
       const switchIdx = handlerBody.indexOf('switch');
 
-      // Verify order: count -> timeline -> log -> session track -> switch
+      // Verify order: count -> log -> session track -> session_start early -> timeline -> switch
       expect(countIdx).toBeGreaterThanOrEqual(0);
-      expect(timelineIdx).toBeGreaterThan(countIdx);
-      expect(logIdx).toBeGreaterThan(timelineIdx);
-      expect(switchIdx).toBeGreaterThan(sessionTrackIdx);
+      expect(logIdx).toBeGreaterThan(countIdx);
+      expect(sessionTrackIdx).toBeGreaterThan(logIdx);
+      expect(sessionStartEarlyIdx).toBeGreaterThan(sessionTrackIdx);
+      expect(timelineIdx).toBeGreaterThan(sessionStartEarlyIdx);
+      expect(switchIdx).toBeGreaterThan(timelineIdx);
     });
   });
 });

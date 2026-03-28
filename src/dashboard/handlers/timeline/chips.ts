@@ -196,6 +196,10 @@ function mergeSessionAliases(canonicalSessionId: string, displayLabel: string): 
     }
     sessionFilterState.delete(aliasId);
 
+    // Remove alias from state.sessions to prevent refreshSessionChips
+    // from recreating the alias chip on the next refresh cycle
+    state.sessions.delete(aliasId);
+
     const entriesContainer = elements.timelineEntries;
     if (entriesContainer) {
       for (const child of Array.from(entriesContainer.children)) {
@@ -236,6 +240,11 @@ export function addOrUpdateSessionChip(sessionId: string, onFilterChange: () => 
     chip.title = `Session: ${sessionId}`;
     return;
   }
+
+  // Don't create chips for sessions with no timeline events
+  // (e.g. pure session_start announcements on connect)
+  const eventCount = sessionCounts.get(sessionId) || 0;
+  if (eventCount === 0) return;
 
   if (!sessionFilterState.has(sessionId)) {
     sessionFilterState.set(sessionId, false);
@@ -282,4 +291,76 @@ export function refreshSessionChips(onFilterChange: () => void): void {
   for (const sessionId of sessionIds) {
     addOrUpdateSessionChip(sessionId, onFilterChange);
   }
+  enforceChipOverflow(onFilterChange);
+}
+
+// ============================================
+// Chip Overflow
+// ============================================
+
+const MAX_VISIBLE_CHIPS = 8;
+let overflowToggle: HTMLElement | null = null;
+let overflowExpanded = false;
+
+function enforceChipOverflow(onFilterChange: () => void): void {
+  const container = elements.timelineSessionChips;
+  if (!container) return;
+
+  const chips = Array.from(container.querySelectorAll('.timeline-session-chip')) as HTMLElement[];
+
+  // Remove existing overflow toggle
+  if (overflowToggle) {
+    overflowToggle.remove();
+    overflowToggle = null;
+  }
+
+  if (chips.length <= MAX_VISIBLE_CHIPS) {
+    // No overflow - show all chips
+    for (const chip of chips) {
+      chip.style.display = '';
+    }
+    overflowExpanded = false;
+    return;
+  }
+
+  // Sort chips: active (selected) first, then by event count descending
+  const sortedChips = chips.slice().sort((a, b) => {
+    const aActive = a.classList.contains('active') ? 1 : 0;
+    const bActive = b.classList.contains('active') ? 1 : 0;
+    if (aActive !== bActive) return bActive - aActive;
+
+    const aSession = state.sessions.get(a.dataset.sessionId || '');
+    const bSession = state.sessions.get(b.dataset.sessionId || '');
+    const aLive = aSession?.active ? 1 : 0;
+    const bLive = bSession?.active ? 1 : 0;
+    if (aLive !== bLive) return bLive - aLive;
+
+    const aCount = sessionCounts.get(a.dataset.sessionId || '') || 0;
+    const bCount = sessionCounts.get(b.dataset.sessionId || '') || 0;
+    return bCount - aCount;
+  });
+
+  const overflowCount = sortedChips.length - MAX_VISIBLE_CHIPS;
+
+  if (overflowExpanded) {
+    for (const chip of sortedChips) {
+      chip.style.display = '';
+    }
+  } else {
+    for (let i = 0; i < sortedChips.length; i++) {
+      sortedChips[i].style.display = i < MAX_VISIBLE_CHIPS ? '' : 'none';
+    }
+  }
+
+  // Add toggle button
+  overflowToggle = document.createElement('button');
+  overflowToggle.className = 'timeline-chip timeline-overflow-toggle';
+  overflowToggle.textContent = overflowExpanded
+    ? 'show less'
+    : `+${overflowCount} more`;
+  overflowToggle.addEventListener('click', () => {
+    overflowExpanded = !overflowExpanded;
+    enforceChipOverflow(onFilterChange);
+  });
+  container.appendChild(overflowToggle);
 }

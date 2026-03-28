@@ -2553,6 +2553,7 @@
         sessionFilterState.set(canonicalSessionId, true);
       }
       sessionFilterState.delete(aliasId);
+      state.sessions.delete(aliasId);
       const entriesContainer = elements.timelineEntries;
       if (entriesContainer) {
         for (const child of Array.from(entriesContainer.children)) {
@@ -2587,6 +2588,8 @@
       chip2.title = `Session: ${sessionId}`;
       return;
     }
+    const eventCount = sessionCounts.get(sessionId) || 0;
+    if (eventCount === 0) return;
     if (!sessionFilterState.has(sessionId)) {
       sessionFilterState.set(sessionId, false);
     }
@@ -2627,6 +2630,57 @@
     for (const sessionId of sessionIds) {
       addOrUpdateSessionChip(sessionId, onFilterChange);
     }
+    enforceChipOverflow(onFilterChange);
+  }
+  var MAX_VISIBLE_CHIPS = 8;
+  var overflowToggle = null;
+  var overflowExpanded = false;
+  function enforceChipOverflow(onFilterChange) {
+    const container = elements.timelineSessionChips;
+    if (!container) return;
+    const chips = Array.from(container.querySelectorAll(".timeline-session-chip"));
+    if (overflowToggle) {
+      overflowToggle.remove();
+      overflowToggle = null;
+    }
+    if (chips.length <= MAX_VISIBLE_CHIPS) {
+      for (const chip of chips) {
+        chip.style.display = "";
+      }
+      overflowExpanded = false;
+      return;
+    }
+    const sortedChips = chips.slice().sort((a, b) => {
+      const aActive = a.classList.contains("active") ? 1 : 0;
+      const bActive = b.classList.contains("active") ? 1 : 0;
+      if (aActive !== bActive) return bActive - aActive;
+      const aSession = state.sessions.get(a.dataset.sessionId || "");
+      const bSession = state.sessions.get(b.dataset.sessionId || "");
+      const aLive = aSession?.active ? 1 : 0;
+      const bLive = bSession?.active ? 1 : 0;
+      if (aLive !== bLive) return bLive - aLive;
+      const aCount = sessionCounts.get(a.dataset.sessionId || "") || 0;
+      const bCount = sessionCounts.get(b.dataset.sessionId || "") || 0;
+      return bCount - aCount;
+    });
+    const overflowCount = sortedChips.length - MAX_VISIBLE_CHIPS;
+    if (overflowExpanded) {
+      for (const chip of sortedChips) {
+        chip.style.display = "";
+      }
+    } else {
+      for (let i = 0; i < sortedChips.length; i++) {
+        sortedChips[i].style.display = i < MAX_VISIBLE_CHIPS ? "" : "none";
+      }
+    }
+    overflowToggle = document.createElement("button");
+    overflowToggle.className = "timeline-chip timeline-overflow-toggle";
+    overflowToggle.textContent = overflowExpanded ? "show less" : `+${overflowCount} more`;
+    overflowToggle.addEventListener("click", () => {
+      overflowExpanded = !overflowExpanded;
+      enforceChipOverflow(onFilterChange);
+    });
+    container.appendChild(overflowToggle);
   }
 
   // src/dashboard/handlers/timeline/entries.ts
@@ -5703,7 +5757,6 @@ Session: ${id}` : `Session: ${id}`;
   function handleEvent(event) {
     state.eventCount++;
     elements.eventCount.textContent = `Events: ${state.eventCount}`;
-    addTimelineEntry2(event);
     updateStats(event, event.sessionId);
     debug(`[Dashboard] Event received:`, {
       type: event.type,
@@ -5714,6 +5767,10 @@ Session: ${id}` : `Session: ${id}`;
     if (event.sessionId) {
       trackSession(event.sessionId, event.timestamp);
     }
+    if (event.type === "session_start") {
+      handleSessionStart(event);
+    }
+    addTimelineEntry2(event);
     try {
       switch (event.type) {
         case "connection_status":
@@ -5745,7 +5802,6 @@ Session: ${id}` : `Session: ${id}`;
           handleAgentStop(event);
           break;
         case "session_start":
-          handleSessionStart(event);
           break;
         case "session_stop":
           handleSessionStop(event);

@@ -21,9 +21,6 @@ export function handleEvent(event: StrictMonitorEvent): void {
   state.eventCount++;
   elements.eventCount.textContent = `Events: ${state.eventCount}`;
 
-  // Add to timeline (before dispatch to specific handler)
-  addTimelineEntry(event);
-
   // Update stats bar (pass sessionId for per-session tracking)
   updateStats(event, event.sessionId);
 
@@ -37,6 +34,15 @@ export function handleEvent(event: StrictMonitorEvent): void {
   if (event.sessionId) {
     trackSession(event.sessionId, event.timestamp);
   }
+
+  // For session_start, set working directory BEFORE adding timeline entry
+  // so the session chip gets the project name instead of a hex ID fallback
+  if (event.type === 'session_start') {
+    handleSessionStart(event);
+  }
+
+  // Add to timeline (after session_start is processed so chips have WD)
+  addTimelineEntry(event);
 
   try {
     switch (event.type) {
@@ -72,7 +78,7 @@ export function handleEvent(event: StrictMonitorEvent): void {
         handleAgentStop(event);
         break;
       case 'session_start':
-        handleSessionStart(event);
+        // Already handled above (before addTimelineEntry)
         break;
       case 'session_stop':
         handleSessionStop(event);

@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-03-28 — v1.5.3
+
+### Fixed
+- **Orphaned session chips** - Session chips showed hex IDs instead of project names due to race condition in dispatcher ordering; `handleSessionStart` now runs before `addTimelineEntry` so working directory is set when chips are created
+- **Alias chip resurrection** - `mergeSessionAliases` now removes alias entries from `state.sessions`, preventing `refreshSessionChips` from recreating merged alias chips on every refresh cycle
+- **Session chip overflow** - Added overflow handling: when more than 8 session chips exist, excess are collapsed behind a "+N more" toggle (active/high-event sessions shown first)
+
+### Changed
+- **Session window reduced** from 24h to 4h in `getKnownSessions()`, sorted by most recent first, capped at 10 sessions
+- **Session pruning** - Chips are only created for sessions with actual timeline events, not for bare `session_start` announcements
+
+### Added
+- Unit tests for `getKnownSessions()` (cutoff, sorting, capping, working directory, subagent exclusion)
+
+---
+
 ## 2026-03-09 — v1.5.2 (Post-Merge)
 
 ### Changed

@@ -458,18 +458,21 @@ export class TranscriptWatcher {
 
   /**
    * Get sessions to send on client connect.
-   * Only returns sessions seen in the last 24 hours to avoid
-   * overwhelming the dashboard with hundreds of stale sessions.
+   * Returns sessions seen in the last 4 hours, sorted by most recent first,
+   * capped at 10 to avoid overwhelming the dashboard with stale session chips.
    */
   getKnownSessions(): Array<{ sessionId: string; workingDirectory?: string }> {
-    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-    const results: Array<{ sessionId: string; workingDirectory?: string }> = [];
+    const cutoff = Date.now() - 4 * 60 * 60 * 1000;
+    const results: Array<{ sessionId: string; workingDirectory?: string; lastSeen: number }> = [];
     for (const [sessionId, info] of this.announcedSessions) {
       if (info.lastSeen >= cutoff) {
-        results.push({ sessionId, workingDirectory: info.workingDirectory });
+        results.push({ sessionId, workingDirectory: info.workingDirectory, lastSeen: info.lastSeen });
       }
     }
-    return results;
+    return results
+      .sort((a, b) => b.lastSeen - a.lastSeen)
+      .slice(0, 10)
+      .map(({ sessionId, workingDirectory }) => ({ sessionId, workingDirectory }));
   }
 
   stop(): void {
