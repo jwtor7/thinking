@@ -175,11 +175,8 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
+- **v1.5.3** (2026-03-28 17:38) — Fixed orphaned session chips: race condition in dispatcher ordering, alias chip resurrection, and chip overflow (collapse to "+N more"). Reduced session window to 4h, added session pruning for chips with no timeline events.
 - **v1.5.2** (2026-03-09) — Merged refactor branch (phases 1-4: state safety, filter service unification, module decomposition, DI/lifecycle); fixed infinite loop in BoundedMap LRU promotion and dashboard hang on session filtering; added secondary event forwarding to hook script for side-by-side comparison.
 - **v1.3.6** (2026-03-08 22:41) — Fixed TeamWatcher poll race condition and stale teamSessionMap on clear; team session data now populates before task resolution, and panel reset properly clears team-to-session mappings.
-- **v1.3.5** (2026-03-05 23:35 EST) — Reliability and collaboration refactor: stable non-watch `pnpm dev`, startup preflight diagnostics, strict session-scoped team/tasks/message rendering, and merged Team+Agents panel in a single collaboration view.
-- **v1.3.4** (2026-02-10 19:31) — Subagent transcript support: TranscriptWatcher now discovers nested subagent files; collapsible team sections; fixed Thinking Monitor.app launch path issue.
-- **v1.3.3** (2026-02-09 15:40) — Improved stats bar tooltips: extracted text to constant, unified attribute handling, and fixed duration formatting for fractional milliseconds.
-- **v1.3.2** (2026-02-09 15:21) — Cleaned up session resolution code: extracted ALL_SESSIONS constant to eliminate magic string literals, simplified redundant session-change detection in selectSession().
 
 *[Full changelog →](./CHANGELOG.md)*
