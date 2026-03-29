@@ -341,6 +341,8 @@
     tasksPendingCount: document.getElementById("tasks-pending-count"),
     tasksInProgressCount: document.getElementById("tasks-in-progress-count"),
     tasksCompletedCount: document.getElementById("tasks-completed-count"),
+    tasksProgressBar: document.getElementById("tasks-progress-bar"),
+    tasksProgressText: document.getElementById("tasks-progress-text"),
     tasksCollapseBtn: document.querySelector(".panel-tasks .panel-collapse-btn"),
     // Agent tree content (in the session filter area or dedicated section)
     agentTreeContent: document.getElementById("agent-tree-content"),
@@ -2260,6 +2262,32 @@
       showTasksPanel = null;
     } };
   }
+  function updateTasksProgress(pending, inProgress, completed) {
+    const total = pending + inProgress + completed;
+    const bar = elements.tasksProgressBar;
+    const text = elements.tasksProgressText;
+    if (!bar || !text) return;
+    if (total === 0) {
+      bar.innerHTML = "";
+      text.textContent = "0 tasks";
+      return;
+    }
+    const pctPending = pending / total * 100;
+    const pctProgress = inProgress / total * 100;
+    const pctDone = completed / total * 100;
+    const segments = [];
+    if (pctDone > 0) {
+      segments.push(`<span class="tasks-seg tasks-seg-done" style="width: ${pctDone}%" title="${completed} completed"></span>`);
+    }
+    if (pctProgress > 0) {
+      segments.push(`<span class="tasks-seg tasks-seg-active" style="width: ${pctProgress}%" title="${inProgress} in progress"></span>`);
+    }
+    if (pctPending > 0) {
+      segments.push(`<span class="tasks-seg tasks-seg-pending" style="width: ${pctPending}%" title="${pending} pending"></span>`);
+    }
+    bar.innerHTML = segments.join("");
+    text.textContent = `${completed}/${total} complete`;
+  }
   function renderTaskCard(task) {
     const ownerBadge = task.owner ? (() => {
       const colors = getAgentBadgeColors(task.owner);
@@ -2332,10 +2360,7 @@
         progressCol.innerHTML = `<div class="task-column-empty">${unmappedMessage}</div>`;
         completedCol.innerHTML = `<div class="task-column-empty">${unmappedMessage}</div>`;
         updateTabBadge("tasks", 0);
-        const totalCountEl2 = document.getElementById("tasks-total-count");
-        if (totalCountEl2) {
-          totalCountEl2.textContent = "0";
-        }
+        updateTasksProgress(0, 0, 0);
         return;
       }
     }
@@ -2356,10 +2381,7 @@
     completedCol.innerHTML = completed.length > 0 ? completed.map(renderTaskCard).join("") : '<div class="task-column-empty">No completed tasks</div>';
     const totalCount = allTasks.length;
     updateTabBadge("tasks", totalCount);
-    const totalCountEl = document.getElementById("tasks-total-count");
-    if (totalCountEl) {
-      totalCountEl.textContent = String(totalCount);
-    }
+    updateTasksProgress(pending.length, inProgress.length, completed.length);
     document.querySelectorAll(".task-card-expandable").forEach((card) => {
       card.addEventListener("click", (e) => {
         if (e.target.closest(".task-owner-badge")) return;

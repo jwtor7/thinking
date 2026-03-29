@@ -5,7 +5,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.5.8-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.5.9-purple)](./CHANGELOG.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 [![GitHub Stars](https://img.shields.io/github/stars/jwtor7/thinking?style=social)](https://github.com/jwtor7/thinking)
 
@@ -175,8 +175,8 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
+- **v1.5.9** (2026-03-29) — Segmented progress bar in tasks header: three-segment bar (green/blue/yellow for completed/in-progress/pending) with "X/Y complete" text replaces single-number badge.
 - **v1.5.8** (2026-03-28 22:13) — Task description expand on click: cards with a description field now show a collapse triangle; click to toggle expand/collapse with smooth animation.
 - **v1.5.7** (2026-03-28 22:00) — Richer plan metadata bar: pill-style segments showing completion ratio, section count, session context, modified time, and path with contextual colors.
-- **v1.5.6** (2026-03-28 20:16) — Plan change highlighting: changed/added blocks get a temporary green highlight that fades after 3 seconds on plan update.
 
 *[Full changelog →](./CHANGELOG.md)*

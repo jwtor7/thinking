@@ -78,6 +78,8 @@ export const elements = {
   tasksPendingCount: document.getElementById('tasks-pending-count'),
   tasksInProgressCount: document.getElementById('tasks-in-progress-count'),
   tasksCompletedCount: document.getElementById('tasks-completed-count'),
+  tasksProgressBar: document.getElementById('tasks-progress-bar'),
+  tasksProgressText: document.getElementById('tasks-progress-text'),
   tasksCollapseBtn: document.querySelector('.panel-tasks .panel-collapse-btn') as HTMLButtonElement,
   // Agent tree content (in the session filter area or dedicated section)
   agentTreeContent: document.getElementById('agent-tree-content'),

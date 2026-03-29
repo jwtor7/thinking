@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-03-29 — v1.5.9
+
+### Added
+- **Segmented progress bar in tasks header** — Replaced single-number badge with a three-segment bar (green/blue/yellow for completed/in-progress/pending) and "X/Y complete" text; `updateTasksProgress()` in `src/dashboard/handlers/tasks.ts` recalculates on every task event
+
+---
+
 ## 2026-03-28 — v1.5.8
 
 #### 22:13

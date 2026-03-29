@@ -1,4 +1,47 @@
 /* ========================================
+   Tasks Header Progress Bar
+   ======================================== */
+
+.tasks-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.tasks-progress-bar {
+  display: flex;
+  width: 80px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-bg-tertiary);
+  overflow: hidden;
+}
+
+.tasks-seg {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.tasks-seg-done {
+  background: var(--color-accent-green);
+}
+
+.tasks-seg-active {
+  background: var(--color-accent-blue);
+}
+
+.tasks-seg-pending {
+  background: var(--color-accent-yellow);
+}
+
+.tasks-progress-text {
+  font-size: var(--font-size-2xs);
+  font-family: var(--font-family-mono);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* ========================================
    Tasks Panel - Kanban Board
    ======================================== */
 

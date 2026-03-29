@@ -219,7 +219,10 @@
             </button>
             <h2 class="panel-title" id="tasks-panel-title">TASKS</h2>
             <div class="panel-header-controls">
-              <span class="panel-badge" id="tasks-total-count">0</span>
+              <div class="tasks-progress" id="tasks-progress" aria-label="Task completion progress">
+                <span class="tasks-progress-bar" id="tasks-progress-bar"></span>
+                <span class="tasks-progress-text" id="tasks-progress-text">0 tasks</span>
+              </div>
             </div>
           </header>
           <div class="panel-content" id="tasks-content">
@@ -362,6 +365,6 @@
     </button>
   </div>
 
-  <script src="app.js?v=1.5.8" defer></script>
+  <script src="app.js?v=1.5.9" defer></script>
 </body>
 </html>

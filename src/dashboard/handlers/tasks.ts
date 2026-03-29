@@ -25,6 +25,45 @@ export function initTasks(extras: { showTasksPanel: () => void }): Disposable {
 }
 
 // ============================================
+// Progress Bar
+// ============================================
+
+/**
+ * Update the segmented progress bar in the tasks panel header.
+ */
+function updateTasksProgress(pending: number, inProgress: number, completed: number): void {
+  const total = pending + inProgress + completed;
+  const bar = elements.tasksProgressBar;
+  const text = elements.tasksProgressText;
+
+  if (!bar || !text) return;
+
+  if (total === 0) {
+    bar.innerHTML = '';
+    text.textContent = '0 tasks';
+    return;
+  }
+
+  const pctPending = (pending / total) * 100;
+  const pctProgress = (inProgress / total) * 100;
+  const pctDone = (completed / total) * 100;
+
+  const segments: string[] = [];
+  if (pctDone > 0) {
+    segments.push(`<span class="tasks-seg tasks-seg-done" style="width: ${pctDone}%" title="${completed} completed"></span>`);
+  }
+  if (pctProgress > 0) {
+    segments.push(`<span class="tasks-seg tasks-seg-active" style="width: ${pctProgress}%" title="${inProgress} in progress"></span>`);
+  }
+  if (pctPending > 0) {
+    segments.push(`<span class="tasks-seg tasks-seg-pending" style="width: ${pctPending}%" title="${pending} pending"></span>`);
+  }
+
+  bar.innerHTML = segments.join('');
+  text.textContent = `${completed}/${total} complete`;
+}
+
+// ============================================
 // Rendering
 // ============================================
 
@@ -128,10 +167,7 @@ function renderTaskBoard(): void {
       completedCol.innerHTML = `<div class="task-column-empty">${unmappedMessage}</div>`;
 
       updateTabBadge('tasks', 0);
-      const totalCountEl = document.getElementById('tasks-total-count');
-      if (totalCountEl) {
-        totalCountEl.textContent = '0';
-      }
+      updateTasksProgress(0, 0, 0);
       return;
     }
   }
@@ -167,11 +203,8 @@ function renderTaskBoard(): void {
   const totalCount = allTasks.length;
   updateTabBadge('tasks', totalCount);
 
-  // Update total count badge in panel header
-  const totalCountEl = document.getElementById('tasks-total-count');
-  if (totalCountEl) {
-    totalCountEl.textContent = String(totalCount);
-  }
+  // Update segmented progress bar in panel header
+  updateTasksProgress(pending.length, inProgress.length, completed.length);
 
   // Add click handlers for expand/collapse on task cards with descriptions
   document.querySelectorAll('.task-card-expandable').forEach((card) => {
