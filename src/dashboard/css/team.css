@@ -170,6 +170,26 @@
   padding: var(--spacing-lg);
 }
 
+/* Member Activity Metrics */
+.team-member-metrics {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.team-member-metric {
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.team-member-metric-icon {
+  font-size: var(--font-size-2xs);
+  opacity: 0.7;
+}
+
 /* ========================================
    Messages Section
    ======================================== */
@@ -179,6 +199,43 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.team-messages-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.team-messages-header .team-section-label {
+  margin: 0;
+  padding: 0;
+}
+
+.team-messages-filter-select {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.team-messages-filter-select:hover {
+  border-color: var(--color-text-muted);
+}
+
+.team-messages-filter-select:focus {
+  outline: none;
+  border-color: var(--color-accent-blue);
+}
+
+.team-messages-filter-select:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 1px;
 }
 
 .team-messages {

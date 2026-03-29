@@ -251,6 +251,72 @@
 }
 
 /* ========================================
+   Blocked Task Visual Treatment
+   ======================================== */
+
+.task-card-blocked {
+  border-left: 3px solid var(--color-accent-red);
+  animation: pulse-blocked 2s ease-in-out infinite;
+}
+
+.task-card-blocked .task-card-subject {
+  opacity: 0.6;
+}
+
+.task-card-blocked .task-card-description {
+  opacity: 0.6;
+}
+
+.task-blocked-lock {
+  font-size: var(--font-size-xs);
+  color: var(--color-accent-red);
+}
+
+@keyframes pulse-blocked {
+  0%, 100% { border-left-color: var(--color-accent-red); }
+  50% { border-left-color: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-card-blocked {
+    animation: none;
+    border-left-color: var(--color-accent-red);
+  }
+}
+
+.task-time-in-state {
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+  margin-left: auto;
+}
+
+/* ========================================
+   Card Transition Animations
+   ======================================== */
+
+@keyframes task-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.task-card-enter {
+  animation: task-slide-in var(--duration-slow, 0.3s) var(--ease-out, ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-card-enter {
+    animation: none;
+  }
+}
+
+/* ========================================
    Responsive
    ======================================== */
 

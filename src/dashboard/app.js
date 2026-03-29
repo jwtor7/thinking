@@ -234,6 +234,7 @@
   };
   var agentContextStack = ["main"];
   var agentContextTimestamps = /* @__PURE__ */ new Map();
+  var taskStatusTimestamps = /* @__PURE__ */ new Map();
 
   // src/dashboard/utils/debug.ts
   var isEnabled = () => {
@@ -332,6 +333,7 @@
     teamAgentsSidebar: document.getElementById("team-agents-sidebar"),
     teamAgentsDetail: document.getElementById("team-agents-detail"),
     teamMessages: document.getElementById("team-messages"),
+    teamMessageFilter: document.getElementById("team-message-filter"),
     teamCollapseBtn: document.querySelector(".panel-team .panel-collapse-btn"),
     // Tasks panel elements
     tasksPanel: document.querySelector(".panel-tasks"),
@@ -1768,6 +1770,135 @@
     return value.replace(/[^a-zA-Z0-9 #.,%()/\-]/g, "");
   }
 
+  // src/dashboard/utils/markdown.ts
+  function parseTableAlignment(separator) {
+    const trimmed = separator.trim();
+    const hasLeft = trimmed.startsWith(":");
+    const hasRight = trimmed.endsWith(":");
+    if (hasLeft && hasRight) return "center";
+    if (hasRight) return "right";
+    return "left";
+  }
+  function renderTable(lines) {
+    if (lines.length < 2) return lines.join("\n");
+    const headerCells = lines[0].split("|").map((cell) => cell.trim()).filter((cell) => cell !== "");
+    const separatorCells = lines[1].split("|").map((cell) => cell.trim()).filter((cell) => cell !== "");
+    const isValidSeparator = separatorCells.every((cell) => /^:?-{3,}:?$/.test(cell));
+    if (!isValidSeparator || headerCells.length !== separatorCells.length) {
+      return lines.join("\n");
+    }
+    const alignments = separatorCells.map(parseTableAlignment);
+    let tableHtml = '<table class="md-table">';
+    tableHtml += "<thead><tr>";
+    headerCells.forEach((cell, i) => {
+      const align = alignments[i] || "left";
+      tableHtml += `<th style="text-align: ${escapeCssValue(align)}">${cell}</th>`;
+    });
+    tableHtml += "</tr></thead>";
+    if (lines.length > 2) {
+      tableHtml += "<tbody>";
+      for (let i = 2; i < lines.length; i++) {
+        const rowCells = lines[i].split("|").map((cell) => cell.trim()).filter((cell) => cell !== "");
+        tableHtml += "<tr>";
+        for (let j = 0; j < headerCells.length; j++) {
+          const cell = rowCells[j] || "";
+          const align = alignments[j] || "left";
+          tableHtml += `<td style="text-align: ${escapeCssValue(align)}">${cell}</td>`;
+        }
+        tableHtml += "</tr>";
+      }
+      tableHtml += "</tbody>";
+    }
+    tableHtml += "</table>";
+    return tableHtml;
+  }
+  function processTablesInContent(html) {
+    const lines = html.split("\n");
+    const result = [];
+    let tableLines = [];
+    let inTable = false;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmedLine = line.trim();
+      const isTableRow = trimmedLine.startsWith("|") && trimmedLine.endsWith("|");
+      if (isTableRow) {
+        if (!inTable) {
+          const nextLine = lines[i + 1]?.trim() || "";
+          if (nextLine.startsWith("|") && nextLine.includes("---")) {
+            inTable = true;
+            tableLines = [line];
+          } else {
+            result.push(line);
+          }
+        } else {
+          tableLines.push(line);
+        }
+      } else {
+        if (inTable) {
+          result.push(renderTable(tableLines));
+          tableLines = [];
+          inTable = false;
+        }
+        result.push(line);
+      }
+    }
+    if (inTable && tableLines.length > 0) {
+      result.push(renderTable(tableLines));
+    }
+    return result.join("\n");
+  }
+  function renderSimpleMarkdown(content) {
+    let html = escapeHtml(content);
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, "<pre><code>$2</code></pre>");
+    html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+    html = html.replace(/^(-{3,}|\*{3,}|_{3,})$/gm, "<hr>");
+    html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
+    html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
+    html = html.replace(/^# (.+)$/gm, "<h1>$1</h1>");
+    html = html.replace(/^- \[ \] (.+)$/gm, '<li class="task-list-item"><span class="task-checkbox"></span>$1</li>');
+    html = html.replace(/^- \[x\] (.+)$/gim, '<li class="task-list-item"><span class="task-checkbox checked"></span>$1</li>');
+    html = html.replace(/^[-*] (.+)$/gm, "<li>$1</li>");
+    html = html.replace(/^\d+\. (.+)$/gm, "<li>$1</li>");
+    html = html.replace(/(<li[^>]*>.*?<\/li>\n?)+/g, (match) => {
+      return "<ul>" + match + "</ul>";
+    });
+    html = html.replace(/^&gt; (.+)$/gm, "<blockquote>$1</blockquote>");
+    html = html.replace(/<\/blockquote>\n<blockquote>/g, "<br>");
+    html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+    html = html.replace(/\b_([^_]+)_\b/g, "<em>$1</em>");
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, text, url) => {
+      const decodedUrl = url.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+      const trimmedUrl = decodedUrl.trim().toLowerCase();
+      const isSafeUrl = trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://") || trimmedUrl.startsWith("/") || trimmedUrl.startsWith("#") || trimmedUrl.startsWith("mailto:") || // Relative URLs (no protocol)
+      !trimmedUrl.includes(":") && !trimmedUrl.startsWith("//");
+      if (!isSafeUrl) {
+        return `[${text}](${url})`;
+      }
+      const safeUrl = encodeHtmlAttribute(decodedUrl);
+      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+    });
+    html = processTablesInContent(html);
+    html = html.replace(/\n{3,}/g, "\n\n");
+    html = html.replace(/\n/g, "<br>");
+    html = html.replace(/<ul><br>/g, "<ul>");
+    html = html.replace(/<br><\/ul>/g, "</ul>");
+    html = html.replace(/<\/li><br>/g, "</li>");
+    html = html.replace(/<br><li/g, "<li");
+    html = html.replace(/<br>(<h[123]>)/g, "$1");
+    html = html.replace(/(<\/h[123]>)<br>/g, "$1");
+    html = html.replace(/<br>(<table)/g, "$1");
+    html = html.replace(/(<\/table>)<br>/g, "$1");
+    html = html.replace(/<br>(<hr>)/g, "$1");
+    html = html.replace(/(<hr>)<br>/g, "$1");
+    html = html.replace(/<br>(<blockquote>)/g, "$1");
+    html = html.replace(/(<\/blockquote>)<br>/g, "$1");
+    html = html.replace(/<br>(<pre>)/g, "$1");
+    html = html.replace(/(<\/pre>)<br>/g, "$1");
+    html = html.replace(/(<br>){3,}/g, "<br><br>");
+    return html;
+  }
+
   // src/dashboard/handlers/team.ts
   var MAX_ENTRIES_PER_AGENT = 200;
   var TEAM_SECTION_STORAGE_KEY = "thinking-monitor-team-section-collapse";
@@ -1785,6 +1916,8 @@
   var selectedViewAgent = null;
   var ctx = null;
   var showTeamPanel = null;
+  var MSG_FILTER_KEY = "thinking-monitor-msg-filter";
+  var messageTypeFilter = localStorage.getItem(MSG_FILTER_KEY) || "all";
   function initTeam(appCtx, extras) {
     ctx = appCtx;
     showTeamPanel = extras.showTeamPanel;
@@ -1792,6 +1925,18 @@
     initTeamSectionToggles();
     for (const sectionName of ["members", "hierarchy", "agents"]) {
       applyTeamSectionCollapse(sectionName, false);
+    }
+    const msgFilter = elements.teamMessageFilter;
+    if (msgFilter) {
+      msgFilter.value = messageTypeFilter;
+      msgFilter.addEventListener("change", () => {
+        messageTypeFilter = msgFilter.value;
+        try {
+          localStorage.setItem(MSG_FILTER_KEY, messageTypeFilter);
+        } catch {
+        }
+        applyMessageFilter();
+      });
     }
     return { dispose: () => {
       ctx = null;
@@ -1875,6 +2020,19 @@
       });
     }
   }
+  function applyMessageFilter() {
+    const container = elements.teamMessages;
+    if (!container) return;
+    container.querySelectorAll(".team-message").forEach((el) => {
+      const msgEl = el;
+      if (messageTypeFilter === "all") {
+        msgEl.style.display = "";
+        return;
+      }
+      const isMatch = messageTypeFilter === "shutdown" ? msgEl.classList.contains("team-message-shutdown_request") || msgEl.classList.contains("team-message-shutdown_response") : msgEl.classList.contains(`team-message-${messageTypeFilter}`);
+      msgEl.style.display = isMatch ? "" : "none";
+    });
+  }
   function renderMemberGrid(teamName) {
     const memberGrid = elements.teamMemberGrid;
     if (!memberGrid) return;
@@ -1887,6 +2045,40 @@
       const badgeColors = getAgentBadgeColors(member.agentType || member.name);
       const statusClass = `team-member-status-${member.status || "active"}`;
       const statusDot = member.status === "idle" ? "idle" : member.status === "shutdown" ? "shutdown" : "active";
+      let thinkingCount = 0;
+      const sessionId = state.selectedSession !== "all" ? state.selectedSession : null;
+      if (sessionId) {
+        for (const [, mapping] of subagentState.subagents) {
+          if (mapping.agentName === member.name) {
+            const key = `${sessionId}::${mapping.agentId ?? ""}`;
+            const entries = agentThinkingEntries.get(key);
+            if (entries) thinkingCount = entries.length;
+            break;
+          }
+        }
+      }
+      let msgCount = 0;
+      for (const msg of teamState.teamMessages) {
+        if (msg.sender === member.name) {
+          if (!sessionId || msg.sessionId === sessionId) {
+            msgCount++;
+          }
+        }
+      }
+      let taskCount = 0;
+      for (const tasks of teamState.teamTasks.values()) {
+        for (const task of tasks) {
+          if (task.owner === member.name) taskCount++;
+        }
+      }
+      const hasMetrics = thinkingCount > 0 || msgCount > 0 || taskCount > 0;
+      const metricsHtml = hasMetrics ? `
+      <div class="team-member-metrics">
+        ${thinkingCount > 0 ? `<span class="team-member-metric" title="Thinking entries" aria-label="${thinkingCount} thinking entries"><span class="team-member-metric-icon">&#129504;</span>${thinkingCount}</span>` : ""}
+        ${msgCount > 0 ? `<span class="team-member-metric" title="Messages" aria-label="${msgCount} messages"><span class="team-member-metric-icon">&#128172;</span>${msgCount}</span>` : ""}
+        ${taskCount > 0 ? `<span class="team-member-metric" title="Tasks" aria-label="${taskCount} tasks"><span class="team-member-metric-icon">&#9745;</span>${taskCount}</span>` : ""}
+      </div>
+    ` : "";
       return `
       <div class="team-member-card ${statusClass}">
         <div class="team-member-header">
@@ -1894,6 +2086,7 @@
           <span class="team-member-name">${escapeHtml(member.name)}</span>
         </div>
         <span class="team-member-type" style="background: ${escapeCssValue(badgeColors.bg)}; color: ${escapeCssValue(badgeColors.text)}">${escapeHtml(member.agentType)}</span>
+        ${metricsHtml}
       </div>
     `;
     }).join("");
@@ -1981,7 +2174,7 @@
           <span class="thinking-time">${escapeHtml(time)}</span>
           <span class="thinking-preview">${escapeHtml(preview)}...</span>
         </div>
-        <div class="thinking-text">${escapeHtml(entry.content)}</div>
+        <div class="thinking-text">${renderSimpleMarkdown(entry.content)}</div>
       </div>
     `;
     }).join("");
@@ -2072,14 +2265,25 @@
       const mapping = subagentState.subagents.get(agentId);
       const name = agentId === "main" ? "main" : mapping?.agentName || agentId.slice(0, 8);
       const entries = agentThinkingEntries.get(thinkingKey(sessionId, agentId)) || [];
-      const count = entries.length;
+      const thinkingCount = entries.length;
       const selected = selectedViewAgent === agentId ? " selected" : "";
       const dotClass = agentId === "main" ? "running" : mapping?.status === "running" ? "running" : mapping?.status === "success" || mapping?.status === "failure" || mapping?.status === "cancelled" ? "stopped" : "idle";
+      let msgCount = 0;
+      for (const msg of teamState.teamMessages) {
+        if (msg.sender === name) {
+          if (!sessionId || msg.sessionId === sessionId) {
+            msgCount++;
+          }
+        }
+      }
+      const total = thinkingCount + msgCount;
+      const level = total > 20 ? "high" : total >= 5 ? "medium" : "low";
       return `
       <div class="agent-list-item${selected}" data-agent-id="${escapeHtml(agentId)}">
         <span class="agent-list-dot ${dotClass}"></span>
         <span class="agent-list-name">${escapeHtml(name)}</span>
-        <span class="agent-list-count">${count}</span>
+        <span class="agent-activity-bar agent-activity-${level}" aria-hidden="true"></span>
+        <span class="agent-list-count">${total}</span>
       </div>
     `;
     }).join("");
@@ -2220,6 +2424,12 @@
     ctx?.ui.smartScroll(messagesContainer);
     entry.classList.add("new");
     setTimeout(() => entry.classList.remove("new"), 1e3);
+    if (messageTypeFilter !== "all") {
+      const isMatch = messageTypeFilter === "shutdown" ? event.messageType === "shutdown_request" || event.messageType === "shutdown_response" : event.messageType === messageTypeFilter;
+      if (!isMatch) {
+        entry.style.display = "none";
+      }
+    }
     updateTeamTabCount();
   }
   function addTeamAgentThinking(event) {
@@ -2256,6 +2466,8 @@
 
   // src/dashboard/handlers/tasks.ts
   var showTasksPanel = null;
+  var currentRenderTeamId = "";
+  var previousCardIds = /* @__PURE__ */ new Set();
   function initTasks(extras) {
     showTasksPanel = extras.showTasksPanel;
     return { dispose: () => {
@@ -2294,21 +2506,29 @@
       return `<span class="task-owner-badge" style="background: ${escapeCssValue(colors.bg)}; color: ${escapeCssValue(colors.text)}">${escapeHtml(task.owner)}</span>`;
     })() : '<span class="task-unassigned">unassigned</span>';
     const blockedIndicators = task.blockedBy.length > 0 ? `<div class="task-blocked-by">blocked by: ${task.blockedBy.map((id) => `<span class="task-blocked-id">#${escapeHtml(id)}</span>`).join(", ")}</div>` : "";
-    const statusIcon = task.status === "completed" ? "&#10003;" : task.status === "in_progress" ? "&#9654;" : "&#9679;";
+    const isBlocked = task.blockedBy.length > 0;
+    const statusIcon = isBlocked ? "&#128274;" : task.status === "completed" ? "&#10003;" : task.status === "in_progress" ? "&#9654;" : "&#9679;";
+    const statusIconClass = isBlocked ? "task-blocked-lock" : "task-card-status-icon";
     const hasDescription = task.description && task.description.trim().length > 0;
     const expandIcon = hasDescription ? '<span class="task-card-expand-icon">&#9656;</span>' : "";
     const descriptionHtml = hasDescription ? `<div class="task-card-description">${escapeHtml(task.description)}</div>` : "";
+    const tsKey = `${currentRenderTeamId}::${task.id}::${task.status}`;
+    const ts = taskStatusTimestamps.get(tsKey);
+    const elapsed = ts !== void 0 ? formatElapsed(Date.now() - ts) : "";
+    const statusLabel = task.status.replace("_", " ");
+    const timeInStateHtml = elapsed ? `<span class="task-time-in-state" title="Time in ${statusLabel}: ${elapsed}">${elapsed}</span>` : "";
     return `
-    <div class="task-card task-card-${task.status}${hasDescription ? " task-card-expandable" : ""}" data-task-id="${escapeHtml(task.id)}" data-timestamp="${Date.now()}">
+    <div class="task-card task-card-${task.status}${isBlocked ? " task-card-blocked" : ""}${hasDescription ? " task-card-expandable" : ""}" data-task-id="${escapeHtml(task.id)}" data-timestamp="${Date.now()}">
       <div class="task-card-header">
         <span class="task-card-id">${expandIcon}#${escapeHtml(task.id)}</span>
-        <span class="task-card-status-icon">${statusIcon}</span>
+        <span class="${statusIconClass}">${statusIcon}</span>
       </div>
       <div class="task-card-subject">${escapeHtml(task.subject)}</div>
       ${descriptionHtml}
       <div class="task-card-footer">
         ${ownerBadge}
         ${blockedIndicators}
+        ${timeInStateHtml}
       </div>
     </div>
   `;
@@ -2319,10 +2539,17 @@
     const completedCol = elements.tasksCompleted;
     if (!pendingCol || !progressCol || !completedCol) return;
     const allTasks = [];
+    const taskTeamMap = /* @__PURE__ */ new Map();
     let hasSessionMapping = false;
+    const gatherTasks = (teamId, tasks) => {
+      for (const t of tasks) {
+        allTasks.push(t);
+        taskTeamMap.set(t, teamId);
+      }
+    };
     if (state.selectedSession === "all") {
-      for (const tasks of teamState.teamTasks.values()) {
-        allTasks.push(...tasks);
+      for (const [teamId, tasks] of teamState.teamTasks) {
+        gatherTasks(teamId, tasks);
       }
     } else {
       for (const [teamId, sessionId] of teamState.taskSessionMap) {
@@ -2330,7 +2557,7 @@
           hasSessionMapping = true;
           const tasks = teamState.teamTasks.get(teamId);
           if (tasks) {
-            allTasks.push(...tasks);
+            gatherTasks(teamId, tasks);
           }
         }
       }
@@ -2340,7 +2567,7 @@
             hasSessionMapping = true;
             const tasks = teamState.teamTasks.get(teamName);
             if (tasks) {
-              allTasks.push(...tasks);
+              gatherTasks(teamName, tasks);
             }
           }
         }
@@ -2364,6 +2591,10 @@
         return;
       }
     }
+    const renderCard = (task) => {
+      currentRenderTeamId = taskTeamMap.get(task) ?? "";
+      return renderTaskCard(task);
+    };
     const pending = allTasks.filter((t) => t.status === "pending");
     const inProgress = allTasks.filter((t) => t.status === "in_progress");
     const completed = allTasks.filter((t) => t.status === "completed");
@@ -2376,11 +2607,23 @@
     if (elements.tasksCompletedCount) {
       elements.tasksCompletedCount.textContent = String(completed.length);
     }
-    pendingCol.innerHTML = pending.length > 0 ? pending.map(renderTaskCard).join("") : '<div class="task-column-empty">No pending tasks</div>';
-    progressCol.innerHTML = inProgress.length > 0 ? inProgress.map(renderTaskCard).join("") : '<div class="task-column-empty">No active tasks</div>';
-    completedCol.innerHTML = completed.length > 0 ? completed.map(renderTaskCard).join("") : '<div class="task-column-empty">No completed tasks</div>';
+    pendingCol.innerHTML = pending.length > 0 ? pending.map(renderCard).join("") : '<div class="task-column-empty">No pending tasks</div>';
+    progressCol.innerHTML = inProgress.length > 0 ? inProgress.map(renderCard).join("") : '<div class="task-column-empty">No active tasks</div>';
+    completedCol.innerHTML = completed.length > 0 ? completed.map(renderCard).join("") : '<div class="task-column-empty">No completed tasks</div>';
     const totalCount = allTasks.length;
     updateTabBadge("tasks", totalCount);
+    const currentCardIds = /* @__PURE__ */ new Set();
+    const allCards = document.querySelectorAll(".task-card[data-task-id]");
+    allCards.forEach((card) => {
+      const id = card.getAttribute("data-task-id");
+      if (id) {
+        currentCardIds.add(id);
+        if (previousCardIds.size > 0 && !previousCardIds.has(id)) {
+          card.classList.add("task-card-enter");
+        }
+      }
+    });
+    previousCardIds = currentCardIds;
     updateTasksProgress(pending.length, inProgress.length, completed.length);
     document.querySelectorAll(".task-card-expandable").forEach((card) => {
       card.addEventListener("click", (e) => {
@@ -2433,6 +2676,13 @@
     } else {
       teamState.teamTasks.set(event.teamId, event.tasks);
     }
+    const now = Date.now();
+    for (const task of event.tasks) {
+      const key = `${event.teamId}::${task.id}::${task.status}`;
+      if (!taskStatusTimestamps.has(key)) {
+        taskStatusTimestamps.set(key, now);
+      }
+    }
     showTasksPanel?.();
     renderTaskBoard();
   }
@@ -2444,6 +2694,10 @@
       const task = tasks.find((t) => t.id === event.taskId);
       if (task) {
         task.status = "completed";
+        const key = `${teamId}::${task.id}::completed`;
+        if (!taskStatusTimestamps.has(key)) {
+          taskStatusTimestamps.set(key, Date.now());
+        }
       }
     }
     showTasksPanel?.();
@@ -4828,135 +5082,6 @@ Session: ${id}` : `Session: ${id}`;
     }
   }
 
-  // src/dashboard/utils/markdown.ts
-  function parseTableAlignment(separator) {
-    const trimmed = separator.trim();
-    const hasLeft = trimmed.startsWith(":");
-    const hasRight = trimmed.endsWith(":");
-    if (hasLeft && hasRight) return "center";
-    if (hasRight) return "right";
-    return "left";
-  }
-  function renderTable(lines) {
-    if (lines.length < 2) return lines.join("\n");
-    const headerCells = lines[0].split("|").map((cell) => cell.trim()).filter((cell) => cell !== "");
-    const separatorCells = lines[1].split("|").map((cell) => cell.trim()).filter((cell) => cell !== "");
-    const isValidSeparator = separatorCells.every((cell) => /^:?-{3,}:?$/.test(cell));
-    if (!isValidSeparator || headerCells.length !== separatorCells.length) {
-      return lines.join("\n");
-    }
-    const alignments = separatorCells.map(parseTableAlignment);
-    let tableHtml = '<table class="md-table">';
-    tableHtml += "<thead><tr>";
-    headerCells.forEach((cell, i) => {
-      const align = alignments[i] || "left";
-      tableHtml += `<th style="text-align: ${escapeCssValue(align)}">${cell}</th>`;
-    });
-    tableHtml += "</tr></thead>";
-    if (lines.length > 2) {
-      tableHtml += "<tbody>";
-      for (let i = 2; i < lines.length; i++) {
-        const rowCells = lines[i].split("|").map((cell) => cell.trim()).filter((cell) => cell !== "");
-        tableHtml += "<tr>";
-        for (let j = 0; j < headerCells.length; j++) {
-          const cell = rowCells[j] || "";
-          const align = alignments[j] || "left";
-          tableHtml += `<td style="text-align: ${escapeCssValue(align)}">${cell}</td>`;
-        }
-        tableHtml += "</tr>";
-      }
-      tableHtml += "</tbody>";
-    }
-    tableHtml += "</table>";
-    return tableHtml;
-  }
-  function processTablesInContent(html) {
-    const lines = html.split("\n");
-    const result = [];
-    let tableLines = [];
-    let inTable = false;
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const trimmedLine = line.trim();
-      const isTableRow = trimmedLine.startsWith("|") && trimmedLine.endsWith("|");
-      if (isTableRow) {
-        if (!inTable) {
-          const nextLine = lines[i + 1]?.trim() || "";
-          if (nextLine.startsWith("|") && nextLine.includes("---")) {
-            inTable = true;
-            tableLines = [line];
-          } else {
-            result.push(line);
-          }
-        } else {
-          tableLines.push(line);
-        }
-      } else {
-        if (inTable) {
-          result.push(renderTable(tableLines));
-          tableLines = [];
-          inTable = false;
-        }
-        result.push(line);
-      }
-    }
-    if (inTable && tableLines.length > 0) {
-      result.push(renderTable(tableLines));
-    }
-    return result.join("\n");
-  }
-  function renderSimpleMarkdown(content) {
-    let html = escapeHtml(content);
-    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, "<pre><code>$2</code></pre>");
-    html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
-    html = html.replace(/^(-{3,}|\*{3,}|_{3,})$/gm, "<hr>");
-    html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
-    html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
-    html = html.replace(/^# (.+)$/gm, "<h1>$1</h1>");
-    html = html.replace(/^- \[ \] (.+)$/gm, '<li class="task-list-item"><span class="task-checkbox"></span>$1</li>');
-    html = html.replace(/^- \[x\] (.+)$/gim, '<li class="task-list-item"><span class="task-checkbox checked"></span>$1</li>');
-    html = html.replace(/^[-*] (.+)$/gm, "<li>$1</li>");
-    html = html.replace(/^\d+\. (.+)$/gm, "<li>$1</li>");
-    html = html.replace(/(<li[^>]*>.*?<\/li>\n?)+/g, (match) => {
-      return "<ul>" + match + "</ul>";
-    });
-    html = html.replace(/^&gt; (.+)$/gm, "<blockquote>$1</blockquote>");
-    html = html.replace(/<\/blockquote>\n<blockquote>/g, "<br>");
-    html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-    html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
-    html = html.replace(/\b_([^_]+)_\b/g, "<em>$1</em>");
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, text, url) => {
-      const decodedUrl = url.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-      const trimmedUrl = decodedUrl.trim().toLowerCase();
-      const isSafeUrl = trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://") || trimmedUrl.startsWith("/") || trimmedUrl.startsWith("#") || trimmedUrl.startsWith("mailto:") || // Relative URLs (no protocol)
-      !trimmedUrl.includes(":") && !trimmedUrl.startsWith("//");
-      if (!isSafeUrl) {
-        return `[${text}](${url})`;
-      }
-      const safeUrl = encodeHtmlAttribute(decodedUrl);
-      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
-    });
-    html = processTablesInContent(html);
-    html = html.replace(/\n{3,}/g, "\n\n");
-    html = html.replace(/\n/g, "<br>");
-    html = html.replace(/<ul><br>/g, "<ul>");
-    html = html.replace(/<br><\/ul>/g, "</ul>");
-    html = html.replace(/<\/li><br>/g, "</li>");
-    html = html.replace(/<br><li/g, "<li");
-    html = html.replace(/<br>(<h[123]>)/g, "$1");
-    html = html.replace(/(<\/h[123]>)<br>/g, "$1");
-    html = html.replace(/<br>(<table)/g, "$1");
-    html = html.replace(/(<\/table>)<br>/g, "$1");
-    html = html.replace(/<br>(<hr>)/g, "$1");
-    html = html.replace(/(<hr>)<br>/g, "$1");
-    html = html.replace(/<br>(<blockquote>)/g, "$1");
-    html = html.replace(/(<\/blockquote>)<br>/g, "$1");
-    html = html.replace(/<br>(<pre>)/g, "$1");
-    html = html.replace(/(<\/pre>)<br>/g, "$1");
-    html = html.replace(/(<br>){3,}/g, "<br><br>");
-    return html;
-  }
-
   // src/dashboard/handlers/tools.ts
   function processEscapes(str) {
     return str.replace(/\\n/g, "\n").replace(/\\t/g, "	").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
@@ -6946,6 +7071,7 @@ Session: ${id}` : `Session: ${id}`;
     teamState.taskSessionMap.clear();
     teamState.teamSessionMap.clear();
     teamState.teamMessages.clear();
+    taskStatusTimestamps.clear();
     state.selectedAgentId = null;
     elements.eventCount.textContent = "Events: 0";
     elements.thinkingCount.textContent = "0";

@@ -55,12 +55,19 @@
 }
 
 /* Content area with improved typography */
-.thinking-entry-content,
-.thinking-text {
+.thinking-entry-content {
   font-size: var(--font-size-sm);
   line-height: var(--line-height-relaxed, 1.75);
   color: var(--color-text-primary);
   white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.thinking-text {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed, 1.75);
+  color: var(--color-text-primary);
+  white-space: normal;
   word-break: break-word;
 }
 

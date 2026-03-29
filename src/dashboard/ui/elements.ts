@@ -69,6 +69,7 @@ export const elements = {
   teamAgentsSidebar: document.getElementById('team-agents-sidebar'),
   teamAgentsDetail: document.getElementById('team-agents-detail'),
   teamMessages: document.getElementById('team-messages'),
+  teamMessageFilter: document.getElementById('team-message-filter') as HTMLSelectElement | null,
   teamCollapseBtn: document.querySelector('.panel-team .panel-collapse-btn') as HTMLButtonElement,
   // Tasks panel elements
   tasksPanel: document.querySelector('.panel-tasks') as HTMLElement,

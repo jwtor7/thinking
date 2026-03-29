@@ -478,6 +478,29 @@ body.dragging-panel * {
   text-align: center;
 }
 
+/* Agent Activity Level Indicator */
+.agent-activity-bar {
+  width: 3px;
+  height: 14px;
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+.agent-activity-low {
+  background: var(--color-text-muted);
+  opacity: 0.3;
+}
+
+.agent-activity-medium {
+  background: var(--color-accent-yellow);
+  opacity: 0.7;
+}
+
+.agent-activity-high {
+  background: var(--color-accent-green);
+  opacity: 1.0;
+}
+
 .agent-list-session {
   font-size: var(--font-size-2xs);
   color: var(--color-text-muted);

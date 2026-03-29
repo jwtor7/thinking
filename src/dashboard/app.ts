@@ -15,7 +15,7 @@
  * - Improved responsiveness
  */
 
-import { state, agentContextStack, agentContextTimestamps, teamState, activityTracker } from './state.ts';
+import { state, agentContextStack, agentContextTimestamps, teamState, activityTracker, taskStatusTimestamps } from './state.ts';
 import { debug } from './utils/debug.ts';
 
 import {
@@ -255,6 +255,7 @@ function clearAllPanels(): void {
   teamState.taskSessionMap.clear();
   teamState.teamSessionMap.clear();
   teamState.teamMessages.clear();
+  taskStatusTimestamps.clear();
   state.selectedAgentId = null;
 
   // Update counters

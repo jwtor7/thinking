@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-03-29 — v1.6.0
+
+### Added
+- **Time-in-state on task cards (T3)** — Tracks when each task entered its current status and displays elapsed time (e.g., "in progress 12m") in the card footer; timestamps clear on reset
+- **Blocked task visual treatment (T4)** — Blocked tasks show a red lock icon, dimmed body content, and pulsing red left border; includes `prefers-reduced-motion` guard
+- **Card transition animations (T5)** — New task cards slide in from top with a fade animation; skips initial render to avoid animating all cards on load
+- **Activity metrics on member cards (M1)** — Team member cards show thinking count, message count, and task count with emoji icons; only displays non-zero metrics
+- **Markdown rendering in thinking detail (M2)** — Agent thinking entries now render with full markdown support (code blocks, lists, headers) instead of plain text
+- **Message type filter (M3)** — Dropdown filter above team messages: All, Direct, Broadcast, Shutdown; persisted to localStorage
+- **Richer agent sidebar (M4)** — Agent list items show total activity (thinking + messages) with a colored activity bar indicating intensity level (low/medium/high)
+
+---
+
 ## 2026-03-29 — v1.5.9
 
 ### Added

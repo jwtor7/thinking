@@ -143,3 +143,12 @@ export const agentContextStack: AgentContextStack = ['main'];
  * Key: agentId, Value: timestamp (ms since epoch)
  */
 export const agentContextTimestamps: Map<string, number> = new Map();
+
+/**
+ * Timestamps for when each task entered its current status.
+ * Key format: `${teamId}::${taskId}::${status}`
+ * Value: Date.now() when the task first entered that status.
+ * Bounded by the task lifecycle — entries are only added, never updated for
+ * the same status, and are naturally session-scoped via teamId.
+ */
+export const taskStatusTimestamps: Map<string, number> = new Map();

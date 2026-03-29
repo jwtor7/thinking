@@ -198,7 +198,15 @@
                 </div>
               </div>
               <div class="team-messages-section">
-                <div class="team-section-label">MESSAGES</div>
+                <div class="team-messages-header">
+                  <div class="team-section-label">MESSAGES</div>
+                  <select class="team-messages-filter-select" id="team-message-filter" aria-label="Filter messages by type">
+                    <option value="all">All</option>
+                    <option value="message">Direct</option>
+                    <option value="broadcast">Broadcast</option>
+                    <option value="shutdown">Shutdown</option>
+                  </select>
+                </div>
                 <div class="team-messages" id="team-messages">
                   <div class="empty-state">
                     <div class="empty-state-icon">&#128172;</div>
@@ -365,6 +373,6 @@
     </button>
   </div>
 
-  <script src="app.js?v=1.5.9" defer></script>
+  <script src="app.js?v=1.6.0" defer></script>
 </body>
 </html>

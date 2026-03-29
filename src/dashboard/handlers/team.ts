@@ -11,6 +11,7 @@ import { teamState, state, subagentState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { formatTime } from '../utils/formatting.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
+import { renderSimpleMarkdown } from '../utils/markdown.ts';
 import { getAgentBadgeColors } from '../ui/colors.ts';
 import { selectAgentFilter, resolveSessionId } from './sessions.ts';
 import type { TeamUpdateEvent, TeammateIdleEvent, MessageSentEvent, ThinkingEvent } from '../types.ts';
@@ -52,6 +53,9 @@ let selectedViewAgent: string | null = null;
 let ctx: AppContext | null = null;
 let showTeamPanel: (() => void) | null = null;
 
+const MSG_FILTER_KEY = 'thinking-monitor-msg-filter';
+let messageTypeFilter: string = localStorage.getItem(MSG_FILTER_KEY) || 'all';
+
 /**
  * Initialize the team handler with app context.
  */
@@ -63,6 +67,17 @@ export function initTeam(appCtx: AppContext, extras: { showTeamPanel: () => void
   for (const sectionName of ['members', 'hierarchy', 'agents'] as const) {
     applyTeamSectionCollapse(sectionName, false);
   }
+
+  const msgFilter = elements.teamMessageFilter;
+  if (msgFilter) {
+    msgFilter.value = messageTypeFilter;
+    msgFilter.addEventListener('change', () => {
+      messageTypeFilter = msgFilter.value;
+      try { localStorage.setItem(MSG_FILTER_KEY, messageTypeFilter); } catch {}
+      applyMessageFilter();
+    });
+  }
+
   return { dispose: () => { ctx = null; showTeamPanel = null; } };
 }
 
@@ -157,6 +172,25 @@ function initTeamSectionToggles(): void {
   }
 }
 
+function applyMessageFilter(): void {
+  const container = elements.teamMessages;
+  if (!container) return;
+
+  container.querySelectorAll('.team-message').forEach(el => {
+    const msgEl = el as HTMLElement;
+    if (messageTypeFilter === 'all') {
+      msgEl.style.display = '';
+      return;
+    }
+    // Message type classes: team-message-message, team-message-broadcast,
+    // team-message-shutdown_request, team-message-shutdown_response
+    const isMatch = messageTypeFilter === 'shutdown'
+      ? msgEl.classList.contains('team-message-shutdown_request') || msgEl.classList.contains('team-message-shutdown_response')
+      : msgEl.classList.contains(`team-message-${messageTypeFilter}`);
+    msgEl.style.display = isMatch ? '' : 'none';
+  });
+}
+
 // ============================================
 // Rendering
 // ============================================
@@ -181,6 +215,48 @@ function renderMemberGrid(teamName: string): void {
       : member.status === 'shutdown' ? 'shutdown'
       : 'active';
 
+    // Compute activity metrics
+    // 1. Thinking count: find agentId by name, look up entries in agentThinkingEntries
+    let thinkingCount = 0;
+    const sessionId = state.selectedSession !== 'all' ? state.selectedSession : null;
+    if (sessionId) {
+      for (const [, mapping] of subagentState.subagents) {
+        if (mapping.agentName === member.name) {
+          const key = `${sessionId}::${mapping.agentId ?? ''}`;
+          const entries = agentThinkingEntries.get(key);
+          if (entries) thinkingCount = entries.length;
+          break;
+        }
+      }
+    }
+
+    // 2. Message count: filter teamMessages by sender (and session if selected)
+    let msgCount = 0;
+    for (const msg of teamState.teamMessages) {
+      if (msg.sender === member.name) {
+        if (!sessionId || msg.sessionId === sessionId) {
+          msgCount++;
+        }
+      }
+    }
+
+    // 3. Task count: iterate all task arrays, count tasks owned by this member
+    let taskCount = 0;
+    for (const tasks of teamState.teamTasks.values()) {
+      for (const task of tasks) {
+        if (task.owner === member.name) taskCount++;
+      }
+    }
+
+    const hasMetrics = thinkingCount > 0 || msgCount > 0 || taskCount > 0;
+    const metricsHtml = hasMetrics ? `
+      <div class="team-member-metrics">
+        ${thinkingCount > 0 ? `<span class="team-member-metric" title="Thinking entries" aria-label="${thinkingCount} thinking entries"><span class="team-member-metric-icon">&#129504;</span>${thinkingCount}</span>` : ''}
+        ${msgCount > 0 ? `<span class="team-member-metric" title="Messages" aria-label="${msgCount} messages"><span class="team-member-metric-icon">&#128172;</span>${msgCount}</span>` : ''}
+        ${taskCount > 0 ? `<span class="team-member-metric" title="Tasks" aria-label="${taskCount} tasks"><span class="team-member-metric-icon">&#9745;</span>${taskCount}</span>` : ''}
+      </div>
+    ` : '';
+
     return `
       <div class="team-member-card ${statusClass}">
         <div class="team-member-header">
@@ -188,6 +264,7 @@ function renderMemberGrid(teamName: string): void {
           <span class="team-member-name">${escapeHtml(member.name)}</span>
         </div>
         <span class="team-member-type" style="background: ${escapeCssValue(badgeColors.bg)}; color: ${escapeCssValue(badgeColors.text)}">${escapeHtml(member.agentType)}</span>
+        ${metricsHtml}
       </div>
     `;
   }).join('');
@@ -296,7 +373,7 @@ function renderTeamAgentDetail(): void {
           <span class="thinking-time">${escapeHtml(time)}</span>
           <span class="thinking-preview">${escapeHtml(preview)}...</span>
         </div>
-        <div class="thinking-text">${escapeHtml(entry.content)}</div>
+        <div class="thinking-text">${renderSimpleMarkdown(entry.content)}</div>
       </div>
     `;
   }).join('');
@@ -405,7 +482,7 @@ function renderTeamAgentList(): void {
     const mapping = subagentState.subagents.get(agentId);
     const name = agentId === 'main' ? 'main' : (mapping?.agentName || agentId.slice(0, 8));
     const entries = agentThinkingEntries.get(thinkingKey(sessionId, agentId)) || [];
-    const count = entries.length;
+    const thinkingCount = entries.length;
     const selected = selectedViewAgent === agentId ? ' selected' : '';
     const dotClass = agentId === 'main'
       ? 'running'
@@ -415,11 +492,24 @@ function renderTeamAgentList(): void {
           ? 'stopped'
           : 'idle';
 
+    // Aggregate activity: thinking entries + messages sent by this agent
+    let msgCount = 0;
+    for (const msg of teamState.teamMessages) {
+      if (msg.sender === name) {
+        if (!sessionId || msg.sessionId === sessionId) {
+          msgCount++;
+        }
+      }
+    }
+    const total = thinkingCount + msgCount;
+    const level = total > 20 ? 'high' : total >= 5 ? 'medium' : 'low';
+
     return `
       <div class="agent-list-item${selected}" data-agent-id="${escapeHtml(agentId)}">
         <span class="agent-list-dot ${dotClass}"></span>
         <span class="agent-list-name">${escapeHtml(name)}</span>
-        <span class="agent-list-count">${count}</span>
+        <span class="agent-activity-bar agent-activity-${level}" aria-hidden="true"></span>
+        <span class="agent-list-count">${total}</span>
       </div>
     `;
   }).join('');
@@ -621,6 +711,17 @@ export function handleMessageSent(event: MessageSentEvent): void {
 
   entry.classList.add('new');
   setTimeout(() => entry.classList.remove('new'), 1000);
+
+  // Apply current filter to the newly added message
+  if (messageTypeFilter !== 'all') {
+    const isMatch = messageTypeFilter === 'shutdown'
+      ? event.messageType === 'shutdown_request' || event.messageType === 'shutdown_response'
+      : event.messageType === messageTypeFilter;
+    if (!isMatch) {
+      (entry as HTMLElement).style.display = 'none';
+    }
+  }
+
   updateTeamTabCount();
 }
 
