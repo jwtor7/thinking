@@ -47,13 +47,20 @@ function renderTaskCard(task: TaskInfo): string {
     : task.status === 'in_progress' ? '&#9654;'
     : '&#9679;';
 
+  const hasDescription = task.description && task.description.trim().length > 0;
+  const expandIcon = hasDescription ? '<span class="task-card-expand-icon">&#9656;</span>' : '';
+  const descriptionHtml = hasDescription
+    ? `<div class="task-card-description">${escapeHtml(task.description!)}</div>`
+    : '';
+
   return `
-    <div class="task-card task-card-${task.status}" data-task-id="${escapeHtml(task.id)}" data-timestamp="${Date.now()}">
+    <div class="task-card task-card-${task.status}${hasDescription ? ' task-card-expandable' : ''}" data-task-id="${escapeHtml(task.id)}" data-timestamp="${Date.now()}">
       <div class="task-card-header">
-        <span class="task-card-id">#${escapeHtml(task.id)}</span>
+        <span class="task-card-id">${expandIcon}#${escapeHtml(task.id)}</span>
         <span class="task-card-status-icon">${statusIcon}</span>
       </div>
       <div class="task-card-subject">${escapeHtml(task.subject)}</div>
+      ${descriptionHtml}
       <div class="task-card-footer">
         ${ownerBadge}
         ${blockedIndicators}
@@ -165,6 +172,15 @@ function renderTaskBoard(): void {
   if (totalCountEl) {
     totalCountEl.textContent = String(totalCount);
   }
+
+  // Add click handlers for expand/collapse on task cards with descriptions
+  document.querySelectorAll('.task-card-expandable').forEach((card) => {
+    card.addEventListener('click', (e) => {
+      // Don't toggle if clicking on an owner badge (cross-panel navigation)
+      if ((e.target as HTMLElement).closest('.task-owner-badge')) return;
+      card.classList.toggle('task-card-expanded');
+    });
+  });
 
   // Add click handlers for owner badges -> cross-panel agent filtering
   const taskBoard = document.querySelector('.task-board');

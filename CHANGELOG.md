@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-03-28 — v1.5.8
+
+#### 22:13
+
+### Added
+- **Task description expand on click** — Task cards with a `description` field now render a collapse triangle icon and a hidden description area; click anywhere on the card (except the owner badge) to toggle expand/collapse with smooth animation
+- Expand icon rotates 90° when open; description area fades in/out via `max-height` + `opacity` CSS transition
+
+---
+
 ## 2026-03-28 — v1.5.7
 
 ### Changed
