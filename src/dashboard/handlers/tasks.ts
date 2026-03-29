@@ -5,17 +5,17 @@
  * three-column kanban board (Pending | In Progress | Completed).
  */
 
-import { teamState, state, subagentState, taskStatusTimestamps } from '../state.ts';
+import { teamState, state, taskStatusTimestamps } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { getAgentBadgeColors } from '../ui/colors.ts';
-import { selectAgentFilter } from './sessions.ts';
 import type { TaskUpdateEvent, TaskCompletedEvent, TaskInfo } from '../types.ts';
 import { updateTabBadge } from '../ui/views.ts';
 import type { Disposable } from '../services/lifecycle.ts';
 import { formatElapsed } from '../utils/formatting.ts';
 
 let showTasksPanel: (() => void) | null = null;
+let navigateToTeamAgent: ((agentName: string) => void) | null = null;
 
 /**
  * The teamId currently being rendered.
@@ -30,9 +30,10 @@ let previousCardIds = new Set<string>();
 /**
  * Initialize the tasks handler.
  */
-export function initTasks(extras: { showTasksPanel: () => void }): Disposable {
+export function initTasks(extras: { showTasksPanel: () => void; navigateToTeamAgent?: (agentName: string) => void }): Disposable {
   showTasksPanel = extras.showTasksPanel;
-  return { dispose: () => { showTasksPanel = null; } };
+  navigateToTeamAgent = extras.navigateToTeamAgent ?? null;
+  return { dispose: () => { showTasksPanel = null; navigateToTeamAgent = null; } };
 }
 
 // ============================================
@@ -244,9 +245,15 @@ function renderTaskBoard(): void {
     ? completed.map(renderCard).join('')
     : '<div class="task-column-empty">No completed tasks</div>';
 
-  // Update tab badge with total task count
-  const totalCount = allTasks.length;
-  updateTabBadge('tasks', totalCount);
+  // Update tab badge with rich task summary
+  const blocked = inProgress.filter(t => t.blockedBy.length > 0).length;
+  const active = inProgress.length;
+  const badgeText = blocked > 0
+    ? `${active} active / ${blocked} blocked`
+    : active > 0
+    ? `${active} active`
+    : `${allTasks.length}`;
+  updateTabBadge('tasks', allTasks.length > 0 ? badgeText : 0);
 
   // Collect current card IDs and animate newly appeared cards (single DOM pass)
   const currentCardIds = new Set<string>();
@@ -274,7 +281,7 @@ function renderTaskBoard(): void {
     });
   });
 
-  // Add click handlers for owner badges -> cross-panel agent filtering
+  // Add click handlers for owner badges -> navigate to agent in Teams tab
   const taskBoard = document.querySelector('.task-board');
   if (taskBoard) {
     taskBoard.querySelectorAll('.task-owner-badge').forEach((badge) => {
@@ -282,27 +289,11 @@ function renderTaskBoard(): void {
       if (!ownerName) return;
 
       (badge as HTMLElement).style.cursor = 'pointer';
-      (badge as HTMLElement).title = `Click to filter by ${ownerName}`;
+      (badge as HTMLElement).title = `Jump to ${ownerName} in Teams`;
 
       badge.addEventListener('click', (e) => {
         e.stopPropagation(); // Don't trigger card click
-
-        // Find agentId for this owner
-        let agentId: string | null = null;
-        for (const [id, mapping] of subagentState.subagents) {
-          if (mapping.agentName === ownerName) {
-            agentId = id;
-            break;
-          }
-        }
-
-        if (agentId) {
-          if (state.selectedAgentId === agentId) {
-            selectAgentFilter(null);
-          } else {
-            selectAgentFilter(agentId);
-          }
-        }
+        navigateToTeamAgent?.(ownerName);
       });
     });
   }

@@ -183,6 +183,25 @@
   color: var(--color-text-muted);
 }
 
+.empty-state-waiting {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  animation: pulse-empty 3s ease-in-out infinite;
+}
+
+@keyframes pulse-empty {
+  0%, 100% { border-color: var(--color-border); }
+  50% { border-color: var(--color-accent-blue); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .empty-state-waiting {
+    animation: none;
+    border-color: var(--color-accent-blue);
+    opacity: 0.7;
+  }
+}
+
 .empty-state-shortcuts {
   margin-top: var(--spacing-sm);
   display: flex;

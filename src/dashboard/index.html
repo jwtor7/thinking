@@ -53,10 +53,10 @@
             </div>
           </header>
           <div class="panel-content" id="thinking-content">
-            <div class="empty-state">
+            <div class="empty-state empty-state-waiting">
               <div class="empty-state-icon">&#129504;</div>
               <p class="empty-state-title">Waiting for Claude Code session...</p>
-              <p class="empty-state-subtitle">Start a conversation in your terminal to see thinking blocks.</p>
+              <p class="empty-state-subtitle">Thinking blocks appear when Claude reasons through your request. Start a conversation to see activity.</p>
             </div>
           </div>
         </section>
@@ -78,10 +78,10 @@
             </div>
           </header>
           <div class="panel-content" id="tools-content">
-            <div class="empty-state">
+            <div class="empty-state empty-state-waiting">
               <div class="empty-state-icon">&#128295;</div>
               <p class="empty-state-title">No tool calls yet</p>
-              <p class="empty-state-subtitle">Tools appear when Claude reads files, runs commands, edits code, or searches.</p>
+              <p class="empty-state-subtitle">Tools appear when Claude reads files, runs commands, or edits code. Start a coding task to see activity.</p>
             </div>
           </div>
         </section>
@@ -113,7 +113,7 @@
             <div class="empty-state">
               <div class="empty-state-icon">&#9881;</div>
               <p class="empty-state-title">No hook activity</p>
-              <p class="empty-state-subtitle">Hooks run before/after tool execution to enforce rules and track behavior.</p>
+              <p class="empty-state-subtitle">Hook events appear when Claude Code hooks fire during tool use, sessions, or agent lifecycle.</p>
             </div>
           </div>
         </section>
@@ -148,7 +148,7 @@
                   <div class="empty-state">
                     <div class="empty-state-icon">&#128101;</div>
                     <p class="empty-state-title">No team activity</p>
-                    <p class="empty-state-subtitle">Teams appear when Claude uses TeamCreate and SendMessage for multi-agent collaboration.</p>
+                    <p class="empty-state-subtitle">Teams appear during multi-agent tasks like /council or parallel research.</p>
                   </div>
                 </div>
               </div>
@@ -185,7 +185,7 @@
                     <div class="empty-state">
                       <div class="empty-state-icon">&#129302;</div>
                       <p class="empty-state-title">No agents</p>
-                      <p class="empty-state-subtitle">Sub-agents appear here for the selected session.</p>
+                      <p class="empty-state-subtitle">Sub-agents appear here when Claude spawns parallel workers for the selected session.</p>
                     </div>
                   </div>
                   <div class="agents-detail" id="team-agents-detail">
@@ -211,7 +211,7 @@
                   <div class="empty-state">
                     <div class="empty-state-icon">&#128172;</div>
                     <p class="empty-state-title">No messages yet</p>
-                    <p class="empty-state-subtitle">Messages appear when agents communicate via SendMessage.</p>
+                    <p class="empty-state-subtitle">Messages appear when agents coordinate via SendMessage during team workflows.</p>
                   </div>
                 </div>
               </div>
@@ -284,10 +284,10 @@
           <div id="timeline-type-chips" class="timeline-type-chips"></div>
           <div id="timeline-session-chips" class="timeline-session-chips"></div>
           <div class="panel-content" id="timeline-entries">
-            <div class="empty-state">
+            <div class="empty-state empty-state-waiting">
               <div class="empty-state-icon">&#128337;</div>
               <p class="empty-state-title">No events yet</p>
-              <p class="empty-state-subtitle">A chronological feed of all events: thinking, tools, hooks, agents, and more.</p>
+              <p class="empty-state-subtitle">The timeline shows a chronological feed of all session activity. Events appear as Claude works.</p>
             </div>
           </div>
         </section>
@@ -326,7 +326,7 @@
             <div class="empty-state">
               <div class="empty-state-icon">&#128196;</div>
               <p class="empty-state-title">No plan loaded</p>
-              <p class="empty-state-subtitle">Select a plan from the dropdown above.</p>
+              <p class="empty-state-subtitle">Plans appear when Claude enters plan mode. Select a session with an active plan to view it.</p>
             </div>
           </div>
         </section>
@@ -373,6 +373,6 @@
     </button>
   </div>
 
-  <script src="app.js?v=1.6.0" defer></script>
+  <script src="app.js?v=1.7.0" defer></script>
 </body>
 </html>

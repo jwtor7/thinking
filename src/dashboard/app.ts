@@ -104,7 +104,7 @@ import {
   handleContextMenuReveal,
 } from './handlers/plans.ts';
 import { initHooks } from './handlers/hooks.ts';
-import { initTeam, handleMessageSent, resetTeamAgentThinking } from './handlers/team.ts';
+import { initTeam, handleMessageSent, resetTeamAgentThinking, navigateToAgent } from './handlers/team.ts';
 import { initTasks } from './handlers/tasks.ts';
 import { initTimeline, resetTypeChips } from './handlers/timeline.ts';
 import {
@@ -547,6 +547,10 @@ handlerDisposables.add(initTasks({
     if (elements.tasksPanel?.classList.contains('panel-hidden')) {
       elements.tasksPanel.classList.remove('panel-hidden');
     }
+  },
+  navigateToTeamAgent: (agentName: string) => {
+    selectView('team');
+    navigateToAgent(agentName);
   },
 }));
 

@@ -1426,12 +1426,17 @@
   function updateTabBadge(view, count) {
     const badge = document.querySelector(`.tab-badge[data-badge-view="${view}"]`);
     if (!badge) return;
-    if (count > 0) {
-      badge.textContent = count > 999 ? "999+" : String(count);
+    if (typeof count === "string") {
+      badge.textContent = count;
       badge.style.display = "";
     } else {
-      badge.textContent = "";
-      badge.style.display = "none";
+      if (count > 0) {
+        badge.textContent = count > 999 ? "999+" : String(count);
+        badge.style.display = "";
+      } else {
+        badge.textContent = "";
+        badge.style.display = "none";
+      }
     }
   }
 
@@ -2087,6 +2092,9 @@
         </div>
         <span class="team-member-type" style="background: ${escapeCssValue(badgeColors.bg)}; color: ${escapeCssValue(badgeColors.text)}">${escapeHtml(member.agentType)}</span>
         ${metricsHtml}
+        <div class="team-member-actions">
+          <button class="team-member-action-btn" data-action="tasks" title="View tasks for ${escapeHtml(member.name)}" aria-label="View tasks for ${escapeHtml(member.name)}">&#9745; tasks</button>
+        </div>
       </div>
     `;
     }).join("");
@@ -2110,6 +2118,24 @@
             selectAgentFilter(agentId);
           }
         }
+      });
+    });
+    memberGrid.querySelectorAll('.team-member-action-btn[data-action="tasks"]').forEach((btn, index) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const member = members[index];
+        if (!member) return;
+        let agentId = null;
+        for (const [id, mapping] of subagentState.subagents) {
+          if (mapping.agentName === member.name) {
+            agentId = id;
+            break;
+          }
+        }
+        if (agentId) {
+          selectAgentFilter(agentId);
+        }
+        selectView("tasks");
       });
     });
   }
@@ -2185,6 +2211,14 @@
     renderTeamAgentList();
     renderTeamAgentDetail();
   }
+  function navigateToAgent(agentName) {
+    for (const [id, mapping] of subagentState.subagents) {
+      if (mapping.agentName === agentName) {
+        selectTeamAgentInView(id);
+        return;
+      }
+    }
+  }
   function countSessionThinkingEntries(sessionId) {
     let total = 0;
     for (const [key, entries] of agentThinkingEntries) {
@@ -2212,7 +2246,17 @@
     const messageCount = teamState.teamMessages.filter((message) => message.sessionId === sessionId).length;
     const thinkingCount = countSessionThinkingEntries(sessionId);
     const total = memberCount + messageCount + thinkingCount;
-    updateTabBadge("team", total);
+    let agentCount = 0;
+    let idleCount = 0;
+    for (const [teamName, mappedSession] of teamState.teamSessionMap) {
+      if (mappedSession === sessionId) {
+        const members = teamState.teams.get(teamName) || [];
+        agentCount += members.length;
+        idleCount += members.filter((m) => m.status === "idle").length;
+      }
+    }
+    const badgeText = idleCount > 0 ? `${agentCount} agents / ${idleCount} idle` : agentCount > 0 ? `${agentCount} agents` : String(total);
+    updateTabBadge("team", agentCount > 0 ? badgeText : total);
     const panelBadge = document.getElementById("team-count");
     if (panelBadge) panelBadge.textContent = String(total);
   }
@@ -2466,12 +2510,15 @@
 
   // src/dashboard/handlers/tasks.ts
   var showTasksPanel = null;
+  var navigateToTeamAgent = null;
   var currentRenderTeamId = "";
   var previousCardIds = /* @__PURE__ */ new Set();
   function initTasks(extras) {
     showTasksPanel = extras.showTasksPanel;
+    navigateToTeamAgent = extras.navigateToTeamAgent ?? null;
     return { dispose: () => {
       showTasksPanel = null;
+      navigateToTeamAgent = null;
     } };
   }
   function updateTasksProgress(pending, inProgress, completed) {
@@ -2610,8 +2657,10 @@
     pendingCol.innerHTML = pending.length > 0 ? pending.map(renderCard).join("") : '<div class="task-column-empty">No pending tasks</div>';
     progressCol.innerHTML = inProgress.length > 0 ? inProgress.map(renderCard).join("") : '<div class="task-column-empty">No active tasks</div>';
     completedCol.innerHTML = completed.length > 0 ? completed.map(renderCard).join("") : '<div class="task-column-empty">No completed tasks</div>';
-    const totalCount = allTasks.length;
-    updateTabBadge("tasks", totalCount);
+    const blocked = inProgress.filter((t) => t.blockedBy.length > 0).length;
+    const active = inProgress.length;
+    const badgeText = blocked > 0 ? `${active} active / ${blocked} blocked` : active > 0 ? `${active} active` : `${allTasks.length}`;
+    updateTabBadge("tasks", allTasks.length > 0 ? badgeText : 0);
     const currentCardIds = /* @__PURE__ */ new Set();
     const allCards = document.querySelectorAll(".task-card[data-task-id]");
     allCards.forEach((card) => {
@@ -2637,23 +2686,10 @@
         const ownerName = badge.textContent?.trim();
         if (!ownerName) return;
         badge.style.cursor = "pointer";
-        badge.title = `Click to filter by ${ownerName}`;
+        badge.title = `Jump to ${ownerName} in Teams`;
         badge.addEventListener("click", (e) => {
           e.stopPropagation();
-          let agentId = null;
-          for (const [id, mapping] of subagentState.subagents) {
-            if (mapping.agentName === ownerName) {
-              agentId = id;
-              break;
-            }
-          }
-          if (agentId) {
-            if (state.selectedAgentId === agentId) {
-              selectAgentFilter(null);
-            } else {
-              selectAgentFilter(agentId);
-            }
-          }
+          navigateToTeamAgent?.(ownerName);
         });
       });
     }
@@ -5531,6 +5567,8 @@ Session: ${id}` : `Session: ${id}`;
     }
     const progress = parsePlanCheckboxes(plan.content);
     updatePlanProgress(progress);
+    const badgeText = progress.total > 0 ? `${progress.checked}/${progress.total}` : "1";
+    updateTabBadge("plan", badgeText);
     updatePlanMeta(plan, progress);
     updatePlanActionButtons();
     renderPlanSelector();
@@ -5539,6 +5577,7 @@ Session: ${id}` : `Session: ${id}`;
     state.currentPlanPath = null;
     elements.planSelectorText.textContent = "No active plan";
     updatePlanProgress({ checked: 0, total: 0 });
+    updateTabBadge("plan", 0);
     const message = state.selectedSession === "all" && state.sessions.size > 0 ? "Select a session to view its plan" : "No plan file loaded";
     elements.planContent.innerHTML = `
     <div class="empty-state">
@@ -5553,6 +5592,7 @@ Session: ${id}` : `Session: ${id}`;
   function displaySessionPlanEmpty(sessionId) {
     state.currentPlanPath = null;
     updatePlanProgress({ checked: 0, total: 0 });
+    updateTabBadge("plan", 0);
     const shortId = sessionId.slice(0, 8);
     elements.planSelectorText.textContent = "No plan for session";
     elements.planContent.innerHTML = `
@@ -7263,6 +7303,10 @@ Session: ${id}` : `Session: ${id}`;
       if (elements.tasksPanel?.classList.contains("panel-hidden")) {
         elements.tasksPanel.classList.remove("panel-hidden");
       }
+    },
+    navigateToTeamAgent: (agentName) => {
+      selectView("team");
+      navigateToAgent(agentName);
     }
   }));
   handlerDisposables.add(initTimeline(appContext));

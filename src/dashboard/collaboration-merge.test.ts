@@ -72,7 +72,10 @@ describe('Collaboration Refactor: Team + Agents Merge', () => {
     });
 
     it('initializes and resets Team-owned agent thinking state from app startup flow', () => {
-      expect(appContent).toContain('import { initTeam, handleMessageSent, resetTeamAgentThinking } from \'./handlers/team.ts\';');
+      expect(appContent).toContain('initTeam');
+      expect(appContent).toContain('handleMessageSent');
+      expect(appContent).toContain('resetTeamAgentThinking');
+      expect(appContent).toContain('from \'./handlers/team.ts\'');
       expect(appContent).toContain('resetTeamAgentThinking();');
       expect(appContent).not.toContain('./handlers/agents-view.ts');
     });

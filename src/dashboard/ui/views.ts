@@ -230,17 +230,23 @@ export function applyViewFilter(): void {
 
 /**
  * Update the count badge on a view tab.
+ * Accepts a number (hide at 0, cap at 999+) or a string (show as-is).
  * Hides the badge when count is 0.
  */
-export function updateTabBadge(view: ViewType, count: number): void {
+export function updateTabBadge(view: ViewType, count: number | string): void {
   const badge = document.querySelector(`.tab-badge[data-badge-view="${view}"]`) as HTMLElement | null;
   if (!badge) return;
 
-  if (count > 0) {
-    badge.textContent = count > 999 ? '999+' : String(count);
+  if (typeof count === 'string') {
+    badge.textContent = count;
     badge.style.display = '';
   } else {
-    badge.textContent = '';
-    badge.style.display = 'none';
+    if (count > 0) {
+      badge.textContent = count > 999 ? '999+' : String(count);
+      badge.style.display = '';
+    } else {
+      badge.textContent = '';
+      badge.style.display = 'none';
+    }
   }
 }

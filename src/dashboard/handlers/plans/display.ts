@@ -12,6 +12,7 @@ import { renderSimpleMarkdown } from '../../utils/markdown.ts';
 import type { PlanInfo } from '../../types.ts';
 import { renderPlanSelector, requestPlanContent } from './state.ts';
 import { formatTimeAgo } from './utils.ts';
+import { updateTabBadge } from '../../ui/views.ts';
 
 // ============================================
 // Change Highlighting
@@ -172,6 +173,10 @@ export function displayPlan(planPath: string): void {
   const progress = parsePlanCheckboxes(plan.content);
   updatePlanProgress(progress);
 
+  // Update tab badge with checkbox fraction, or "1" if plan exists but no checkboxes
+  const badgeText = progress.total > 0 ? `${progress.checked}/${progress.total}` : '1';
+  updateTabBadge('plan', badgeText);
+
   // Update plan metadata display (pass progress for completion ratio)
   updatePlanMeta(plan, progress);
 
@@ -190,6 +195,7 @@ export function displayEmptyPlan(): void {
   state.currentPlanPath = null;
   elements.planSelectorText.textContent = 'No active plan';
   updatePlanProgress({ checked: 0, total: 0 });
+  updateTabBadge('plan', 0);
 
   // Show different message based on whether "All" sessions is selected
   const message = state.selectedSession === 'all' && state.sessions.size > 0
@@ -217,6 +223,7 @@ export function displayEmptyPlan(): void {
 export function displaySessionPlanEmpty(sessionId: string): void {
   state.currentPlanPath = null;
   updatePlanProgress({ checked: 0, total: 0 });
+  updateTabBadge('plan', 0);
   const shortId = sessionId.slice(0, 8);
   elements.planSelectorText.textContent = 'No plan for session';
 

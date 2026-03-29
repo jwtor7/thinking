@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-03-29 — v1.7.0
+
+### Added
+- **Rich badge counts (X1)** — Tab badges now show contextual summaries: Tasks shows "3 active / 1 blocked", Teams shows "4 agents / 2 idle", Plan shows "5/12" from checkbox progress
+- **Cross-tab navigation (X2)** — Click owner badge in Tasks to jump to that agent in Teams; click "tasks" button on member cards to view that agent's tasks; wired through DI callbacks
+- **Smarter empty states (X3)** — Contextual guidance text for all panel empty states explaining when data appears; pulsing dashed border on waiting panels (thinking, tools, timeline)
+
+---
+
 ## 2026-03-29 — v1.6.0
 
 ### Added

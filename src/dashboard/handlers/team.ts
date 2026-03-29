@@ -15,7 +15,7 @@ import { renderSimpleMarkdown } from '../utils/markdown.ts';
 import { getAgentBadgeColors } from '../ui/colors.ts';
 import { selectAgentFilter, resolveSessionId } from './sessions.ts';
 import type { TeamUpdateEvent, TeammateIdleEvent, MessageSentEvent, ThinkingEvent } from '../types.ts';
-import { updateTabBadge } from '../ui/views.ts';
+import { updateTabBadge, selectView } from '../ui/views.ts';
 import { BoundedMap } from '../../shared/bounded-map.ts';
 import type { AppContext } from '../services/app-context.ts';
 import type { Disposable } from '../services/lifecycle.ts';
@@ -265,6 +265,9 @@ function renderMemberGrid(teamName: string): void {
         </div>
         <span class="team-member-type" style="background: ${escapeCssValue(badgeColors.bg)}; color: ${escapeCssValue(badgeColors.text)}">${escapeHtml(member.agentType)}</span>
         ${metricsHtml}
+        <div class="team-member-actions">
+          <button class="team-member-action-btn" data-action="tasks" title="View tasks for ${escapeHtml(member.name)}" aria-label="View tasks for ${escapeHtml(member.name)}">&#9745; tasks</button>
+        </div>
       </div>
     `;
   }).join('');
@@ -294,6 +297,28 @@ function renderMemberGrid(teamName: string): void {
           selectAgentFilter(agentId);
         }
       }
+    });
+  });
+
+  // Add click handlers for tasks action buttons on member cards
+  memberGrid.querySelectorAll('.team-member-action-btn[data-action="tasks"]').forEach((btn, index) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation(); // Don't trigger card click
+      const member = members[index];
+      if (!member) return;
+
+      // Find agentId for this member and set agent filter
+      let agentId: string | null = null;
+      for (const [id, mapping] of subagentState.subagents) {
+        if (mapping.agentName === member.name) {
+          agentId = id;
+          break;
+        }
+      }
+      if (agentId) {
+        selectAgentFilter(agentId);
+      }
+      selectView('tasks');
     });
   });
 }
@@ -387,6 +412,19 @@ function selectTeamAgentInView(agentId: string): void {
   renderTeamAgentDetail();
 }
 
+/**
+ * Navigate to and select an agent in the Teams view by name.
+ * Called from other handlers via the DI callback in app.ts.
+ */
+export function navigateToAgent(agentName: string): void {
+  for (const [id, mapping] of subagentState.subagents) {
+    if (mapping.agentName === agentName) {
+      selectTeamAgentInView(id);
+      return;
+    }
+  }
+}
+
 function countSessionThinkingEntries(sessionId: string): number {
   let total = 0;
   for (const [key, entries] of agentThinkingEntries) {
@@ -417,7 +455,24 @@ function updateTeamTabCount(): void {
   const messageCount = teamState.teamMessages.filter((message) => message.sessionId === sessionId).length;
   const thinkingCount = countSessionThinkingEntries(sessionId);
   const total = memberCount + messageCount + thinkingCount;
-  updateTabBadge('team', total);
+
+  // Rich badge: count agents and idle agents from session-scoped team
+  let agentCount = 0;
+  let idleCount = 0;
+  for (const [teamName, mappedSession] of teamState.teamSessionMap) {
+    if (mappedSession === sessionId) {
+      const members = teamState.teams.get(teamName) || [];
+      agentCount += members.length;
+      idleCount += members.filter(m => m.status === 'idle').length;
+    }
+  }
+  const badgeText = idleCount > 0
+    ? `${agentCount} agents / ${idleCount} idle`
+    : agentCount > 0
+    ? `${agentCount} agents`
+    : String(total);
+  updateTabBadge('team', agentCount > 0 ? badgeText : total);
+
   const panelBadge = document.getElementById('team-count');
   if (panelBadge) panelBadge.textContent = String(total);
 }

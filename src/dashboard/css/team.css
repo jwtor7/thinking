@@ -190,6 +190,27 @@
   opacity: 0.7;
 }
 
+.team-member-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+}
+
+.team-member-action-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 1px 4px;
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.team-member-action-btn:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text-primary);
+}
+
 /* ========================================
    Messages Section
    ======================================== */
