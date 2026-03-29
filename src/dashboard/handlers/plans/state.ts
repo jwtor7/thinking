@@ -11,7 +11,7 @@ import { debug } from '../../utils/debug.ts';
 import { escapeHtml } from '../../utils/html.ts';
 import { sendMessage, getWebSocket } from '../../connection/websocket.ts';
 import type { PlanListEvent, PlanUpdateEvent, PlanDeleteEvent } from '../../types.ts';
-import { displayPlan, displayEmptyPlan, displayMostRecentPlan, updatePlanMeta, updatePlanActionButtons } from './display.ts';
+import { displayPlan, displayEmptyPlan, displayMostRecentPlan, updatePlanMeta, updatePlanActionButtons, clearPreviousPlanContent } from './display.ts';
 import { handlePlanOptionContextMenu } from './context-menu.ts';
 import { formatTimeAgo } from './utils.ts';
 
@@ -136,6 +136,7 @@ export function handlePlanDelete(event: PlanDeleteEvent): void {
   // Remove this plan from our map
   if (path) {
     state.plans.delete(path);
+    clearPreviousPlanContent(path);
 
     // Remove from plan list
     state.planList = state.planList.filter((p) => p.path !== path);

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-03-28 — v1.5.6
+
+### Added
+- **Plan change highlighting** — When a plan file updates, changed or newly added blocks get a temporary green highlight that fades after 3 seconds (holds 2s, fades 1s via CSS keyframe animation)
+- `highlightChangedBlocks()` in `src/dashboard/handlers/plans/display.ts` diffs previous vs. current rendered HTML block-by-block and applies `.plan-changed` class
+- `previousPlanContent` map tracks last-rendered content per plan path; cleared on plan delete
+- `.plan-changed` CSS class with `plan-highlight-fade` keyframe animation in `src/dashboard/css/markdown.css`
+
+---
+
 ## 2026-03-28 — v1.5.5
 
 ### Added

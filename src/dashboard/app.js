@@ -5287,6 +5287,26 @@ Session: ${id}` : `Session: ${id}`;
   }
 
   // src/dashboard/handlers/plans/display.ts
+  var previousPlanContent = /* @__PURE__ */ new Map();
+  function highlightChangedBlocks(container, planPath, content) {
+    const prevContent = previousPlanContent.get(planPath);
+    previousPlanContent.set(planPath, content);
+    if (prevContent === void 0 || prevContent === content) return;
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = renderSimpleMarkdown(prevContent);
+    const oldChildren = Array.from(tempDiv.children);
+    const newChildren = Array.from(container.children);
+    for (let i = 0; i < newChildren.length; i++) {
+      const newChild = newChildren[i];
+      const oldChild = oldChildren[i];
+      if (!oldChild || newChild.outerHTML !== oldChild.outerHTML) {
+        newChild.classList.add("plan-changed");
+      }
+    }
+  }
+  function clearPreviousPlanContent(planPath) {
+    previousPlanContent.delete(planPath);
+  }
   function parsePlanCheckboxes(content) {
     const unchecked = content.match(/^[\t ]*- \[ \]/gm);
     const checked = content.match(/^[\t ]*- \[[xX]\]/gm);
@@ -5348,6 +5368,10 @@ Session: ${id}` : `Session: ${id}`;
     elements.planContent.innerHTML = `
     <div class="plan-markdown">${renderSimpleMarkdown(plan.content)}</div>
   `;
+    const markdownEl = elements.planContent.querySelector(".plan-markdown");
+    if (markdownEl) {
+      highlightChangedBlocks(markdownEl, planPath, plan.content);
+    }
     updatePlanProgress(parsePlanCheckboxes(plan.content));
     updatePlanMeta(plan);
     updatePlanActionButtons();
@@ -5546,6 +5570,7 @@ Session: ${id}` : `Session: ${id}`;
     const path = event.path;
     if (path) {
       state.plans.delete(path);
+      clearPreviousPlanContent(path);
       state.planList = state.planList.filter((p) => p.path !== path);
     }
     renderPlanSelector();

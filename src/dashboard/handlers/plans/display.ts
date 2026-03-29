@@ -14,6 +14,49 @@ import { renderPlanSelector, requestPlanContent } from './state.ts';
 import { formatTimeAgo } from './utils.ts';
 
 // ============================================
+// Change Highlighting
+// ============================================
+
+/** Previous plan content (raw markdown) keyed by plan path, for change detection. */
+const previousPlanContent = new Map<string, string>();
+
+/**
+ * Compare rendered plan blocks and highlight changes.
+ * Applies a temporary green highlight to new/changed blocks that fades after 3s.
+ */
+function highlightChangedBlocks(container: HTMLElement, planPath: string, content: string): void {
+  const prevContent = previousPlanContent.get(planPath);
+  previousPlanContent.set(planPath, content);
+
+  // No previous content or identical — skip highlighting
+  if (prevContent === undefined || prevContent === content) return;
+
+  // Render previous content into a temporary container for block-level comparison
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = renderSimpleMarkdown(prevContent);
+
+  const oldChildren = Array.from(tempDiv.children);
+  const newChildren = Array.from(container.children);
+
+  for (let i = 0; i < newChildren.length; i++) {
+    const newChild = newChildren[i] as HTMLElement;
+    const oldChild = oldChildren[i] as HTMLElement | undefined;
+
+    // Highlight if block is new (beyond old length) or content changed
+    if (!oldChild || newChild.outerHTML !== oldChild.outerHTML) {
+      newChild.classList.add('plan-changed');
+    }
+  }
+}
+
+/**
+ * Remove stored previous content for a deleted plan.
+ */
+export function clearPreviousPlanContent(planPath: string): void {
+  previousPlanContent.delete(planPath);
+}
+
+// ============================================
 // Checkbox Progress
 // ============================================
 
@@ -118,6 +161,12 @@ export function displayPlan(planPath: string): void {
   elements.planContent.innerHTML = `
     <div class="plan-markdown">${renderSimpleMarkdown(plan.content)}</div>
   `;
+
+  // Highlight blocks that changed since last render
+  const markdownEl = elements.planContent.querySelector('.plan-markdown');
+  if (markdownEl) {
+    highlightChangedBlocks(markdownEl as HTMLElement, planPath, plan.content);
+  }
 
   // Update progress indicator from checkbox items
   updatePlanProgress(parsePlanCheckboxes(plan.content));
