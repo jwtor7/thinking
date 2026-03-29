@@ -5,7 +5,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.5.6-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.5.7-purple)](./CHANGELOG.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 [![GitHub Stars](https://img.shields.io/github/stars/jwtor7/thinking?style=social)](https://github.com/jwtor7/thinking)
 
@@ -175,8 +175,8 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
+- **v1.5.7** (2026-03-28 22:00) — Richer plan metadata bar: pill-style segments showing completion ratio, section count, session context, modified time, and path with contextual colors.
 - **v1.5.6** (2026-03-28 20:16) — Plan change highlighting: changed/added blocks get a temporary green highlight that fades after 3 seconds on plan update.
 - **v1.5.5** (2026-03-28 19:33) — Plan tab progress bar: live X/Y fraction and 48px bar parsed from checkbox state in plan files; turns green when complete.
-- **v1.5.4** (2026-03-28 19:09) — Fixed thinking view broken with Claude Code >=2.1.69: parser now accepts empty thinking blocks; redacted entries render as compact aggregated markers with count and time range.
 
 *[Full changelog →](./CHANGELOG.md)*

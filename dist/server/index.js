@@ -23,7 +23,7 @@ function isClientRequest(obj) {
 }
 function getVersion() {
   if (true) {
-    return "1.5.5";
+    return "1.5.6";
   }
   try {
     const packagePath = join(process.cwd(), "package.json");

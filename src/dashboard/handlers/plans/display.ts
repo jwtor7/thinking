@@ -169,10 +169,11 @@ export function displayPlan(planPath: string): void {
   }
 
   // Update progress indicator from checkbox items
-  updatePlanProgress(parsePlanCheckboxes(plan.content));
+  const progress = parsePlanCheckboxes(plan.content);
+  updatePlanProgress(progress);
 
-  // Update plan metadata display
-  updatePlanMeta(plan);
+  // Update plan metadata display (pass progress for completion ratio)
+  updatePlanMeta(plan, progress);
 
   // Update action buttons enabled state
   updatePlanActionButtons();
@@ -232,12 +233,21 @@ export function displaySessionPlanEmpty(sessionId: string): void {
 }
 
 /**
+ * Count markdown heading sections in plan content.
+ */
+function countSections(content: string): number {
+  const headings = content.match(/^#{1,3}\s+/gm);
+  return headings ? headings.length : 0;
+}
+
+/**
  * Update the plan metadata display.
- * Shows the path and last modified time of the current plan.
+ * Shows item count, completion ratio, session context, modified time, and path.
  *
  * @param plan - Plan info to display, or null to hide metadata
+ * @param progress - Checkbox progress data (optional)
  */
-export function updatePlanMeta(plan: PlanInfo | null): void {
+export function updatePlanMeta(plan: PlanInfo | null, progress?: CheckboxProgress): void {
   if (!plan) {
     elements.planMeta.classList.remove('visible');
     elements.planMeta.innerHTML = '';
@@ -247,20 +257,38 @@ export function updatePlanMeta(plan: PlanInfo | null): void {
   const modifiedDate = new Date(plan.lastModified);
   const timeAgo = formatTimeAgo(modifiedDate);
   const fullTime = modifiedDate.toLocaleString();
+  const sections = countSections(plan.content);
 
-  // Shorten the path for display (show just ~/.claude/plans/filename.md)
+  // Build metadata pills
+  const pills: string[] = [];
+
+  // Completion ratio (if checkboxes exist)
+  if (progress && progress.total > 0) {
+    const pct = Math.round((progress.checked / progress.total) * 100);
+    const allDone = progress.checked === progress.total;
+    const completionClass = allDone ? ' plan-meta-pill-complete' : '';
+    pills.push(`<span class="plan-meta-pill${completionClass}" title="${pct}% complete">${progress.checked}/${progress.total} done</span>`);
+  }
+
+  // Section count
+  if (sections > 0) {
+    pills.push(`<span class="plan-meta-pill" title="${sections} heading sections">${sections} section${sections !== 1 ? 's' : ''}</span>`);
+  }
+
+  // Session context
+  if (plan.sessionId) {
+    const shortSession = plan.sessionId.slice(0, 8);
+    pills.push(`<span class="plan-meta-pill plan-meta-pill-session" title="Session ${escapeHtml(plan.sessionId)}">&#128279; ${escapeHtml(shortSession)}</span>`);
+  }
+
+  // Modified time
+  pills.push(`<span class="plan-meta-pill plan-meta-pill-time" title="${escapeHtml(fullTime)}">${escapeHtml(timeAgo)}</span>`);
+
+  // Path (always last, can truncate)
   const shortPath = plan.path.replace(/^.*\/\.claude\//, '~/.claude/');
+  pills.push(`<span class="plan-meta-pill plan-meta-pill-path" title="${escapeHtml(plan.path)}">${escapeHtml(shortPath)}</span>`);
 
-  elements.planMeta.innerHTML = `
-    <span class="plan-meta-item">
-      <span class="plan-meta-label">Modified:</span>
-      <span class="plan-meta-value plan-meta-time" title="${escapeHtml(fullTime)}">${escapeHtml(timeAgo)}</span>
-    </span>
-    <span class="plan-meta-item plan-meta-path" title="${escapeHtml(plan.path)}">
-      <span class="plan-meta-label">Path:</span>
-      <span class="plan-meta-value">${escapeHtml(shortPath)}</span>
-    </span>
-  `;
+  elements.planMeta.innerHTML = pills.join('');
   elements.planMeta.classList.add('visible');
 }
 

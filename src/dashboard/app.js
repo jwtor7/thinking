@@ -5372,8 +5372,9 @@ Session: ${id}` : `Session: ${id}`;
     if (markdownEl) {
       highlightChangedBlocks(markdownEl, planPath, plan.content);
     }
-    updatePlanProgress(parsePlanCheckboxes(plan.content));
-    updatePlanMeta(plan);
+    const progress = parsePlanCheckboxes(plan.content);
+    updatePlanProgress(progress);
+    updatePlanMeta(plan, progress);
     updatePlanActionButtons();
     renderPlanSelector();
   }
@@ -5408,7 +5409,11 @@ Session: ${id}` : `Session: ${id}`;
     updatePlanActionButtons();
     renderPlanSelector();
   }
-  function updatePlanMeta(plan) {
+  function countSections(content) {
+    const headings = content.match(/^#{1,3}\s+/gm);
+    return headings ? headings.length : 0;
+  }
+  function updatePlanMeta(plan, progress) {
     if (!plan) {
       elements.planMeta.classList.remove("visible");
       elements.planMeta.innerHTML = "";
@@ -5417,17 +5422,25 @@ Session: ${id}` : `Session: ${id}`;
     const modifiedDate = new Date(plan.lastModified);
     const timeAgo = formatTimeAgo(modifiedDate);
     const fullTime = modifiedDate.toLocaleString();
+    const sections = countSections(plan.content);
+    const pills = [];
+    if (progress && progress.total > 0) {
+      const pct = Math.round(progress.checked / progress.total * 100);
+      const allDone = progress.checked === progress.total;
+      const completionClass = allDone ? " plan-meta-pill-complete" : "";
+      pills.push(`<span class="plan-meta-pill${completionClass}" title="${pct}% complete">${progress.checked}/${progress.total} done</span>`);
+    }
+    if (sections > 0) {
+      pills.push(`<span class="plan-meta-pill" title="${sections} heading sections">${sections} section${sections !== 1 ? "s" : ""}</span>`);
+    }
+    if (plan.sessionId) {
+      const shortSession = plan.sessionId.slice(0, 8);
+      pills.push(`<span class="plan-meta-pill plan-meta-pill-session" title="Session ${escapeHtml(plan.sessionId)}">&#128279; ${escapeHtml(shortSession)}</span>`);
+    }
+    pills.push(`<span class="plan-meta-pill plan-meta-pill-time" title="${escapeHtml(fullTime)}">${escapeHtml(timeAgo)}</span>`);
     const shortPath = plan.path.replace(/^.*\/\.claude\//, "~/.claude/");
-    elements.planMeta.innerHTML = `
-    <span class="plan-meta-item">
-      <span class="plan-meta-label">Modified:</span>
-      <span class="plan-meta-value plan-meta-time" title="${escapeHtml(fullTime)}">${escapeHtml(timeAgo)}</span>
-    </span>
-    <span class="plan-meta-item plan-meta-path" title="${escapeHtml(plan.path)}">
-      <span class="plan-meta-label">Path:</span>
-      <span class="plan-meta-value">${escapeHtml(shortPath)}</span>
-    </span>
-  `;
+    pills.push(`<span class="plan-meta-pill plan-meta-pill-path" title="${escapeHtml(plan.path)}">${escapeHtml(shortPath)}</span>`);
+    elements.planMeta.innerHTML = pills.join("");
     elements.planMeta.classList.add("visible");
   }
   function updatePlanActionButtons() {

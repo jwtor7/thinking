@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-03-28 — v1.5.7
+
+### Changed
+- **Richer plan metadata bar** — Replaced the flat "Modified + Path" label/value pairs with pill-style segments showing completion ratio, section count, session context, modified time, and path; pills use contextual colors (green for full completion, blue for in-progress, gray for no checkboxes)
+- `countSections()` helper in `src/dashboard/handlers/plans/display.ts` counts H2/H3 headings in plan markdown
+- `updatePlanMeta()` rewritten to emit pill-style HTML with completion ratio, section count, session context, modified time, and path
+- `.plan-meta` styles in `src/dashboard/css/markdown.css` replaced with compact rounded pill layout
+
+---
+
 ## 2026-03-28 — v1.5.6
 
 ### Added
