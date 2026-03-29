@@ -1,0 +1,82 @@
+%% Architecture diagram for thinking-monitor
+%% Render: npx --yes @mermaid-js/mermaid-cli mmdc -i docs/architecture.mmd -o docs/architecture.png -t dark -b transparent
+
+flowchart TB
+
+  subgraph DataFlow["Data Flow"]
+    hooks["Claude Code Hooks\n(~/.claude/settings.json)"]
+    evtRecv["EventReceiver\n(:3355 HTTP POST /event)"]
+    hookProc["HookProcessor\n(raw JSON → MonitorEvent)"]
+    txWatch["TranscriptWatcher\n(polls ~/.claude/projects/*/sessions/*.jsonl)"]
+    planWatch["PlanWatcher\n(watches ~/.claude/plans/*.md)"]
+    wsHub["WebSocketHub"]
+    dashboard["Dashboard\n(:3356 WebSocket + Static)"]
+
+    hooks -->|"HTTP POST :3355"| evtRecv
+    evtRecv --> hookProc
+    hookProc --> wsHub
+    txWatch -->|"polls ~/.claude/"| wsHub
+    planWatch -->|"watches ~/.claude/plans/"| wsHub
+    wsHub -->|"WS :3356"| dashboard
+  end
+
+  subgraph BuildTargets["Build Targets"]
+    shared["src/shared/types.ts\n(MonitorEvent, StrictMonitorEvent)"]
+    server["Server\nsrc/server/index.ts\n→ esbuild → dist/server/index.js\n(Node.js ≥22, ESM)"]
+    dashBuild["Dashboard\nsrc/dashboard/app.ts\n→ esbuild → app.js\n(Browser IIFE)"]
+
+    shared -->|"imported by"| server
+    shared -->|"imported by"| dashBuild
+  end
+
+  subgraph DashboardInternals["Dashboard Internals (DI Pattern)"]
+    appTs["app.ts\n(init hub)"]
+
+    subgraph Handlers["Handlers"]
+      dispatcher["dispatcher.ts\n(routes by event.type)"]
+      thinking["thinking"]
+      tools["tools"]
+      hookH["hooks"]
+      sessions["sessions"]
+      plans["plans"]
+      team["team"]
+      tasks["tasks"]
+      timeline["timeline"]
+    end
+
+    subgraph UI["UI Modules"]
+      views["views.ts\n(single-panel switching)"]
+      panels["panels"]
+      keyboard["keyboard"]
+      searchOverlay["search-overlay"]
+    end
+
+    stateMod["state.ts\n(global mutable state:\nsessions, agents, filters, todos)"]
+    persist["storage/persistence.ts\n(localStorage save/restore)"]
+
+    appTs -->|"callbacks (DI)"| dispatcher
+    appTs -->|"callbacks (DI)"| thinking
+    appTs -->|"callbacks (DI)"| tools
+    appTs -->|"callbacks (DI)"| hookH
+    appTs -->|"callbacks (DI)"| sessions
+    appTs -->|"callbacks (DI)"| plans
+    appTs -->|"callbacks (DI)"| team
+    appTs -->|"callbacks (DI)"| tasks
+    appTs -->|"callbacks (DI)"| timeline
+    appTs --> views
+    appTs --> panels
+    appTs --> keyboard
+    appTs --> searchOverlay
+
+    dispatcher --> stateMod
+    thinking --> stateMod
+    tools --> stateMod
+    sessions --> stateMod
+    plans --> stateMod
+    team --> stateMod
+    tasks --> stateMod
+    timeline --> stateMod
+
+    appTs --> persist
+    persist --> stateMod
+  end

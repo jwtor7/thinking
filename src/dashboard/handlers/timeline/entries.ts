@@ -230,9 +230,11 @@ export function getEventSummary(event: StrictMonitorEvent): string {
 // ============================================
 
 import type { AppContext } from '../../services/app-context.ts';
+import { indexEntry, removeEntry } from '../../ui/search-index.ts';
 
 let entryCtx: AppContext | null = null;
 let timelineCount = 0;
+let nextTimelineId = 0;
 
 export function initEntries(appCtx: AppContext): void {
   entryCtx = appCtx;
@@ -319,6 +321,7 @@ export function addTimelineEntry(event: StrictMonitorEvent, applyFilter: () => v
 
   const entry = document.createElement('div');
   entry.className = `timeline-entry timeline-${typeClass} new`;
+  entry.id = `timeline-${nextTimelineId++}`;
   entry.dataset.timestamp = String(Date.now());
   entry.dataset.type = event.type;
   entry.dataset.session = resolvedSessionId || '';
@@ -350,17 +353,20 @@ export function addTimelineEntry(event: StrictMonitorEvent, applyFilter: () => v
     for (let i = 0; i < children.length; i++) {
       const child = children[i] as HTMLElement;
       if (child.dataset.type !== 'thinking') {
+        removeEntry(child.id);
         child.remove();
         removed = true;
         break;
       }
     }
     if (!removed) {
+      removeEntry((children[0] as HTMLElement).id);
       children[0].remove();
     }
   }
 
   entriesContainer.appendChild(entry);
+  indexEntry(entry.id, entry.dataset.filterText || '');
   applyFilter();
   entryCtx.ui.smartScroll(entriesContainer);
 

@@ -318,6 +318,14 @@ body.keyboard-mode .view-tab-shortcut {
   align-items: center;
   gap: var(--spacing-xs);
   margin-left: var(--spacing-xs);
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.session-agent-chips::-webkit-scrollbar {
+  display: none;
 }
 
 .session-agent-chip {

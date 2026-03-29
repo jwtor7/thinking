@@ -17,8 +17,10 @@ import { matchesSessionFilter } from '../services/filter-service.ts';
 import { updateTabBadge, selectView } from '../ui/views.ts';
 import type { AppContext } from '../services/app-context.ts';
 import type { Disposable } from '../services/lifecycle.ts';
+import { indexEntry } from '../ui/search-index.ts';
 
 let ctx: AppContext | null = null;
+let nextHookId = 0;
 
 // Current filter state
 let hooksFilter: string = 'all';
@@ -357,6 +359,7 @@ export function handleHookExecution(event: HookExecutionEvent): void {
   // Create hook entry
   const entry = document.createElement('div');
   entry.className = 'hook-entry';
+  entry.id = `hook-${nextHookId++}`;
   entry.dataset.hookType = hookType.toLowerCase();
   entry.dataset.session = sessionId || '';
   entry.dataset.decision = decision?.toLowerCase() || '';
@@ -383,6 +386,7 @@ export function handleHookExecution(event: HookExecutionEvent): void {
     // Apply filter before adding to DOM
     applyHooksFilter(entry);
     ctx.ui.appendAndTrim(elements.hooksContent, entry);
+    indexEntry(entry.id, (entry.dataset.hookType || '') + ' ' + (entry.dataset.decision || ''));
     ctx.ui.smartScroll(elements.hooksContent);
   }
 

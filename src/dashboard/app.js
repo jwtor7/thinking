@@ -107,10 +107,10 @@
     /**
      * Get element at logical index (0 = oldest).
      */
-    at(index) {
-      if (index < 0 || index >= this.count) return void 0;
+    at(index2) {
+      if (index2 < 0 || index2 >= this.count) return void 0;
       const start = this.count < this.capacity ? 0 : this.head;
-      const realIndex = (start + index) % this.capacity;
+      const realIndex = (start + index2) % this.capacity;
       return this.buffer[realIndex];
     }
     /**
@@ -676,8 +676,8 @@
       hash = (hash << 5) - hash + agentName.charCodeAt(i);
       hash = hash & hash;
     }
-    const index = Math.abs(hash) % AGENT_FALLBACK_COLORS.length;
-    return AGENT_FALLBACK_COLORS[index];
+    const index2 = Math.abs(hash) % AGENT_FALLBACK_COLORS.length;
+    return AGENT_FALLBACK_COLORS[index2];
   }
   var badgeColorsInitialized = false;
   var BADGE_COLORS = {};
@@ -2098,8 +2098,8 @@
       </div>
     `;
     }).join("");
-    memberGrid.querySelectorAll(".team-member-card").forEach((card, index) => {
-      const member = members[index];
+    memberGrid.querySelectorAll(".team-member-card").forEach((card, index2) => {
+      const member = members[index2];
       if (!member) return;
       card.style.cursor = "pointer";
       card.title = `Click to filter events by ${member.name}`;
@@ -2120,10 +2120,10 @@
         }
       });
     });
-    memberGrid.querySelectorAll('.team-member-action-btn[data-action="tasks"]').forEach((btn, index) => {
+    memberGrid.querySelectorAll('.team-member-action-btn[data-action="tasks"]').forEach((btn, index2) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        const member = members[index];
+        const member = members[index2];
         if (!member) return;
         let agentId = null;
         for (const [id, mapping] of subagentState.subagents) {
@@ -3006,6 +3006,25 @@
     container.appendChild(overflowToggle);
   }
 
+  // src/dashboard/ui/search-index.ts
+  var index = /* @__PURE__ */ new Map();
+  function indexEntry(id, text) {
+    index.set(id, text.toLowerCase());
+  }
+  function removeEntry(id) {
+    index.delete(id);
+  }
+  function queryIndex(lowerQuery) {
+    const matched = [];
+    for (const [id, text] of index) {
+      if (text.includes(lowerQuery)) matched.push(id);
+    }
+    return matched;
+  }
+  function clearIndex() {
+    index.clear();
+  }
+
   // src/dashboard/handlers/timeline/entries.ts
   var MAX_TIMELINE_ENTRIES = 500;
   var TYPE_LABELS = {
@@ -3173,6 +3192,7 @@
   }
   var entryCtx = null;
   var timelineCount = 0;
+  var nextTimelineId = 0;
   function initEntries(appCtx) {
     entryCtx = appCtx;
   }
@@ -3240,6 +3260,7 @@ Session: ${resolvedSessionId || ""}`;
     const filterText = `${typeFull} ${summary} ${agentLabel}`.toLowerCase();
     const entry = document.createElement("div");
     entry.className = `timeline-entry timeline-${typeClass} new`;
+    entry.id = `timeline-${nextTimelineId++}`;
     entry.dataset.timestamp = String(Date.now());
     entry.dataset.type = event.type;
     entry.dataset.session = resolvedSessionId || "";
@@ -3267,16 +3288,19 @@ Session: ${resolvedSessionId || ""}`;
       for (let i = 0; i < children.length; i++) {
         const child = children[i];
         if (child.dataset.type !== "thinking") {
+          removeEntry(child.id);
           child.remove();
           removed = true;
           break;
         }
       }
       if (!removed) {
+        removeEntry(children[0].id);
         children[0].remove();
       }
     }
     entriesContainer.appendChild(entry);
+    indexEntry(entry.id, entry.dataset.filterText || "");
     applyFilter();
     entryCtx.ui.smartScroll(entriesContainer);
     setTimeout(() => entry.classList.remove("new"), 1e3);
@@ -3883,6 +3907,7 @@ Session: ${id}` : `Session: ${id}`;
 
   // src/dashboard/handlers/hooks.ts
   var ctx3 = null;
+  var nextHookId = 0;
   var hooksFilter = "all";
   function initHooks(appCtx) {
     ctx3 = appCtx;
@@ -4093,6 +4118,7 @@ Session: ${id}` : `Session: ${id}`;
       </div>`;
     const entry = document.createElement("div");
     entry.className = "hook-entry";
+    entry.id = `hook-${nextHookId++}`;
     entry.dataset.hookType = hookType.toLowerCase();
     entry.dataset.session = sessionId || "";
     entry.dataset.decision = decision?.toLowerCase() || "";
@@ -4116,6 +4142,7 @@ Session: ${id}` : `Session: ${id}`;
     if (elements.hooksContent) {
       applyHooksFilter(entry);
       ctx3.ui.appendAndTrim(elements.hooksContent, entry);
+      indexEntry(entry.id, (entry.dataset.hookType || "") + " " + (entry.dataset.decision || ""));
       ctx3.ui.smartScroll(elements.hooksContent);
     }
     const toolEl = entry.querySelector(".hook-tool");
@@ -4258,6 +4285,7 @@ Session: ${id}` : `Session: ${id}`;
   var debounceTimer = null;
   var previouslyFocused = null;
   var selectedIndex = -1;
+  var lastSearchResults = null;
   function initSearchOverlay() {
   }
   function openSearchOverlay() {
@@ -4302,7 +4330,7 @@ Session: ${id}` : `Session: ${id}`;
     overlayEl.querySelector(".search-overlay-backdrop").addEventListener("click", closeSearchOverlay);
     searchInput.addEventListener("input", () => {
       if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => performSearch(searchInput.value), 150);
+      debounceTimer = setTimeout(() => performSearch(searchInput.value), 250);
     });
   }
   function highlightMatch(text, query) {
@@ -4316,36 +4344,25 @@ Session: ${id}` : `Session: ${id}`;
     if (!resultsContainer) return;
     if (!query.trim()) {
       resultsContainer.innerHTML = '<div class="search-empty">Type to search across all panels</div>';
+      lastSearchResults = null;
       return;
     }
     const lowerQuery = query.toLowerCase();
+    const matchedIds = queryIndex(lowerQuery);
     const groups = {
       thinking: [],
       tools: [],
       hooks: [],
       timeline: []
     };
-    document.querySelectorAll(".thinking-entry").forEach((el) => {
-      if (el.textContent?.toLowerCase().includes(lowerQuery)) {
-        groups.thinking.push(el);
-      }
-    });
-    document.querySelectorAll(".tool-entry").forEach((el) => {
-      if (el.textContent?.toLowerCase().includes(lowerQuery)) {
-        groups.tools.push(el);
-      }
-    });
-    document.querySelectorAll(".hook-entry").forEach((el) => {
-      if (el.textContent?.toLowerCase().includes(lowerQuery)) {
-        groups.hooks.push(el);
-      }
-    });
-    document.querySelectorAll(".timeline-entry").forEach((el) => {
-      const filterText = el.dataset.filterText || el.textContent || "";
-      if (filterText.toLowerCase().includes(lowerQuery)) {
-        groups.timeline.push(el);
-      }
-    });
+    for (const id of matchedIds) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      const prefix = id.split("-")[0];
+      const panel = prefix === "tool" ? "tools" : prefix === "hook" ? "hooks" : prefix;
+      if (groups[panel]) groups[panel].push(el);
+    }
+    lastSearchResults = groups;
     renderResults(groups, query);
   }
   function renderResults(groups, query) {
@@ -4372,7 +4389,7 @@ Session: ${id}` : `Session: ${id}`;
         html += `</button>`;
       }
       if (entries.length > 10) {
-        html += `<div class="search-more">+${entries.length - 10} more</div>`;
+        html += `<button class="search-more-btn" data-panel="${panel}" data-offset="10" aria-label="Show ${entries.length - 10} more ${panelLabels[panel]} results">+${entries.length - 10} more</button>`;
       }
       html += `</div>`;
     }
@@ -4388,6 +4405,54 @@ Session: ${id}` : `Session: ${id}`;
         navigateToResult(panel, entryId);
       });
     });
+    resultsContainer.querySelectorAll(".search-more-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const panel = btn.dataset.panel || "";
+        const offset = parseInt(btn.dataset.offset || "10", 10);
+        expandMoreResults(panel, offset, query);
+      });
+    });
+  }
+  function expandMoreResults(panel, offset, query) {
+    if (!lastSearchResults || !resultsContainer) return;
+    const entries = lastSearchResults[panel];
+    if (!entries) return;
+    const nextBatch = entries.slice(offset, offset + 10);
+    if (nextBatch.length === 0) return;
+    const groups = Array.from(resultsContainer.querySelectorAll(".search-group"));
+    let targetGroup = null;
+    for (const g of groups) {
+      const firstResult = g.querySelector(".search-result");
+      if (firstResult?.dataset.panel === panel) {
+        targetGroup = g;
+        break;
+      }
+    }
+    if (!targetGroup) return;
+    const oldBtn = targetGroup.querySelector(".search-more-btn");
+    if (oldBtn) oldBtn.remove();
+    for (const entry of nextBatch) {
+      const preview = (entry.textContent || "").trim().replace(/\s+/g, " ").slice(0, 100);
+      const entryId = entry.id || "";
+      const btn = document.createElement("button");
+      btn.className = "search-result";
+      btn.dataset.panel = panel;
+      btn.dataset.entryId = entryId;
+      btn.innerHTML = `<span class="search-result-text">${highlightMatch(preview, query)}</span>`;
+      btn.addEventListener("click", () => navigateToResult(panel, entryId));
+      targetGroup.appendChild(btn);
+    }
+    const remaining = entries.length - (offset + 10);
+    if (remaining > 0) {
+      const newBtn = document.createElement("button");
+      newBtn.className = "search-more-btn";
+      newBtn.dataset.panel = panel;
+      newBtn.dataset.offset = String(offset + 10);
+      newBtn.setAttribute("aria-label", `Show ${remaining} more results`);
+      newBtn.textContent = `+${remaining} more`;
+      newBtn.addEventListener("click", () => expandMoreResults(panel, offset + 10, query));
+      targetGroup.appendChild(newBtn);
+    }
   }
   function navigateToResult(panel, entryId) {
     selectView(panel);
@@ -4921,6 +4986,7 @@ Session: ${id}` : `Session: ${id}`;
 
   // src/dashboard/handlers/thinking.ts
   var ctx4 = null;
+  var nextThinkingId = 0;
   var redactedGroups = /* @__PURE__ */ new Map();
   function resetRedactedGroups() {
     redactedGroups.clear();
@@ -4983,6 +5049,7 @@ Session: ${id}` : `Session: ${id}`;
     redactedGroups.delete(groupKey);
     const entry = document.createElement("div");
     entry.className = "thinking-entry thinking-redacted-marker new";
+    entry.id = `thinking-${nextThinkingId++}`;
     entry.dataset.agent = agentId;
     entry.dataset.session = sessionId || "";
     entry.dataset.content = "extended thinking";
@@ -5011,6 +5078,7 @@ Session: ${id}` : `Session: ${id}`;
     redactedGroups.set(groupKey, newGroup);
     applyThinkingFilter(entry);
     ctx4.ui.appendAndTrim(elements.thinkingContent, entry);
+    indexEntry(entry.id, entry.dataset.content || "");
     ctx4.ui.smartScroll(elements.thinkingContent);
     setTimeout(() => entry.classList.remove("new"), 1e3);
   }
@@ -5040,6 +5108,7 @@ Session: ${id}` : `Session: ${id}`;
     const subagentBadge = isSubagentThinking ? `<span class="entry-subagent-badge" title="Subagent thinking">${escapeHtml(subagentMapping.agentName)}</span>` : "";
     const entry = document.createElement("div");
     entry.className = isSubagentThinking ? "thinking-entry subagent-entry new" : "thinking-entry new";
+    entry.id = `thinking-${nextThinkingId++}`;
     entry.dataset.agent = agentId;
     entry.dataset.session = sessionId || "";
     entry.dataset.content = content.toLowerCase();
@@ -5061,6 +5130,7 @@ Session: ${id}` : `Session: ${id}`;
   `;
     applyThinkingFilter(entry);
     ctx4.ui.appendAndTrim(elements.thinkingContent, entry);
+    indexEntry(entry.id, entry.dataset.content || "");
     ctx4.ui.smartScroll(elements.thinkingContent);
     setTimeout(() => entry.classList.remove("new"), 1e3);
   }
@@ -5240,6 +5310,7 @@ Session: ${id}` : `Session: ${id}`;
     });
     applyToolsFilter(entry);
     ctx5.ui.appendAndTrim(elements.toolsContent, entry);
+    indexEntry(entry.id, (entry.dataset.toolName || "") + " " + (entry.dataset.input || ""));
     ctx5.ui.smartScroll(elements.toolsContent);
     setTimeout(() => entry.classList.remove("new"), 1e3);
   }
@@ -5354,9 +5425,9 @@ Session: ${id}` : `Session: ${id}`;
   }
   function popAgentContext(agentId) {
     if (agentId && agentId !== "main") {
-      const index = agentContextStack.indexOf(agentId);
-      if (index > 0) {
-        agentContextStack.splice(index, 1);
+      const index2 = agentContextStack.indexOf(agentId);
+      if (index2 > 0) {
+        agentContextStack.splice(index2, 1);
         agentContextTimestamps.delete(agentId);
         debug(`[Dashboard] Agent context popped: ${agentId}, stack depth: ${agentContextStack.length}`);
       }
@@ -6462,8 +6533,8 @@ Session: ${id}` : `Session: ${id}`;
     if (data.thinkingBlocks.length > 0) {
       lines.push("## Thinking Blocks");
       lines.push("");
-      data.thinkingBlocks.forEach((block, index) => {
-        lines.push(`### Thinking ${index + 1}`);
+      data.thinkingBlocks.forEach((block, index2) => {
+        lines.push(`### Thinking ${index2 + 1}`);
         lines.push(`- **Time**: ${block.timestamp}`);
         lines.push(`- **Agent**: ${block.agent}`);
         lines.push("");
@@ -6476,8 +6547,8 @@ Session: ${id}` : `Session: ${id}`;
     if (data.toolCalls.length > 0) {
       lines.push("## Tool Calls");
       lines.push("");
-      data.toolCalls.forEach((call, index) => {
-        lines.push(`### ${index + 1}. ${call.toolName}`);
+      data.toolCalls.forEach((call, index2) => {
+        lines.push(`### ${index2 + 1}. ${call.toolName}`);
         lines.push(`- **Time**: ${call.timestamp}`);
         lines.push(`- **Agent**: ${call.agent}`);
         if (call.duration) {
@@ -7084,10 +7155,13 @@ Session: ${id}` : `Session: ${id}`;
     container.appendChild(element);
     const children = container.children;
     while (children.length > MAX_ENTRIES) {
-      children[0].remove();
+      const old = children[0];
+      if (old.id) removeEntry(old.id);
+      old.remove();
     }
   }
   function clearAllPanels() {
+    clearIndex();
     state.eventCount = 0;
     state.thinkingCount = 0;
     resetRedactedGroups();

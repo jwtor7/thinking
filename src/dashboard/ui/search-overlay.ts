@@ -7,6 +7,7 @@
 import { selectView } from './views.ts';
 import { escapeHtml } from '../utils/html.ts';
 import type { ViewType } from './views.ts';
+import { queryIndex } from './search-index.ts';
 
 let isOpen = false;
 let overlayEl: HTMLElement | null = null;
@@ -15,6 +16,7 @@ let resultsContainer: HTMLElement | null = null;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let previouslyFocused: HTMLElement | null = null;
 let selectedIndex = -1;
+let lastSearchResults: Record<string, HTMLElement[]> | null = null;
 
 /**
  * Initialize the search overlay.
@@ -81,7 +83,7 @@ function ensureDOM(): void {
 
   searchInput.addEventListener('input', () => {
     if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => performSearch(searchInput!.value), 150);
+    debounceTimer = setTimeout(() => performSearch(searchInput!.value), 250);
   });
 }
 
@@ -104,10 +106,13 @@ function performSearch(query: string): void {
 
   if (!query.trim()) {
     resultsContainer.innerHTML = '<div class="search-empty">Type to search across all panels</div>';
+    lastSearchResults = null;
     return;
   }
 
   const lowerQuery = query.toLowerCase();
+  const matchedIds = queryIndex(lowerQuery);
+
   const groups: Record<string, HTMLElement[]> = {
     thinking: [],
     tools: [],
@@ -115,31 +120,15 @@ function performSearch(query: string): void {
     timeline: [],
   };
 
-  document.querySelectorAll('.thinking-entry').forEach(el => {
-    if (el.textContent?.toLowerCase().includes(lowerQuery)) {
-      groups.thinking.push(el as HTMLElement);
-    }
-  });
+  for (const id of matchedIds) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const prefix = id.split('-')[0];
+    const panel = prefix === 'tool' ? 'tools' : prefix === 'hook' ? 'hooks' : prefix;
+    if (groups[panel]) groups[panel].push(el);
+  }
 
-  document.querySelectorAll('.tool-entry').forEach(el => {
-    if (el.textContent?.toLowerCase().includes(lowerQuery)) {
-      groups.tools.push(el as HTMLElement);
-    }
-  });
-
-  document.querySelectorAll('.hook-entry').forEach(el => {
-    if (el.textContent?.toLowerCase().includes(lowerQuery)) {
-      groups.hooks.push(el as HTMLElement);
-    }
-  });
-
-  document.querySelectorAll('.timeline-entry').forEach(el => {
-    const filterText = (el as HTMLElement).dataset.filterText || el.textContent || '';
-    if (filterText.toLowerCase().includes(lowerQuery)) {
-      groups.timeline.push(el as HTMLElement);
-    }
-  });
-
+  lastSearchResults = groups;
   renderResults(groups, query);
 }
 
@@ -173,7 +162,7 @@ function renderResults(groups: Record<string, HTMLElement[]>, query: string): vo
     }
 
     if (entries.length > 10) {
-      html += `<div class="search-more">+${entries.length - 10} more</div>`;
+      html += `<button class="search-more-btn" data-panel="${panel}" data-offset="10" aria-label="Show ${entries.length - 10} more ${panelLabels[panel]} results">+${entries.length - 10} more</button>`;
     }
     html += `</div>`;
   }
@@ -192,6 +181,61 @@ function renderResults(groups: Record<string, HTMLElement[]>, query: string): vo
       navigateToResult(panel, entryId);
     });
   });
+
+  resultsContainer.querySelectorAll('.search-more-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panel = (btn as HTMLElement).dataset.panel || '';
+      const offset = parseInt((btn as HTMLElement).dataset.offset || '10', 10);
+      expandMoreResults(panel, offset, query);
+    });
+  });
+}
+
+function expandMoreResults(panel: string, offset: number, query: string): void {
+  if (!lastSearchResults || !resultsContainer) return;
+  const entries = lastSearchResults[panel];
+  if (!entries) return;
+
+  const nextBatch = entries.slice(offset, offset + 10);
+  if (nextBatch.length === 0) return;
+
+  const groups = Array.from(resultsContainer.querySelectorAll('.search-group'));
+  let targetGroup: HTMLElement | null = null;
+  for (const g of groups) {
+    const firstResult = g.querySelector('.search-result') as HTMLElement | null;
+    if (firstResult?.dataset.panel === panel) {
+      targetGroup = g as HTMLElement;
+      break;
+    }
+  }
+  if (!targetGroup) return;
+
+  const oldBtn = targetGroup.querySelector('.search-more-btn');
+  if (oldBtn) oldBtn.remove();
+
+  for (const entry of nextBatch) {
+    const preview = (entry.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 100);
+    const entryId = entry.id || '';
+    const btn = document.createElement('button');
+    btn.className = 'search-result';
+    btn.dataset.panel = panel;
+    btn.dataset.entryId = entryId;
+    btn.innerHTML = `<span class="search-result-text">${highlightMatch(preview, query)}</span>`;
+    btn.addEventListener('click', () => navigateToResult(panel, entryId));
+    targetGroup.appendChild(btn);
+  }
+
+  const remaining = entries.length - (offset + 10);
+  if (remaining > 0) {
+    const newBtn = document.createElement('button');
+    newBtn.className = 'search-more-btn';
+    newBtn.dataset.panel = panel;
+    newBtn.dataset.offset = String(offset + 10);
+    newBtn.setAttribute('aria-label', `Show ${remaining} more results`);
+    newBtn.textContent = `+${remaining} more`;
+    newBtn.addEventListener('click', () => expandMoreResults(panel, offset + 10, query));
+    targetGroup.appendChild(newBtn);
+  }
 }
 
 function navigateToResult(panel: string, entryId: string): void {

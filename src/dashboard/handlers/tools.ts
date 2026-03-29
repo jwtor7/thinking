@@ -22,6 +22,7 @@ import { debug } from '../utils/debug.ts';
 import type { ToolStartEvent, ToolEndEvent } from '../types.ts';
 import type { AppContext } from '../services/app-context.ts';
 import type { Disposable } from '../services/lifecycle.ts';
+import { indexEntry } from '../ui/search-index.ts';
 
 // ============================================
 // Utilities
@@ -247,6 +248,7 @@ export function handleToolStart(event: ToolStartEvent): void {
   applyToolsFilter(entry);
 
   ctx.ui.appendAndTrim(elements.toolsContent, entry);
+  indexEntry(entry.id, (entry.dataset.toolName || '') + ' ' + (entry.dataset.input || ''));
   ctx.ui.smartScroll(elements.toolsContent);
 
   // Remove 'new' class after animation

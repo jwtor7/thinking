@@ -131,6 +131,32 @@
   font-style: italic;
 }
 
+.search-more-btn {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family);
+  cursor: pointer;
+  text-align: center;
+  transition: all var(--duration-fast, 100ms) var(--ease-default, ease);
+}
+
+.search-more-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+  border-color: var(--color-text-muted);
+}
+
+.search-more-btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring, rgba(88, 166, 255, 0.4));
+  outline-offset: 2px;
+}
+
 /* Inline match highlighting in search results */
 .search-highlight-match {
   background: rgba(88, 166, 255, 0.25);

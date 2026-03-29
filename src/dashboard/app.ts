@@ -87,6 +87,7 @@ import {
 import { initDurationHistogram, resetHistogram } from './ui/duration-histogram.ts';
 import { initTooltip } from './ui/tooltip.ts';
 import { initSearchOverlay } from './ui/search-overlay.ts';
+import { clearIndex, removeEntry } from './ui/search-index.ts';
 import { initStatsBar, renderStats, resetStats, setStatsSource } from './ui/stats-bar.ts';
 import {
   initPlans,
@@ -216,11 +217,16 @@ function appendAndTrim(container: HTMLElement, element: HTMLElement): void {
   // Remove old entries if we exceed max
   const children = container.children;
   while (children.length > MAX_ENTRIES) {
-    children[0].remove();
+    const old = children[0] as HTMLElement;
+    if (old.id) removeEntry(old.id);
+    old.remove();
   }
 }
 
 function clearAllPanels(): void {
+  // Clear search index
+  clearIndex();
+
   // Reset state
   state.eventCount = 0;
   state.thinkingCount = 0;

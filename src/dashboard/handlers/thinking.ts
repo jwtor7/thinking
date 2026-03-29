@@ -25,8 +25,10 @@ import { getAgentBadgeColors, getSessionColorByFolder, getSessionColorByHash } f
 import { getSessionDisplayName } from './sessions.ts';
 import type { AppContext } from '../services/app-context.ts';
 import type { Disposable } from '../services/lifecycle.ts';
+import { indexEntry } from '../ui/search-index.ts';
 
 let ctx: AppContext | null = null;
+let nextThinkingId = 0;
 
 /** Tracks the last redacted-thinking aggregate marker per session+agent */
 interface RedactedGroup {
@@ -143,6 +145,7 @@ function handleRedactedThinking(
   redactedGroups.delete(groupKey);
   const entry = document.createElement('div');
   entry.className = 'thinking-entry thinking-redacted-marker new';
+  entry.id = `thinking-${nextThinkingId++}`;
   entry.dataset.agent = agentId;
   entry.dataset.session = sessionId || '';
   entry.dataset.content = 'extended thinking';
@@ -175,6 +178,7 @@ function handleRedactedThinking(
 
   applyThinkingFilter(entry);
   ctx!.ui.appendAndTrim(elements.thinkingContent, entry);
+  indexEntry(entry.id, entry.dataset.content || '');
   ctx!.ui.smartScroll(elements.thinkingContent);
   setTimeout(() => entry.classList.remove('new'), 1000);
 }
@@ -229,6 +233,7 @@ function handleFullThinking(
 
   const entry = document.createElement('div');
   entry.className = isSubagentThinking ? 'thinking-entry subagent-entry new' : 'thinking-entry new';
+  entry.id = `thinking-${nextThinkingId++}`;
   entry.dataset.agent = agentId;
   entry.dataset.session = sessionId || '';
   entry.dataset.content = content.toLowerCase();
@@ -252,6 +257,7 @@ function handleFullThinking(
 
   applyThinkingFilter(entry);
   ctx!.ui.appendAndTrim(elements.thinkingContent, entry);
+  indexEntry(entry.id, entry.dataset.content || '');
   ctx!.ui.smartScroll(elements.thinkingContent);
   setTimeout(() => entry.classList.remove('new'), 1000);
 }

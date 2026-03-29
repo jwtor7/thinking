@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-03-29 — v1.7.1
+
+### Added
+- **Search text index (B2)** — Pre-built in-memory text index replaces live DOM scanning (2,000 nodes → Map lookup); paginated "+N more" results; debounce increased to 250ms
+- **Architecture diagram source (B3)** — Mermaid source file (`docs/architecture.mmd`) with data flow, build targets, and dashboard internals subgraphs
+
+### Fixed
+- **Session dropdown overflow (B1)** — Agent chips now scroll horizontally on desktop instead of overflowing the viewport
+- **Missing JSDoc (B4)** — Added file-level and parameter documentation to `dispatcher.ts` and `elements.ts`
+
+---
+
 ## 2026-03-29 — v1.7.0
 
 ### Added

@@ -1,3 +1,9 @@
+/**
+ * Central event router for the dashboard.
+ * Routes incoming WebSocket events by type to the appropriate handler functions.
+ * All events pass through handleEvent() which dispatches based on StrictMonitorEvent's discriminated union.
+ */
+
 import { state } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { debug } from '../utils/debug.ts';
@@ -14,8 +20,9 @@ import { addTimelineEntry } from './timeline.ts';
 import { updateStats } from '../ui/stats-bar.ts';
 
 /**
- * Main event dispatcher that routes incoming WebSocket events to appropriate handlers.
+ * Routes a typed monitor event to the appropriate handler.
  * Uses StrictMonitorEvent for type-safe dispatch - TypeScript narrows the type in each case.
+ * @param event - A type-narrowed discriminated union event received from the WebSocket
  */
 export function handleEvent(event: StrictMonitorEvent): void {
   state.eventCount++;
@@ -135,7 +142,8 @@ export function handleEvent(event: StrictMonitorEvent): void {
 }
 
 /**
- * Handle connection_status events from the server
+ * Handles connection status events, updating the version display.
+ * @param event - Connection status event containing serverVersion
  */
 export function handleConnectionStatus(event: ConnectionStatusEvent): void {
   const version = event.serverVersion || 'unknown';

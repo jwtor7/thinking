@@ -5,6 +5,11 @@
  * Elements are queried once at module load time.
  */
 
+/**
+ * Centralized DOM element references for the dashboard.
+ * All getElementById lookups are performed once at module load time.
+ * Elements may be null if the corresponding DOM node doesn't exist.
+ */
 export const elements = {
   connectionStatus: document.getElementById('connection-status')!,
   sessionFilter: document.getElementById('session-filter'),
