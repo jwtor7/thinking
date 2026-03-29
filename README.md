@@ -175,8 +175,8 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
-- **v1.5.9** (2026-03-29) — Segmented progress bar in tasks header: three-segment bar (green/blue/yellow for completed/in-progress/pending) with "X/Y complete" text replaces single-number badge.
-- **v1.5.8** (2026-03-28 22:13) — Task description expand on click: cards with a description field now show a collapse triangle; click to toggle expand/collapse with smooth animation.
-- **v1.5.7** (2026-03-28 22:00) — Richer plan metadata bar: pill-style segments showing completion ratio, section count, session context, modified time, and path with contextual colors.
+- **v1.7.1** (2026-03-29 12:01) — Backlog clearance: in-memory search index (replaces DOM scanning), session dropdown horizontal scroll fix, Mermaid architecture diagram, JSDoc for dispatcher and elements.
+- **v1.7.0** (2026-03-29) — Rich tab badge counts, cross-tab navigation (Tasks↔Teams), smarter empty states with contextual guidance and pulsing borders.
+- **v1.6.0** (2026-03-29) — Time-in-state on task cards, blocked task visual treatment, card animations, activity metrics, markdown in thinking detail, message type filter, richer agent sidebar.
 
-*[Full changelog →](./CHANGELOG.md)*
+*For complete history, see [CHANGELOG.md](./CHANGELOG.md)*
