@@ -15,7 +15,7 @@
  * - Improved responsiveness
  */
 
-import { state, agentContextStack, agentContextTimestamps, teamState, activityTracker, taskStatusTimestamps } from './state.ts';
+import { state, agentContextStack, agentContextTimestamps, teamState, activityTracker, taskStatusTimestamps, taskCompletionLog } from './state.ts';
 import { debug } from './utils/debug.ts';
 
 import {
@@ -105,8 +105,8 @@ import {
   handleContextMenuReveal,
 } from './handlers/plans.ts';
 import { initHooks } from './handlers/hooks.ts';
-import { initTeam, handleMessageSent, resetTeamAgentThinking, navigateToAgent } from './handlers/team.ts';
-import { initTasks } from './handlers/tasks.ts';
+import { initTeam, handleMessageSent, navigateToAgent } from './handlers/team.ts';
+import { initTasks, resetTaskState } from './handlers/tasks.ts';
 import { initTimeline, resetTypeChips } from './handlers/timeline.ts';
 import {
   initExportModal,
@@ -262,6 +262,7 @@ function clearAllPanels(): void {
   teamState.teamSessionMap.clear();
   teamState.teamMessages.clear();
   taskStatusTimestamps.clear();
+  taskCompletionLog.clear();
   state.selectedAgentId = null;
 
   // Update counters
@@ -299,8 +300,8 @@ function clearAllPanels(): void {
   // Reset stats bar
   resetStats();
 
-  // Reset team-collaboration agent view
-  resetTeamAgentThinking();
+  // Reset task module state
+  resetTaskState();
 
   // Show feedback toast
   showToast('Panels cleared', 'info');

@@ -235,6 +235,7 @@
   var agentContextStack = ["main"];
   var agentContextTimestamps = /* @__PURE__ */ new Map();
   var taskStatusTimestamps = /* @__PURE__ */ new Map();
+  var taskCompletionLog = new BoundedArray(200);
 
   // src/dashboard/utils/debug.ts
   var isEnabled = () => {
@@ -323,26 +324,19 @@
     // Team panel elements
     teamPanel: document.querySelector(".panel-team"),
     teamName: document.getElementById("team-name"),
-    teamMemberSection: document.getElementById("team-member-section"),
-    teamMemberToggle: document.getElementById("team-member-toggle"),
-    teamMemberGrid: document.getElementById("team-member-grid"),
+    teamLifecycleStrip: document.getElementById("team-lifecycle-strip"),
     teamAgentTreeSection: document.getElementById("agent-tree-section"),
     teamAgentTreeToggle: document.getElementById("agent-tree-toggle"),
-    teamAgentsSection: document.getElementById("team-agents-section"),
-    teamAgentsToggle: document.getElementById("team-agents-toggle"),
-    teamAgentsSidebar: document.getElementById("team-agents-sidebar"),
-    teamAgentsDetail: document.getElementById("team-agents-detail"),
+    teamCommMatrix: document.getElementById("team-comm-matrix"),
+    teamMessageFilterChip: document.getElementById("team-message-filter-chip"),
     teamMessages: document.getElementById("team-messages"),
     teamMessageFilter: document.getElementById("team-message-filter"),
     teamCollapseBtn: document.querySelector(".panel-team .panel-collapse-btn"),
     // Tasks panel elements
     tasksPanel: document.querySelector(".panel-tasks"),
-    tasksPending: document.getElementById("tasks-pending"),
-    tasksInProgress: document.getElementById("tasks-in-progress"),
-    tasksCompleted: document.getElementById("tasks-completed"),
-    tasksPendingCount: document.getElementById("tasks-pending-count"),
-    tasksInProgressCount: document.getElementById("tasks-in-progress-count"),
-    tasksCompletedCount: document.getElementById("tasks-completed-count"),
+    tasksSummaryStrip: document.getElementById("tasks-summary-strip"),
+    tasksActiveWork: document.getElementById("tasks-active-work"),
+    tasksCompletionLog: document.getElementById("tasks-completion-log"),
     tasksProgressBar: document.getElementById("tasks-progress-bar"),
     tasksProgressText: document.getElementById("tasks-progress-text"),
     tasksCollapseBtn: document.querySelector(".panel-tasks .panel-collapse-btn"),
@@ -1775,162 +1769,16 @@
     return value.replace(/[^a-zA-Z0-9 #.,%()/\-]/g, "");
   }
 
-  // src/dashboard/utils/markdown.ts
-  function parseTableAlignment(separator) {
-    const trimmed = separator.trim();
-    const hasLeft = trimmed.startsWith(":");
-    const hasRight = trimmed.endsWith(":");
-    if (hasLeft && hasRight) return "center";
-    if (hasRight) return "right";
-    return "left";
-  }
-  function renderTable(lines) {
-    if (lines.length < 2) return lines.join("\n");
-    const headerCells = lines[0].split("|").map((cell) => cell.trim()).filter((cell) => cell !== "");
-    const separatorCells = lines[1].split("|").map((cell) => cell.trim()).filter((cell) => cell !== "");
-    const isValidSeparator = separatorCells.every((cell) => /^:?-{3,}:?$/.test(cell));
-    if (!isValidSeparator || headerCells.length !== separatorCells.length) {
-      return lines.join("\n");
-    }
-    const alignments = separatorCells.map(parseTableAlignment);
-    let tableHtml = '<table class="md-table">';
-    tableHtml += "<thead><tr>";
-    headerCells.forEach((cell, i) => {
-      const align = alignments[i] || "left";
-      tableHtml += `<th style="text-align: ${escapeCssValue(align)}">${cell}</th>`;
-    });
-    tableHtml += "</tr></thead>";
-    if (lines.length > 2) {
-      tableHtml += "<tbody>";
-      for (let i = 2; i < lines.length; i++) {
-        const rowCells = lines[i].split("|").map((cell) => cell.trim()).filter((cell) => cell !== "");
-        tableHtml += "<tr>";
-        for (let j = 0; j < headerCells.length; j++) {
-          const cell = rowCells[j] || "";
-          const align = alignments[j] || "left";
-          tableHtml += `<td style="text-align: ${escapeCssValue(align)}">${cell}</td>`;
-        }
-        tableHtml += "</tr>";
-      }
-      tableHtml += "</tbody>";
-    }
-    tableHtml += "</table>";
-    return tableHtml;
-  }
-  function processTablesInContent(html) {
-    const lines = html.split("\n");
-    const result = [];
-    let tableLines = [];
-    let inTable = false;
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const trimmedLine = line.trim();
-      const isTableRow = trimmedLine.startsWith("|") && trimmedLine.endsWith("|");
-      if (isTableRow) {
-        if (!inTable) {
-          const nextLine = lines[i + 1]?.trim() || "";
-          if (nextLine.startsWith("|") && nextLine.includes("---")) {
-            inTable = true;
-            tableLines = [line];
-          } else {
-            result.push(line);
-          }
-        } else {
-          tableLines.push(line);
-        }
-      } else {
-        if (inTable) {
-          result.push(renderTable(tableLines));
-          tableLines = [];
-          inTable = false;
-        }
-        result.push(line);
-      }
-    }
-    if (inTable && tableLines.length > 0) {
-      result.push(renderTable(tableLines));
-    }
-    return result.join("\n");
-  }
-  function renderSimpleMarkdown(content) {
-    let html = escapeHtml(content);
-    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, "<pre><code>$2</code></pre>");
-    html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
-    html = html.replace(/^(-{3,}|\*{3,}|_{3,})$/gm, "<hr>");
-    html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
-    html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
-    html = html.replace(/^# (.+)$/gm, "<h1>$1</h1>");
-    html = html.replace(/^- \[ \] (.+)$/gm, '<li class="task-list-item"><span class="task-checkbox"></span>$1</li>');
-    html = html.replace(/^- \[x\] (.+)$/gim, '<li class="task-list-item"><span class="task-checkbox checked"></span>$1</li>');
-    html = html.replace(/^[-*] (.+)$/gm, "<li>$1</li>");
-    html = html.replace(/^\d+\. (.+)$/gm, "<li>$1</li>");
-    html = html.replace(/(<li[^>]*>.*?<\/li>\n?)+/g, (match) => {
-      return "<ul>" + match + "</ul>";
-    });
-    html = html.replace(/^&gt; (.+)$/gm, "<blockquote>$1</blockquote>");
-    html = html.replace(/<\/blockquote>\n<blockquote>/g, "<br>");
-    html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-    html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
-    html = html.replace(/\b_([^_]+)_\b/g, "<em>$1</em>");
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, text, url) => {
-      const decodedUrl = url.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-      const trimmedUrl = decodedUrl.trim().toLowerCase();
-      const isSafeUrl = trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://") || trimmedUrl.startsWith("/") || trimmedUrl.startsWith("#") || trimmedUrl.startsWith("mailto:") || // Relative URLs (no protocol)
-      !trimmedUrl.includes(":") && !trimmedUrl.startsWith("//");
-      if (!isSafeUrl) {
-        return `[${text}](${url})`;
-      }
-      const safeUrl = encodeHtmlAttribute(decodedUrl);
-      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
-    });
-    html = processTablesInContent(html);
-    html = html.replace(/\n{3,}/g, "\n\n");
-    html = html.replace(/\n/g, "<br>");
-    html = html.replace(/<ul><br>/g, "<ul>");
-    html = html.replace(/<br><\/ul>/g, "</ul>");
-    html = html.replace(/<\/li><br>/g, "</li>");
-    html = html.replace(/<br><li/g, "<li");
-    html = html.replace(/<br>(<h[123]>)/g, "$1");
-    html = html.replace(/(<\/h[123]>)<br>/g, "$1");
-    html = html.replace(/<br>(<table)/g, "$1");
-    html = html.replace(/(<\/table>)<br>/g, "$1");
-    html = html.replace(/<br>(<hr>)/g, "$1");
-    html = html.replace(/(<hr>)<br>/g, "$1");
-    html = html.replace(/<br>(<blockquote>)/g, "$1");
-    html = html.replace(/(<\/blockquote>)<br>/g, "$1");
-    html = html.replace(/<br>(<pre>)/g, "$1");
-    html = html.replace(/(<\/pre>)<br>/g, "$1");
-    html = html.replace(/(<br>){3,}/g, "<br><br>");
-    return html;
-  }
-
   // src/dashboard/handlers/team.ts
-  var MAX_ENTRIES_PER_AGENT = 200;
-  var TEAM_SECTION_STORAGE_KEY = "thinking-monitor-team-section-collapse";
-  var TEAM_SECTION_LABELS = {
-    members: "team members section",
-    hierarchy: "agent hierarchy section",
-    agents: "team agents section"
-  };
-  var teamSectionCollapseState = {
-    members: false,
-    hierarchy: false,
-    agents: false
-  };
-  var agentThinkingEntries = new BoundedMap(100);
-  var selectedViewAgent = null;
   var ctx = null;
   var showTeamPanel = null;
+  var selectedTeamAgent = null;
+  var messageAgentFilter = null;
   var MSG_FILTER_KEY = "thinking-monitor-msg-filter";
   var messageTypeFilter = localStorage.getItem(MSG_FILTER_KEY) || "all";
   function initTeam(appCtx, extras) {
     ctx = appCtx;
     showTeamPanel = extras.showTeamPanel;
-    loadTeamSectionCollapseState();
-    initTeamSectionToggles();
-    for (const sectionName of ["members", "hierarchy", "agents"]) {
-      applyTeamSectionCollapse(sectionName, false);
-    }
     const msgFilter = elements.teamMessageFilter;
     if (msgFilter) {
       msgFilter.value = messageTypeFilter;
@@ -1948,304 +1796,267 @@
       showTeamPanel = null;
     } };
   }
-  function getTeamSectionElements(sectionName) {
-    if (sectionName === "members") {
-      return {
-        section: elements.teamMemberSection,
-        toggle: elements.teamMemberToggle
-      };
-    }
-    if (sectionName === "hierarchy") {
-      return {
-        section: elements.teamAgentTreeSection,
-        toggle: elements.teamAgentTreeToggle
-      };
-    }
-    return {
-      section: elements.teamAgentsSection,
-      toggle: elements.teamAgentsToggle
-    };
+  function getSelectedSessionId() {
+    return state.selectedSession === "all" ? null : state.selectedSession;
   }
-  function saveTeamSectionCollapseState() {
-    try {
-      localStorage.setItem(TEAM_SECTION_STORAGE_KEY, JSON.stringify(teamSectionCollapseState));
-    } catch {
+  function renderLifecycleStrip() {
+    const container = elements.teamLifecycleStrip;
+    if (!container) return;
+    const sessionId = getSelectedSessionId();
+    if (!sessionId) {
+      container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">&#128101;</div>
+        <p class="empty-state-title">No team activity</p>
+        <p class="empty-state-subtitle">Teams appear during multi-agent tasks like /council or parallel research.</p>
+      </div>
+    `;
+      return;
     }
-  }
-  function loadTeamSectionCollapseState() {
-    try {
-      const stored = localStorage.getItem(TEAM_SECTION_STORAGE_KEY);
-      if (!stored) return;
-      const parsed = JSON.parse(stored);
-      if (typeof parsed !== "object" || parsed === null) return;
-      if (typeof parsed.members === "boolean") {
-        teamSectionCollapseState.members = parsed.members;
+    const agentIds = /* @__PURE__ */ new Set();
+    const sessionSubagents = subagentState.sessionSubagents.get(sessionId);
+    if (sessionSubagents) {
+      for (const id of sessionSubagents) agentIds.add(id);
+    }
+    for (const [teamName, mappedSession] of teamState.teamSessionMap) {
+      if (mappedSession === sessionId) {
+        const members = teamState.teams.get(teamName) || [];
+        for (const member of members) {
+          for (const [id, mapping] of subagentState.subagents) {
+            if (mapping.agentName === member.name) {
+              agentIds.add(id);
+            }
+          }
+        }
       }
-      if (typeof parsed.hierarchy === "boolean") {
-        teamSectionCollapseState.hierarchy = parsed.hierarchy;
+    }
+    if (agentIds.size === 0) {
+      container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">&#128101;</div>
+        <p class="empty-state-title">No agents yet</p>
+        <p class="empty-state-subtitle">Agents appear when Claude spawns parallel workers.</p>
+      </div>
+    `;
+      return;
+    }
+    const now = Date.now();
+    let axisStart = now;
+    let axisEnd = now;
+    const agentData = [];
+    for (const agentId of agentIds) {
+      const mapping = subagentState.subagents.get(agentId);
+      if (!mapping) continue;
+      const start = new Date(mapping.startTime).getTime();
+      const end = mapping.endTime ? new Date(mapping.endTime).getTime() : now;
+      if (start < axisStart) axisStart = start;
+      if (end > axisEnd) axisEnd = end;
+      let depth = 0;
+      let parentId = mapping.parentAgentId;
+      while (parentId && depth < 5) {
+        depth++;
+        const parent = subagentState.subagents.get(parentId);
+        parentId = parent?.parentAgentId;
       }
-      if (typeof parsed.agents === "boolean") {
-        teamSectionCollapseState.agents = parsed.agents;
-      }
-    } catch {
-    }
-  }
-  function applyTeamSectionCollapse(sectionName, persist) {
-    const { section, toggle } = getTeamSectionElements(sectionName);
-    const isCollapsed = teamSectionCollapseState[sectionName];
-    if (section) {
-      section.classList.toggle("team-section-collapsed", isCollapsed);
-    }
-    if (toggle) {
-      toggle.setAttribute("aria-expanded", String(!isCollapsed));
-      toggle.setAttribute(
-        "aria-label",
-        `${isCollapsed ? "Expand" : "Collapse"} ${TEAM_SECTION_LABELS[sectionName]}`
-      );
-      toggle.title = `${isCollapsed ? "Expand" : "Collapse"} section`;
-    }
-    if (persist) {
-      saveTeamSectionCollapseState();
-    }
-  }
-  function toggleTeamSection(sectionName) {
-    teamSectionCollapseState[sectionName] = !teamSectionCollapseState[sectionName];
-    applyTeamSectionCollapse(sectionName, true);
-  }
-  function initTeamSectionToggles() {
-    const sections = ["members", "hierarchy", "agents"];
-    for (const sectionName of sections) {
-      const { toggle } = getTeamSectionElements(sectionName);
-      if (!toggle || toggle.dataset.initialized === "true") {
-        continue;
-      }
-      toggle.dataset.initialized = "true";
-      toggle.addEventListener("click", () => {
-        toggleTeamSection(sectionName);
+      agentData.push({
+        id: agentId,
+        name: mapping.agentName,
+        start,
+        end,
+        status: mapping.status,
+        depth
       });
     }
+    agentData.sort((a, b) => a.start - b.start || a.depth - b.depth);
+    const totalDuration = Math.max(axisEnd - axisStart, 1);
+    const rows = agentData.map((agent) => {
+      const leftPct = (agent.start - axisStart) / totalDuration * 100;
+      const widthPct = (agent.end - agent.start) / totalDuration * 100;
+      const indent = agent.depth * 12;
+      const isRunning = agent.status === "running";
+      const elapsed = formatElapsed(agent.end - agent.start);
+      const selected = selectedTeamAgent === agent.id ? " lifecycle-row-selected" : "";
+      const statusClass = agent.status === "running" ? "lifecycle-bar-running" : agent.status === "success" ? "lifecycle-bar-success" : agent.status === "failure" ? "lifecycle-bar-failure" : "lifecycle-bar-cancelled";
+      let isIdle = false;
+      for (const members of teamState.teams.values()) {
+        const member = members.find((m) => {
+          for (const [id, mapping] of subagentState.subagents) {
+            if (id === agent.id && mapping.agentName === m.name) return true;
+          }
+          return false;
+        });
+        if (member?.status === "idle") {
+          isIdle = true;
+          break;
+        }
+      }
+      return `
+      <div class="lifecycle-row${selected}" data-agent-id="${escapeHtml(agent.id)}" title="${escapeHtml(agent.name)} (${agent.status})">
+        <span class="lifecycle-label" style="padding-left:${indent}px">${escapeHtml(agent.name)}</span>
+        <div class="lifecycle-bar-container">
+          <div class="lifecycle-bar ${statusClass}${isIdle ? " lifecycle-bar-idle" : ""}${isRunning ? " lifecycle-bar-pulse" : ""}" style="left:${leftPct}%;width:${Math.max(widthPct, 1)}%"></div>
+        </div>
+        <span class="lifecycle-duration">${elapsed}</span>
+      </div>
+    `;
+    });
+    container.innerHTML = rows.join("");
+    container.querySelectorAll(".lifecycle-row").forEach((row) => {
+      row.addEventListener("click", () => {
+        const agentId = row.dataset.agentId;
+        if (!agentId) return;
+        if (selectedTeamAgent === agentId) {
+          selectedTeamAgent = null;
+          messageAgentFilter = null;
+        } else {
+          selectedTeamAgent = agentId;
+          const mapping = subagentState.subagents.get(agentId);
+          const name = mapping?.agentName || agentId;
+          messageAgentFilter = { sender: name };
+        }
+        renderLifecycleStrip();
+        applyMessageFilter();
+        updateFilterChip();
+        renderCommMatrix();
+      });
+    });
+  }
+  function renderCommMatrix() {
+    const container = elements.teamCommMatrix;
+    if (!container) return;
+    const sessionId = getSelectedSessionId();
+    if (!sessionId) {
+      container.innerHTML = "";
+      return;
+    }
+    const messages = teamState.teamMessages.filter((m) => m.sessionId === sessionId);
+    const agents = /* @__PURE__ */ new Set();
+    const counts2 = /* @__PURE__ */ new Map();
+    for (const msg of messages) {
+      agents.add(msg.sender);
+      if (msg.messageType !== "broadcast") {
+        agents.add(msg.recipient);
+      }
+      const key = msg.messageType === "broadcast" ? `${msg.sender}::*` : `${msg.sender}::${msg.recipient}`;
+      counts2.set(key, (counts2.get(key) || 0) + 1);
+    }
+    if (agents.size === 0) {
+      container.innerHTML = "";
+      return;
+    }
+    const agentList = Array.from(agents).sort();
+    if (agentList.length < 3) {
+      const summaryLines = Array.from(counts2.entries()).map(([key, count]) => {
+        const [sender, recipient] = key.split("::");
+        const senderColors = getAgentBadgeColors(sender);
+        const recipientLabel = recipient === "*" ? "all" : recipient;
+        const recipientColors = recipient === "*" ? null : getAgentBadgeColors(recipient);
+        return `
+        <div class="comm-summary-row">
+          <span class="comm-summary-badge" style="background:${escapeCssValue(senderColors.bg)};color:${escapeCssValue(senderColors.text)}">${escapeHtml(sender)}</span>
+          <span class="comm-summary-arrow">&#8594;</span>
+          ${recipientColors ? `<span class="comm-summary-badge" style="background:${escapeCssValue(recipientColors.bg)};color:${escapeCssValue(recipientColors.text)}">${escapeHtml(recipientLabel)}</span>` : `<span class="comm-summary-broadcast">all</span>`}
+          <span class="comm-summary-count">${count}x</span>
+        </div>
+      `;
+      });
+      container.innerHTML = summaryLines.join("");
+      return;
+    }
+    const maxCount = Math.max(1, ...counts2.values());
+    let html = '<div class="comm-grid" style="grid-template-columns: auto ' + agentList.map(() => "1fr").join(" ") + '">';
+    html += '<div class="comm-cell comm-cell-label"></div>';
+    for (const agent of agentList) {
+      const colors = getAgentBadgeColors(agent);
+      const shortName = agent.length > 6 ? agent.slice(0, 6) : agent;
+      html += `<div class="comm-cell comm-cell-col-header" style="color:${escapeCssValue(colors.text)}" title="${escapeHtml(agent)}">${escapeHtml(shortName)}</div>`;
+    }
+    for (const sender of agentList) {
+      const senderColors = getAgentBadgeColors(sender);
+      const shortName = sender.length > 6 ? sender.slice(0, 6) : sender;
+      html += `<div class="comm-cell comm-cell-row-header" style="color:${escapeCssValue(senderColors.text)}" title="${escapeHtml(sender)}">${escapeHtml(shortName)}</div>`;
+      for (const recipient of agentList) {
+        if (sender === recipient) {
+          html += '<div class="comm-cell comm-cell-self">.</div>';
+          continue;
+        }
+        const count = counts2.get(`${sender}::${recipient}`) || 0;
+        const broadcastCount = counts2.get(`${sender}::*`) || 0;
+        const total = count + broadcastCount;
+        const heat = total > 0 ? Math.min(4, Math.ceil(total / maxCount * 4)) : 0;
+        const isSelected = messageAgentFilter?.sender === sender && messageAgentFilter?.recipient === recipient;
+        html += `<div class="comm-cell comm-cell-data comm-cell-heat-${heat}${isSelected ? " comm-cell-selected" : ""}" data-sender="${escapeHtml(sender)}" data-recipient="${escapeHtml(recipient)}" title="${sender} -> ${recipient}: ${total}">${total || ""}</div>`;
+      }
+    }
+    html += "</div>";
+    container.innerHTML = html;
+    container.querySelectorAll(".comm-cell-data").forEach((cell) => {
+      cell.addEventListener("click", () => {
+        const sender = cell.dataset.sender;
+        const recipient = cell.dataset.recipient;
+        if (!sender || !recipient) return;
+        if (messageAgentFilter?.sender === sender && messageAgentFilter?.recipient === recipient) {
+          messageAgentFilter = null;
+          selectedTeamAgent = null;
+        } else {
+          messageAgentFilter = { sender, recipient };
+          selectedTeamAgent = null;
+        }
+        applyMessageFilter();
+        updateFilterChip();
+        renderCommMatrix();
+        renderLifecycleStrip();
+      });
+    });
   }
   function applyMessageFilter() {
     const container = elements.teamMessages;
     if (!container) return;
     container.querySelectorAll(".team-message").forEach((el) => {
       const msgEl = el;
-      if (messageTypeFilter === "all") {
-        msgEl.style.display = "";
-        return;
+      let visible = true;
+      if (messageTypeFilter !== "all") {
+        const isTypeMatch = messageTypeFilter === "shutdown" ? msgEl.classList.contains("team-message-shutdown_request") || msgEl.classList.contains("team-message-shutdown_response") : msgEl.classList.contains(`team-message-${messageTypeFilter}`);
+        if (!isTypeMatch) visible = false;
       }
-      const isMatch = messageTypeFilter === "shutdown" ? msgEl.classList.contains("team-message-shutdown_request") || msgEl.classList.contains("team-message-shutdown_response") : msgEl.classList.contains(`team-message-${messageTypeFilter}`);
-      msgEl.style.display = isMatch ? "" : "none";
+      if (visible && messageAgentFilter) {
+        const sender = msgEl.dataset.sender || "";
+        const recipient = msgEl.dataset.recipient || "";
+        if (messageAgentFilter.sender && messageAgentFilter.recipient) {
+          visible = sender === messageAgentFilter.sender && recipient === messageAgentFilter.recipient || sender === messageAgentFilter.recipient && recipient === messageAgentFilter.sender;
+        } else if (messageAgentFilter.sender) {
+          visible = sender === messageAgentFilter.sender || recipient === messageAgentFilter.sender;
+        }
+      }
+      msgEl.style.display = visible ? "" : "none";
     });
   }
-  function renderMemberGrid(teamName) {
-    const memberGrid = elements.teamMemberGrid;
-    if (!memberGrid) return;
-    const members = teamState.teams.get(teamName);
-    if (!members || members.length === 0) {
-      memberGrid.innerHTML = `<div class="team-empty">No team members</div>`;
+  function updateFilterChip() {
+    const chip = elements.teamMessageFilterChip;
+    if (!chip) return;
+    if (!messageAgentFilter) {
+      chip.style.display = "none";
+      chip.innerHTML = "";
       return;
     }
-    memberGrid.innerHTML = members.map((member) => {
-      const badgeColors = getAgentBadgeColors(member.agentType || member.name);
-      const statusClass = `team-member-status-${member.status || "active"}`;
-      const statusDot = member.status === "idle" ? "idle" : member.status === "shutdown" ? "shutdown" : "active";
-      let thinkingCount = 0;
-      const sessionId = state.selectedSession !== "all" ? state.selectedSession : null;
-      if (sessionId) {
-        for (const [, mapping] of subagentState.subagents) {
-          if (mapping.agentName === member.name) {
-            const key = `${sessionId}::${mapping.agentId ?? ""}`;
-            const entries = agentThinkingEntries.get(key);
-            if (entries) thinkingCount = entries.length;
-            break;
-          }
-        }
-      }
-      let msgCount = 0;
-      for (const msg of teamState.teamMessages) {
-        if (msg.sender === member.name) {
-          if (!sessionId || msg.sessionId === sessionId) {
-            msgCount++;
-          }
-        }
-      }
-      let taskCount = 0;
-      for (const tasks of teamState.teamTasks.values()) {
-        for (const task of tasks) {
-          if (task.owner === member.name) taskCount++;
-        }
-      }
-      const hasMetrics = thinkingCount > 0 || msgCount > 0 || taskCount > 0;
-      const metricsHtml = hasMetrics ? `
-      <div class="team-member-metrics">
-        ${thinkingCount > 0 ? `<span class="team-member-metric" title="Thinking entries" aria-label="${thinkingCount} thinking entries"><span class="team-member-metric-icon">&#129504;</span>${thinkingCount}</span>` : ""}
-        ${msgCount > 0 ? `<span class="team-member-metric" title="Messages" aria-label="${msgCount} messages"><span class="team-member-metric-icon">&#128172;</span>${msgCount}</span>` : ""}
-        ${taskCount > 0 ? `<span class="team-member-metric" title="Tasks" aria-label="${taskCount} tasks"><span class="team-member-metric-icon">&#9745;</span>${taskCount}</span>` : ""}
-      </div>
-    ` : "";
-      return `
-      <div class="team-member-card ${statusClass}">
-        <div class="team-member-header">
-          <span class="team-member-dot team-member-dot-${statusDot}"></span>
-          <span class="team-member-name">${escapeHtml(member.name)}</span>
-        </div>
-        <span class="team-member-type" style="background: ${escapeCssValue(badgeColors.bg)}; color: ${escapeCssValue(badgeColors.text)}">${escapeHtml(member.agentType)}</span>
-        ${metricsHtml}
-        <div class="team-member-actions">
-          <button class="team-member-action-btn" data-action="tasks" title="View tasks for ${escapeHtml(member.name)}" aria-label="View tasks for ${escapeHtml(member.name)}">&#9745; tasks</button>
-        </div>
-      </div>
-    `;
-    }).join("");
-    memberGrid.querySelectorAll(".team-member-card").forEach((card, index2) => {
-      const member = members[index2];
-      if (!member) return;
-      card.style.cursor = "pointer";
-      card.title = `Click to filter events by ${member.name}`;
-      card.addEventListener("click", () => {
-        let agentId = null;
-        for (const [id, mapping] of subagentState.subagents) {
-          if (mapping.agentName === member.name) {
-            agentId = id;
-            break;
-          }
-        }
-        if (agentId) {
-          if (state.selectedAgentId === agentId) {
-            selectAgentFilter(null);
-          } else {
-            selectAgentFilter(agentId);
-          }
-        }
-      });
+    const label = messageAgentFilter.recipient ? `${messageAgentFilter.sender} &#8596; ${messageAgentFilter.recipient}` : messageAgentFilter.sender || "";
+    chip.style.display = "inline-flex";
+    chip.innerHTML = `<span class="filter-chip-text">${label}</span><button class="filter-chip-dismiss" title="Clear filter">&#10005;</button>`;
+    chip.querySelector(".filter-chip-dismiss")?.addEventListener("click", () => {
+      messageAgentFilter = null;
+      selectedTeamAgent = null;
+      applyMessageFilter();
+      updateFilterChip();
+      renderCommMatrix();
+      renderLifecycleStrip();
     });
-    memberGrid.querySelectorAll('.team-member-action-btn[data-action="tasks"]').forEach((btn, index2) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const member = members[index2];
-        if (!member) return;
-        let agentId = null;
-        for (const [id, mapping] of subagentState.subagents) {
-          if (mapping.agentName === member.name) {
-            agentId = id;
-            break;
-          }
-        }
-        if (agentId) {
-          selectAgentFilter(agentId);
-        }
-        selectView("tasks");
-      });
-    });
-  }
-  function updateTeamHeader(teamName) {
-    const teamNameEl = elements.teamName;
-    if (teamNameEl) {
-      teamNameEl.textContent = teamName;
-    }
-  }
-  function getSelectedSessionId() {
-    return state.selectedSession === "all" ? null : state.selectedSession;
-  }
-  function thinkingKey(sessionId, agentId) {
-    return `${sessionId}::${agentId}`;
-  }
-  function renderTeamAgentEmptyState() {
-    const sidebar = elements.teamAgentsSidebar;
-    if (sidebar) {
-      sidebar.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">&#129302;</div>
-        <p class="empty-state-title">No agents</p>
-        <p class="empty-state-subtitle">Sub-agents appear here for the selected session.</p>
-      </div>
-    `;
-    }
-    const detail = elements.teamAgentsDetail;
-    if (detail) {
-      detail.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">&#129504;</div>
-        <p class="empty-state-title">Select an agent</p>
-        <p class="empty-state-subtitle">Select an agent to inspect thinking entries.</p>
-      </div>
-    `;
-    }
-  }
-  function renderTeamAgentDetail() {
-    const detail = elements.teamAgentsDetail;
-    if (!detail) return;
-    const sessionId = getSelectedSessionId();
-    if (!sessionId) {
-      detail.innerHTML = `<div class="empty-state"><p>Select a session to inspect agent thinking</p></div>`;
-      return;
-    }
-    if (!selectedViewAgent) {
-      detail.innerHTML = `<div class="empty-state"><p>Select an agent to view its thinking</p></div>`;
-      return;
-    }
-    const entries = agentThinkingEntries.get(thinkingKey(sessionId, selectedViewAgent)) || [];
-    if (entries.length === 0) {
-      const label = selectedViewAgent === "main" ? "main" : subagentState.subagents.get(selectedViewAgent)?.agentName || selectedViewAgent.slice(0, 8);
-      detail.innerHTML = `<div class="empty-state"><p>No thinking entries for ${escapeHtml(label)}</p></div>`;
-      return;
-    }
-    detail.innerHTML = entries.map((entry) => {
-      const time = formatTime(entry.timestamp);
-      const preview = entry.content.slice(0, 80).replace(/\n/g, " ");
-      return `
-      <div class="thinking-entry">
-        <div class="thinking-entry-header">
-          <span class="thinking-time">${escapeHtml(time)}</span>
-          <span class="thinking-preview">${escapeHtml(preview)}...</span>
-        </div>
-        <div class="thinking-text">${renderSimpleMarkdown(entry.content)}</div>
-      </div>
-    `;
-    }).join("");
-    detail.scrollTop = detail.scrollHeight;
-  }
-  function selectTeamAgentInView(agentId) {
-    selectedViewAgent = agentId;
-    renderTeamAgentList();
-    renderTeamAgentDetail();
-  }
-  function navigateToAgent(agentName) {
-    for (const [id, mapping] of subagentState.subagents) {
-      if (mapping.agentName === agentName) {
-        selectTeamAgentInView(id);
-        return;
-      }
-    }
-  }
-  function countSessionThinkingEntries(sessionId) {
-    let total = 0;
-    for (const [key, entries] of agentThinkingEntries) {
-      if (key.startsWith(`${sessionId}::`)) {
-        total += entries.length;
-      }
-    }
-    return total;
   }
   function updateTeamTabCount() {
     const sessionId = getSelectedSessionId();
     if (!sessionId) {
       updateTabBadge("team", 0);
-      const panelBadge2 = document.getElementById("team-count");
-      if (panelBadge2) panelBadge2.textContent = "0";
       return;
     }
-    let memberCount = 0;
-    for (const [teamName, mappedSession] of teamState.teamSessionMap) {
-      if (mappedSession === sessionId) {
-        memberCount = (teamState.teams.get(teamName) || []).length;
-        break;
-      }
-    }
-    const messageCount = teamState.teamMessages.filter((message) => message.sessionId === sessionId).length;
-    const thinkingCount = countSessionThinkingEntries(sessionId);
-    const total = memberCount + messageCount + thinkingCount;
     let agentCount = 0;
     let idleCount = 0;
     for (const [teamName, mappedSession] of teamState.teamSessionMap) {
@@ -2255,92 +2066,24 @@
         idleCount += members.filter((m) => m.status === "idle").length;
       }
     }
-    const badgeText = idleCount > 0 ? `${agentCount} agents / ${idleCount} idle` : agentCount > 0 ? `${agentCount} agents` : String(total);
-    updateTabBadge("team", agentCount > 0 ? badgeText : total);
-    const panelBadge = document.getElementById("team-count");
-    if (panelBadge) panelBadge.textContent = String(total);
+    if (agentCount === 0) {
+      const sessionSubs = subagentState.sessionSubagents.get(sessionId);
+      agentCount = sessionSubs ? sessionSubs.size : 0;
+    }
+    const messageCount = teamState.teamMessages.filter((m) => m.sessionId === sessionId).length;
+    const badgeText = idleCount > 0 ? `${agentCount} agents / ${idleCount} idle` : agentCount > 0 ? `${agentCount} agents` : messageCount > 0 ? `${messageCount} msgs` : "0";
+    updateTabBadge("team", agentCount > 0 || messageCount > 0 ? badgeText : 0);
   }
-  function renderTeamAgentList() {
-    const section = elements.teamAgentsSection;
-    const sidebar = elements.teamAgentsSidebar;
-    if (!section || !sidebar) return;
-    const sessionId = getSelectedSessionId();
-    if (!sessionId) {
-      section.classList.add("team-section-no-data");
-      selectedViewAgent = null;
-      renderTeamAgentEmptyState();
-      updateTeamTabCount();
-      return;
-    }
-    const availableAgentIds = /* @__PURE__ */ new Set();
-    availableAgentIds.add("main");
-    const knownSubagents = subagentState.sessionSubagents.get(sessionId);
-    if (knownSubagents) {
-      for (const agentId of knownSubagents) {
-        availableAgentIds.add(agentId);
-      }
-    }
-    for (const key of agentThinkingEntries.keys()) {
-      if (!key.startsWith(`${sessionId}::`)) continue;
-      const [, agentId] = key.split("::");
-      if (agentId) {
-        availableAgentIds.add(agentId);
-      }
-    }
-    const hasAgentData = availableAgentIds.size > 1 || countSessionThinkingEntries(sessionId) > 0;
-    if (!hasAgentData) {
-      section.classList.add("team-section-no-data");
-      selectedViewAgent = null;
-      renderTeamAgentEmptyState();
-      updateTeamTabCount();
-      return;
-    }
-    section.classList.remove("team-section-no-data");
-    const subagentItems = Array.from(availableAgentIds).filter((agentId) => agentId !== "main").sort((a, b) => {
-      const aName = subagentState.subagents.get(a)?.agentName || a;
-      const bName = subagentState.subagents.get(b)?.agentName || b;
-      return aName.localeCompare(bName);
-    });
-    const orderedAgentIds = ["main", ...subagentItems];
-    if (!selectedViewAgent || !availableAgentIds.has(selectedViewAgent)) {
-      selectedViewAgent = "main";
-    }
-    sidebar.innerHTML = orderedAgentIds.map((agentId) => {
-      const mapping = subagentState.subagents.get(agentId);
-      const name = agentId === "main" ? "main" : mapping?.agentName || agentId.slice(0, 8);
-      const entries = agentThinkingEntries.get(thinkingKey(sessionId, agentId)) || [];
-      const thinkingCount = entries.length;
-      const selected = selectedViewAgent === agentId ? " selected" : "";
-      const dotClass = agentId === "main" ? "running" : mapping?.status === "running" ? "running" : mapping?.status === "success" || mapping?.status === "failure" || mapping?.status === "cancelled" ? "stopped" : "idle";
-      let msgCount = 0;
-      for (const msg of teamState.teamMessages) {
-        if (msg.sender === name) {
-          if (!sessionId || msg.sessionId === sessionId) {
-            msgCount++;
-          }
-        }
-      }
-      const total = thinkingCount + msgCount;
-      const level = total > 20 ? "high" : total >= 5 ? "medium" : "low";
-      return `
-      <div class="agent-list-item${selected}" data-agent-id="${escapeHtml(agentId)}">
-        <span class="agent-list-dot ${dotClass}"></span>
-        <span class="agent-list-name">${escapeHtml(name)}</span>
-        <span class="agent-activity-bar agent-activity-${level}" aria-hidden="true"></span>
-        <span class="agent-list-count">${total}</span>
-      </div>
-    `;
-    }).join("");
-    sidebar.querySelectorAll(".agent-list-item").forEach((item) => {
-      item.addEventListener("click", () => {
-        const agentId = item.dataset.agentId;
-        if (agentId) {
-          selectTeamAgentInView(agentId);
-        }
-      });
-    });
-    renderTeamAgentDetail();
+  function renderTeamView() {
+    renderLifecycleStrip();
+    renderCommMatrix();
     updateTeamTabCount();
+  }
+  function updateTeamHeader(teamName) {
+    const teamNameEl = elements.teamName;
+    if (teamNameEl) {
+      teamNameEl.textContent = teamName;
+    }
   }
   function handleTeamUpdate(event) {
     if (!ctx) return;
@@ -2348,16 +2091,11 @@
     teamState.teams.set(teamName, event.members);
     resolveTeamSession(teamName, event.sessionId, event.members);
     const teamSession = teamState.teamSessionMap.get(teamName);
-    if (state.selectedSession === "all") {
-      return;
-    }
-    if (!teamSession || teamSession !== state.selectedSession) {
-      return;
-    }
+    if (state.selectedSession === "all") return;
+    if (!teamSession || teamSession !== state.selectedSession) return;
     showTeamPanel?.();
     updateTeamHeader(teamName);
-    renderMemberGrid(teamName);
-    renderTeamAgentList();
+    renderTeamView();
   }
   function resolveTeamSession(teamName, sessionId, members) {
     if (sessionId) {
@@ -2377,15 +2115,13 @@
     }
   }
   function filterTeamBySession() {
-    const teamContent = elements.teamMemberGrid?.parentElement;
-    if (!teamContent) return;
     if (state.selectedSession === "all") {
       const teamNameEl = elements.teamName;
       if (teamNameEl) teamNameEl.textContent = "";
-      const memberGrid = elements.teamMemberGrid;
-      if (memberGrid) memberGrid.innerHTML = "";
-      selectedViewAgent = null;
-      renderTeamAgentList();
+      selectedTeamAgent = null;
+      messageAgentFilter = null;
+      updateFilterChip();
+      renderTeamView();
       return;
     }
     let matchedTeam = null;
@@ -2397,18 +2133,11 @@
     }
     if (matchedTeam) {
       updateTeamHeader(matchedTeam);
-      renderMemberGrid(matchedTeam);
     } else {
       const teamNameEl = elements.teamName;
-      if (teamNameEl) {
-        teamNameEl.textContent = "No team";
-      }
-      const memberGrid = elements.teamMemberGrid;
-      if (memberGrid) {
-        memberGrid.innerHTML = `<div class="team-empty">No team for this session</div>`;
-      }
+      if (teamNameEl) teamNameEl.textContent = "No team";
     }
-    renderTeamAgentList();
+    renderTeamView();
   }
   function handleTeammateIdle(event) {
     if (!ctx) return;
@@ -2424,11 +2153,8 @@
     const teamSession = teamState.teamSessionMap.get(teamName);
     if (state.selectedSession === "all") return;
     if (!teamSession || teamSession !== state.selectedSession) return;
-    if (members) {
-      renderMemberGrid(teamName);
-    }
     showTeamPanel?.();
-    updateTeamTabCount();
+    renderTeamView();
   }
   function handleMessageSent(event) {
     if (!ctx) return;
@@ -2439,12 +2165,12 @@
     const messagesContainer = elements.teamMessages;
     if (!messagesContainer) return;
     const emptyState2 = messagesContainer.querySelector(".empty-state");
-    if (emptyState2) {
-      emptyState2.remove();
-    }
+    if (emptyState2) emptyState2.remove();
     const entry = document.createElement("div");
     entry.className = `team-message team-message-${event.messageType}`;
     entry.dataset.timestamp = String(Date.now());
+    entry.dataset.sender = event.sender;
+    entry.dataset.recipient = event.recipient;
     const time = formatTime(event.timestamp);
     const senderColors = getAgentBadgeColors(event.sender);
     const recipientColors = getAgentBadgeColors(event.recipient);
@@ -2453,12 +2179,12 @@
     let typeIcon = "";
     if (isBroadcast) typeIcon = '<span class="team-message-type-icon" title="Broadcast">&#128226;</span>';
     else if (isShutdown) typeIcon = '<span class="team-message-type-icon team-message-shutdown" title="Shutdown">&#9724;</span>';
-    const recipientLabel = isBroadcast ? '<span class="team-message-broadcast-label">all</span>' : `<span class="team-message-badge" style="background: ${escapeCssValue(recipientColors.bg)}; color: ${escapeCssValue(recipientColors.text)}">${escapeHtml(event.recipient)}</span>`;
+    const recipientLabel = isBroadcast ? '<span class="team-message-broadcast-label">all</span>' : `<span class="team-message-badge" style="background:${escapeCssValue(recipientColors.bg)};color:${escapeCssValue(recipientColors.text)}">${escapeHtml(event.recipient)}</span>`;
     entry.innerHTML = `
     <div class="team-message-header">
       <span class="team-message-time">${escapeHtml(time)}</span>
       ${typeIcon}
-      <span class="team-message-badge" style="background: ${escapeCssValue(senderColors.bg)}; color: ${escapeCssValue(senderColors.text)}">${escapeHtml(event.sender)}</span>
+      <span class="team-message-badge" style="background:${escapeCssValue(senderColors.bg)};color:${escapeCssValue(senderColors.text)}">${escapeHtml(event.sender)}</span>
       <span class="team-message-arrow">&#8594;</span>
       ${recipientLabel}
     </div>
@@ -2468,51 +2194,29 @@
     ctx?.ui.smartScroll(messagesContainer);
     entry.classList.add("new");
     setTimeout(() => entry.classList.remove("new"), 1e3);
-    if (messageTypeFilter !== "all") {
-      const isMatch = messageTypeFilter === "shutdown" ? event.messageType === "shutdown_request" || event.messageType === "shutdown_response" : event.messageType === messageTypeFilter;
-      if (!isMatch) {
-        entry.style.display = "none";
-      }
-    }
+    applyMessageFilter();
+    renderCommMatrix();
     updateTeamTabCount();
   }
-  function addTeamAgentThinking(event) {
-    if (!event.sessionId) return;
-    const agentId = event.agentId || "main";
-    const key = thinkingKey(event.sessionId, agentId);
-    let entries = agentThinkingEntries.get(key);
-    if (!entries) {
-      entries = [];
-      agentThinkingEntries.set(key, entries);
+  function navigateToAgent(agentName) {
+    for (const [id, mapping] of subagentState.subagents) {
+      if (mapping.agentName === agentName) {
+        selectedTeamAgent = id;
+        messageAgentFilter = { sender: agentName };
+        renderLifecycleStrip();
+        applyMessageFilter();
+        updateFilterChip();
+        renderCommMatrix();
+        return;
+      }
     }
-    entries.push({
-      timestamp: event.timestamp,
-      content: event.content,
-      sessionId: event.sessionId
-    });
-    while (entries.length > MAX_ENTRIES_PER_AGENT) {
-      entries.shift();
-    }
-    if (state.selectedSession === event.sessionId) {
-      renderTeamAgentList();
-    } else {
-      updateTeamTabCount();
-    }
-  }
-  function refreshTeamAgentList() {
-    renderTeamAgentList();
-  }
-  function resetTeamAgentThinking() {
-    selectedViewAgent = null;
-    agentThinkingEntries.clear();
-    renderTeamAgentList();
   }
 
   // src/dashboard/handlers/tasks.ts
   var showTasksPanel = null;
   var navigateToTeamAgent = null;
-  var currentRenderTeamId = "";
-  var previousCardIds = /* @__PURE__ */ new Set();
+  var peakParallelism = 0;
+  var previousRowIds = /* @__PURE__ */ new Set();
   function initTasks(extras) {
     showTasksPanel = extras.showTasksPanel;
     navigateToTeamAgent = extras.navigateToTeamAgent ?? null;
@@ -2521,91 +2225,137 @@
       navigateToTeamAgent = null;
     } };
   }
-  function updateTasksProgress(pending, inProgress, completed) {
+  function renderSummaryStrip(pending, inProgress, completed) {
+    const strip = elements.tasksSummaryStrip;
+    if (!strip) return;
     const total = pending + inProgress + completed;
-    const bar = elements.tasksProgressBar;
-    const text = elements.tasksProgressText;
-    if (!bar || !text) return;
     if (total === 0) {
-      bar.innerHTML = "";
-      text.textContent = "0 tasks";
+      strip.innerHTML = "";
       return;
     }
-    const pctPending = pending / total * 100;
-    const pctProgress = inProgress / total * 100;
     const pctDone = completed / total * 100;
+    const pctActive = inProgress / total * 100;
+    const pctPending = pending / total * 100;
     const segments = [];
-    if (pctDone > 0) {
-      segments.push(`<span class="tasks-seg tasks-seg-done" style="width: ${pctDone}%" title="${completed} completed"></span>`);
+    if (pctDone > 0) segments.push(`<span class="tasks-seg tasks-seg-done" style="width:${pctDone}%" title="${completed} completed"></span>`);
+    if (pctActive > 0) segments.push(`<span class="tasks-seg tasks-seg-active" style="width:${pctActive}%" title="${inProgress} in progress"></span>`);
+    if (pctPending > 0) segments.push(`<span class="tasks-seg tasks-seg-pending" style="width:${pctPending}%" title="${pending} pending"></span>`);
+    let avgDuration = 0;
+    let durCount = 0;
+    for (const record of taskCompletionLog) {
+      if (record.durationMs !== null) {
+        avgDuration += record.durationMs;
+        durCount++;
+      }
     }
-    if (pctProgress > 0) {
-      segments.push(`<span class="tasks-seg tasks-seg-active" style="width: ${pctProgress}%" title="${inProgress} in progress"></span>`);
+    if (durCount > 0) avgDuration = avgDuration / durCount;
+    let hasBottleneck = false;
+    if (avgDuration > 0) {
+      const now = Date.now();
+      for (const [teamId, tasks] of teamState.teamTasks) {
+        for (const task of tasks) {
+          if (task.status === "in_progress") {
+            const tsKey = `${teamId}::${task.id}::in_progress`;
+            const ts = taskStatusTimestamps.get(tsKey);
+            if (ts && now - ts > avgDuration * 2) {
+              hasBottleneck = true;
+              break;
+            }
+          }
+        }
+        if (hasBottleneck) break;
+      }
     }
-    if (pctPending > 0) {
-      segments.push(`<span class="tasks-seg tasks-seg-pending" style="width: ${pctPending}%" title="${pending} pending"></span>`);
+    const metricsHtml = [];
+    metricsHtml.push(`<span class="tasks-metric">${completed}/${total}</span>`);
+    if (durCount > 0) {
+      metricsHtml.push(`<span class="tasks-metric" title="Average task duration">avg ${formatDuration(avgDuration)}</span>`);
     }
-    bar.innerHTML = segments.join("");
-    text.textContent = `${completed}/${total} complete`;
+    if (peakParallelism > 1) {
+      metricsHtml.push(`<span class="tasks-metric" title="Peak concurrent tasks">peak ${peakParallelism}x</span>`);
+    }
+    if (hasBottleneck) {
+      metricsHtml.push(`<span class="tasks-metric tasks-metric-warn" title="A task is taking 2x+ longer than average">bottleneck</span>`);
+    }
+    strip.innerHTML = `
+    <div class="tasks-progress" aria-label="Task completion progress">
+      <span class="tasks-progress-bar">${segments.join("")}</span>
+    </div>
+    <div class="tasks-metrics">${metricsHtml.join("")}</div>
+  `;
   }
-  function renderTaskCard(task) {
+  function renderActiveTaskRow(task, teamId) {
+    const isBlocked = task.blockedBy.length > 0;
+    const statusDot = isBlocked ? '<span class="task-row-dot task-row-dot-blocked" title="Blocked">&#128274;</span>' : task.status === "in_progress" ? '<span class="task-row-dot task-row-dot-active"></span>' : '<span class="task-row-dot task-row-dot-pending"></span>';
     const ownerBadge = task.owner ? (() => {
       const colors = getAgentBadgeColors(task.owner);
-      return `<span class="task-owner-badge" style="background: ${escapeCssValue(colors.bg)}; color: ${escapeCssValue(colors.text)}">${escapeHtml(task.owner)}</span>`;
-    })() : '<span class="task-unassigned">unassigned</span>';
-    const blockedIndicators = task.blockedBy.length > 0 ? `<div class="task-blocked-by">blocked by: ${task.blockedBy.map((id) => `<span class="task-blocked-id">#${escapeHtml(id)}</span>`).join(", ")}</div>` : "";
-    const isBlocked = task.blockedBy.length > 0;
-    const statusIcon = isBlocked ? "&#128274;" : task.status === "completed" ? "&#10003;" : task.status === "in_progress" ? "&#9654;" : "&#9679;";
-    const statusIconClass = isBlocked ? "task-blocked-lock" : "task-card-status-icon";
-    const hasDescription = task.description && task.description.trim().length > 0;
-    const expandIcon = hasDescription ? '<span class="task-card-expand-icon">&#9656;</span>' : "";
-    const descriptionHtml = hasDescription ? `<div class="task-card-description">${escapeHtml(task.description)}</div>` : "";
-    const tsKey = `${currentRenderTeamId}::${task.id}::${task.status}`;
+      return `<span class="task-owner-badge" style="background:${escapeCssValue(colors.bg)};color:${escapeCssValue(colors.text)}">${escapeHtml(task.owner)}</span>`;
+    })() : "";
+    const tsKey = `${teamId}::${task.id}::${task.status}`;
     const ts = taskStatusTimestamps.get(tsKey);
     const elapsed = ts !== void 0 ? formatElapsed(Date.now() - ts) : "";
-    const statusLabel = task.status.replace("_", " ");
-    const timeInStateHtml = elapsed ? `<span class="task-time-in-state" title="Time in ${statusLabel}: ${elapsed}">${elapsed}</span>` : "";
+    const timeHtml = elapsed ? `<span class="task-row-time">${elapsed}</span>` : "";
+    const blockedHtml = isBlocked ? `<span class="task-row-blocked">blocked by ${task.blockedBy.map((id) => `#${escapeHtml(id)}`).join(", ")}</span>` : "";
+    const hasDescription = task.description && task.description.trim().length > 0;
+    const expandIcon = hasDescription ? '<span class="task-row-expand">&#9656;</span>' : "";
+    const descriptionHtml = hasDescription ? `<div class="task-row-description">${escapeHtml(task.description)}</div>` : "";
     return `
-    <div class="task-card task-card-${task.status}${isBlocked ? " task-card-blocked" : ""}${hasDescription ? " task-card-expandable" : ""}" data-task-id="${escapeHtml(task.id)}" data-timestamp="${Date.now()}">
-      <div class="task-card-header">
-        <span class="task-card-id">${expandIcon}#${escapeHtml(task.id)}</span>
-        <span class="${statusIconClass}">${statusIcon}</span>
-      </div>
-      <div class="task-card-subject">${escapeHtml(task.subject)}</div>
-      ${descriptionHtml}
-      <div class="task-card-footer">
+    <div class="task-row${isBlocked ? " task-row-is-blocked" : ""}${hasDescription ? " task-row-expandable" : ""}" data-task-id="${escapeHtml(task.id)}" data-timestamp="${Date.now()}">
+      <div class="task-row-main">
+        ${statusDot}
+        <span class="task-row-id">${expandIcon}#${escapeHtml(task.id)}</span>
+        <span class="task-row-subject">${escapeHtml(task.subject)}</span>
+        <span class="task-row-spacer"></span>
         ${ownerBadge}
-        ${blockedIndicators}
-        ${timeInStateHtml}
+        ${blockedHtml}
+        ${timeHtml}
       </div>
+      ${descriptionHtml}
     </div>
   `;
   }
-  function renderTaskBoard() {
-    const pendingCol = elements.tasksPending;
-    const progressCol = elements.tasksInProgress;
-    const completedCol = elements.tasksCompleted;
-    if (!pendingCol || !progressCol || !completedCol) return;
-    const allTasks = [];
-    const taskTeamMap = /* @__PURE__ */ new Map();
+  function renderCompletionEntry(record) {
+    const time = formatTime(new Date(record.completedAt).toISOString());
+    const ownerBadge = record.owner ? (() => {
+      const colors = getAgentBadgeColors(record.owner);
+      return `<span class="task-owner-badge" style="background:${escapeCssValue(colors.bg)};color:${escapeCssValue(colors.text)}">${escapeHtml(record.owner)}</span>`;
+    })() : "";
+    const durationHtml = record.durationMs !== null ? `<span class="task-duration-pill ${getDurationClass(record.durationMs)}">${formatDuration(record.durationMs)}</span>` : "";
+    return `
+    <div class="task-log-entry">
+      <span class="task-log-check">&#10003;</span>
+      <span class="task-log-time">${escapeHtml(time)}</span>
+      <span class="task-log-subject">${escapeHtml(record.subject)}</span>
+      <span class="task-row-spacer"></span>
+      ${ownerBadge}
+      ${durationHtml}
+    </div>
+  `;
+  }
+  function renderTasksView() {
+    const activeZone = elements.tasksActiveWork;
+    const logZone = elements.tasksCompletionLog;
+    if (!activeZone || !logZone) return;
+    const activeTasks = [];
     let hasSessionMapping = false;
-    const gatherTasks = (teamId, tasks) => {
+    const gatherActive = (teamId, tasks) => {
       for (const t of tasks) {
-        allTasks.push(t);
-        taskTeamMap.set(t, teamId);
+        if (t.status !== "completed") {
+          activeTasks.push({ task: t, teamId });
+        }
       }
     };
     if (state.selectedSession === "all") {
       for (const [teamId, tasks] of teamState.teamTasks) {
-        gatherTasks(teamId, tasks);
+        gatherActive(teamId, tasks);
       }
+      hasSessionMapping = true;
     } else {
       for (const [teamId, sessionId] of teamState.taskSessionMap) {
         if (sessionId === state.selectedSession) {
           hasSessionMapping = true;
           const tasks = teamState.teamTasks.get(teamId);
-          if (tasks) {
-            gatherTasks(teamId, tasks);
-          }
+          if (tasks) gatherActive(teamId, tasks);
         }
       }
       if (!hasSessionMapping) {
@@ -2613,89 +2363,90 @@
           if (sessionId === state.selectedSession) {
             hasSessionMapping = true;
             const tasks = teamState.teamTasks.get(teamName);
-            if (tasks) {
-              gatherTasks(teamName, tasks);
-            }
+            if (tasks) gatherActive(teamName, tasks);
           }
         }
       }
-      if (!hasSessionMapping) {
-        if (elements.tasksPendingCount) {
-          elements.tasksPendingCount.textContent = "0";
-        }
-        if (elements.tasksInProgressCount) {
-          elements.tasksInProgressCount.textContent = "0";
-        }
-        if (elements.tasksCompletedCount) {
-          elements.tasksCompletedCount.textContent = "0";
-        }
-        const unmappedMessage = "No tasks mapped to this session yet";
-        pendingCol.innerHTML = `<div class="task-column-empty">${unmappedMessage}</div>`;
-        progressCol.innerHTML = `<div class="task-column-empty">${unmappedMessage}</div>`;
-        completedCol.innerHTML = `<div class="task-column-empty">${unmappedMessage}</div>`;
-        updateTabBadge("tasks", 0);
-        updateTasksProgress(0, 0, 0);
-        return;
-      }
     }
-    const renderCard = (task) => {
-      currentRenderTeamId = taskTeamMap.get(task) ?? "";
-      return renderTaskCard(task);
-    };
-    const pending = allTasks.filter((t) => t.status === "pending");
-    const inProgress = allTasks.filter((t) => t.status === "in_progress");
-    const completed = allTasks.filter((t) => t.status === "completed");
-    if (elements.tasksPendingCount) {
-      elements.tasksPendingCount.textContent = String(pending.length);
+    if (!hasSessionMapping) {
+      activeZone.innerHTML = `
+      <div class="tasks-zone-header">ACTIVE</div>
+      <div class="task-zone-empty">No tasks mapped to this session yet</div>
+    `;
+      logZone.innerHTML = '<div class="tasks-zone-header">COMPLETED</div>';
+      updateTabBadge("tasks", 0);
+      renderSummaryStrip(0, 0, 0);
+      return;
     }
-    if (elements.tasksInProgressCount) {
-      elements.tasksInProgressCount.textContent = String(inProgress.length);
+    activeTasks.sort((a, b) => {
+      const aBlocked = a.task.blockedBy.length > 0 ? 1 : 0;
+      const bBlocked = b.task.blockedBy.length > 0 ? 1 : 0;
+      if (aBlocked !== bBlocked) return aBlocked - bBlocked;
+      const aKey = `${a.teamId}::${a.task.id}::${a.task.status}`;
+      const bKey = `${b.teamId}::${b.task.id}::${b.task.status}`;
+      const aTs = taskStatusTimestamps.get(aKey) ?? Date.now();
+      const bTs = taskStatusTimestamps.get(bKey) ?? Date.now();
+      return aTs - bTs;
+    });
+    const pending = activeTasks.filter((t) => t.task.status === "pending").length;
+    const inProgress = activeTasks.filter((t) => t.task.status === "in_progress").length;
+    const completedCount = taskCompletionLog.length;
+    if (activeTasks.length > 0) {
+      const rowsHtml = activeTasks.map(({ task, teamId }) => renderActiveTaskRow(task, teamId)).join("");
+      activeZone.innerHTML = `<div class="tasks-zone-header">ACTIVE <span class="tasks-zone-count">${activeTasks.length}</span></div>${rowsHtml}`;
+    } else {
+      activeZone.innerHTML = `
+      <div class="tasks-zone-header">ACTIVE</div>
+      <div class="task-zone-empty">${completedCount > 0 ? "All tasks completed" : "Waiting for tasks..."}</div>
+    `;
     }
-    if (elements.tasksCompletedCount) {
-      elements.tasksCompletedCount.textContent = String(completed.length);
+    const logEntries = [...taskCompletionLog].reverse();
+    if (logEntries.length > 0) {
+      const entriesHtml = logEntries.map(renderCompletionEntry).join("");
+      logZone.innerHTML = `<div class="tasks-zone-header">COMPLETED <span class="tasks-zone-count">${logEntries.length}</span></div>${entriesHtml}`;
+    } else {
+      logZone.innerHTML = '<div class="tasks-zone-header">COMPLETED</div>';
     }
-    pendingCol.innerHTML = pending.length > 0 ? pending.map(renderCard).join("") : '<div class="task-column-empty">No pending tasks</div>';
-    progressCol.innerHTML = inProgress.length > 0 ? inProgress.map(renderCard).join("") : '<div class="task-column-empty">No active tasks</div>';
-    completedCol.innerHTML = completed.length > 0 ? completed.map(renderCard).join("") : '<div class="task-column-empty">No completed tasks</div>';
-    const blocked = inProgress.filter((t) => t.blockedBy.length > 0).length;
-    const active = inProgress.length;
-    const badgeText = blocked > 0 ? `${active} active / ${blocked} blocked` : active > 0 ? `${active} active` : `${allTasks.length}`;
-    updateTabBadge("tasks", allTasks.length > 0 ? badgeText : 0);
-    const currentCardIds = /* @__PURE__ */ new Set();
-    const allCards = document.querySelectorAll(".task-card[data-task-id]");
-    allCards.forEach((card) => {
-      const id = card.getAttribute("data-task-id");
+    renderSummaryStrip(pending, inProgress, completedCount);
+    const blocked = activeTasks.filter((t) => t.task.blockedBy.length > 0).length;
+    const active = inProgress;
+    const totalTasks = activeTasks.length + completedCount;
+    const badgeText = blocked > 0 ? `${active} active / ${blocked} blocked` : active > 0 ? `${active} active` : totalTasks > 0 ? `${completedCount}/${totalTasks} done` : "0";
+    updateTabBadge("tasks", totalTasks > 0 ? badgeText : 0);
+    const currentRowIds = /* @__PURE__ */ new Set();
+    activeZone.querySelectorAll(".task-row[data-task-id]").forEach((row) => {
+      const id = row.getAttribute("data-task-id");
       if (id) {
-        currentCardIds.add(id);
-        if (previousCardIds.size > 0 && !previousCardIds.has(id)) {
-          card.classList.add("task-card-enter");
+        currentRowIds.add(id);
+        if (previousRowIds.size > 0 && !previousRowIds.has(id)) {
+          row.classList.add("task-row-enter");
         }
       }
     });
-    previousCardIds = currentCardIds;
-    updateTasksProgress(pending.length, inProgress.length, completed.length);
-    document.querySelectorAll(".task-card-expandable").forEach((card) => {
-      card.addEventListener("click", (e) => {
+    previousRowIds = currentRowIds;
+    activeZone.querySelectorAll(".task-row-expandable").forEach((row) => {
+      row.addEventListener("click", (e) => {
         if (e.target.closest(".task-owner-badge")) return;
-        card.classList.toggle("task-card-expanded");
+        row.classList.toggle("task-row-expanded");
       });
     });
-    const taskBoard = document.querySelector(".task-board");
-    if (taskBoard) {
-      taskBoard.querySelectorAll(".task-owner-badge").forEach((badge) => {
-        const ownerName = badge.textContent?.trim();
-        if (!ownerName) return;
-        badge.style.cursor = "pointer";
-        badge.title = `Jump to ${ownerName} in Teams`;
-        badge.addEventListener("click", (e) => {
-          e.stopPropagation();
-          navigateToTeamAgent?.(ownerName);
-        });
+    activeZone.querySelectorAll(".task-owner-badge").forEach((badge) => {
+      const ownerName = badge.textContent?.trim();
+      if (!ownerName) return;
+      badge.style.cursor = "pointer";
+      badge.title = `Jump to ${ownerName} in Teams`;
+      badge.addEventListener("click", (e) => {
+        e.stopPropagation();
+        navigateToTeamAgent?.(ownerName);
       });
-    }
+    });
+  }
+  function resetTaskState() {
+    peakParallelism = 0;
+    previousRowIds.clear();
   }
   function filterTasksBySession() {
-    renderTaskBoard();
+    renderTasksView();
   }
   function handleTaskUpdate(event) {
     if (!showTasksPanel) return;
@@ -2719,25 +2470,46 @@
         taskStatusTimestamps.set(key, now);
       }
     }
+    let currentInProgress = 0;
+    for (const tasks of teamState.teamTasks.values()) {
+      for (const t of tasks) {
+        if (t.status === "in_progress") currentInProgress++;
+      }
+    }
+    if (currentInProgress > peakParallelism) {
+      peakParallelism = currentInProgress;
+    }
     showTasksPanel?.();
-    renderTaskBoard();
+    renderTasksView();
   }
   function handleTaskCompleted(event) {
     if (!showTasksPanel) return;
     const teamId = event.teamId || "";
     const tasks = teamState.teamTasks.get(teamId);
+    const now = Date.now();
     if (tasks) {
       const task = tasks.find((t) => t.id === event.taskId);
       if (task) {
+        const pendingKey = `${teamId}::${task.id}::pending`;
+        const pendingTs = taskStatusTimestamps.get(pendingKey);
+        const durationMs = pendingTs !== void 0 ? now - pendingTs : null;
+        taskCompletionLog.push({
+          taskId: task.id,
+          subject: task.subject,
+          owner: task.owner,
+          teamId,
+          completedAt: now,
+          durationMs
+        });
         task.status = "completed";
         const key = `${teamId}::${task.id}::completed`;
         if (!taskStatusTimestamps.has(key)) {
-          taskStatusTimestamps.set(key, Date.now());
+          taskStatusTimestamps.set(key, now);
         }
       }
     }
     showTasksPanel?.();
-    renderTaskBoard();
+    renderTasksView();
   }
 
   // src/dashboard/handlers/timeline/chips.ts
@@ -3745,9 +3517,9 @@ Session: ${resolvedSessionId || ""}`;
         const agentId = chip.dataset.agent;
         if (agentId) {
           if (state.selectedAgentId === agentId) {
-            selectAgentFilter(null);
+            selectAgentFilter2(null);
           } else {
-            selectAgentFilter(agentId);
+            selectAgentFilter2(agentId);
           }
         }
       });
@@ -3792,7 +3564,7 @@ Session: ${resolvedSessionId || ""}`;
     filterTasksBySession();
     specific?.updateExportButtonState();
   }
-  function selectAgentFilter(agentId) {
+  function selectAgentFilter2(agentId) {
     state.selectedAgentId = agentId;
     filterAllBySession();
     debug(`[Dashboard] Agent filter: ${agentId || "all"}`);
@@ -5188,6 +4960,135 @@ Session: ${id}` : `Session: ${id}`;
     }
   }
 
+  // src/dashboard/utils/markdown.ts
+  function parseTableAlignment(separator) {
+    const trimmed = separator.trim();
+    const hasLeft = trimmed.startsWith(":");
+    const hasRight = trimmed.endsWith(":");
+    if (hasLeft && hasRight) return "center";
+    if (hasRight) return "right";
+    return "left";
+  }
+  function renderTable(lines) {
+    if (lines.length < 2) return lines.join("\n");
+    const headerCells = lines[0].split("|").map((cell) => cell.trim()).filter((cell) => cell !== "");
+    const separatorCells = lines[1].split("|").map((cell) => cell.trim()).filter((cell) => cell !== "");
+    const isValidSeparator = separatorCells.every((cell) => /^:?-{3,}:?$/.test(cell));
+    if (!isValidSeparator || headerCells.length !== separatorCells.length) {
+      return lines.join("\n");
+    }
+    const alignments = separatorCells.map(parseTableAlignment);
+    let tableHtml = '<table class="md-table">';
+    tableHtml += "<thead><tr>";
+    headerCells.forEach((cell, i) => {
+      const align = alignments[i] || "left";
+      tableHtml += `<th style="text-align: ${escapeCssValue(align)}">${cell}</th>`;
+    });
+    tableHtml += "</tr></thead>";
+    if (lines.length > 2) {
+      tableHtml += "<tbody>";
+      for (let i = 2; i < lines.length; i++) {
+        const rowCells = lines[i].split("|").map((cell) => cell.trim()).filter((cell) => cell !== "");
+        tableHtml += "<tr>";
+        for (let j = 0; j < headerCells.length; j++) {
+          const cell = rowCells[j] || "";
+          const align = alignments[j] || "left";
+          tableHtml += `<td style="text-align: ${escapeCssValue(align)}">${cell}</td>`;
+        }
+        tableHtml += "</tr>";
+      }
+      tableHtml += "</tbody>";
+    }
+    tableHtml += "</table>";
+    return tableHtml;
+  }
+  function processTablesInContent(html) {
+    const lines = html.split("\n");
+    const result = [];
+    let tableLines = [];
+    let inTable = false;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmedLine = line.trim();
+      const isTableRow = trimmedLine.startsWith("|") && trimmedLine.endsWith("|");
+      if (isTableRow) {
+        if (!inTable) {
+          const nextLine = lines[i + 1]?.trim() || "";
+          if (nextLine.startsWith("|") && nextLine.includes("---")) {
+            inTable = true;
+            tableLines = [line];
+          } else {
+            result.push(line);
+          }
+        } else {
+          tableLines.push(line);
+        }
+      } else {
+        if (inTable) {
+          result.push(renderTable(tableLines));
+          tableLines = [];
+          inTable = false;
+        }
+        result.push(line);
+      }
+    }
+    if (inTable && tableLines.length > 0) {
+      result.push(renderTable(tableLines));
+    }
+    return result.join("\n");
+  }
+  function renderSimpleMarkdown(content) {
+    let html = escapeHtml(content);
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, "<pre><code>$2</code></pre>");
+    html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+    html = html.replace(/^(-{3,}|\*{3,}|_{3,})$/gm, "<hr>");
+    html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
+    html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
+    html = html.replace(/^# (.+)$/gm, "<h1>$1</h1>");
+    html = html.replace(/^- \[ \] (.+)$/gm, '<li class="task-list-item"><span class="task-checkbox"></span>$1</li>');
+    html = html.replace(/^- \[x\] (.+)$/gim, '<li class="task-list-item"><span class="task-checkbox checked"></span>$1</li>');
+    html = html.replace(/^[-*] (.+)$/gm, "<li>$1</li>");
+    html = html.replace(/^\d+\. (.+)$/gm, "<li>$1</li>");
+    html = html.replace(/(<li[^>]*>.*?<\/li>\n?)+/g, (match) => {
+      return "<ul>" + match + "</ul>";
+    });
+    html = html.replace(/^&gt; (.+)$/gm, "<blockquote>$1</blockquote>");
+    html = html.replace(/<\/blockquote>\n<blockquote>/g, "<br>");
+    html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+    html = html.replace(/\b_([^_]+)_\b/g, "<em>$1</em>");
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, text, url) => {
+      const decodedUrl = url.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+      const trimmedUrl = decodedUrl.trim().toLowerCase();
+      const isSafeUrl = trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://") || trimmedUrl.startsWith("/") || trimmedUrl.startsWith("#") || trimmedUrl.startsWith("mailto:") || // Relative URLs (no protocol)
+      !trimmedUrl.includes(":") && !trimmedUrl.startsWith("//");
+      if (!isSafeUrl) {
+        return `[${text}](${url})`;
+      }
+      const safeUrl = encodeHtmlAttribute(decodedUrl);
+      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+    });
+    html = processTablesInContent(html);
+    html = html.replace(/\n{3,}/g, "\n\n");
+    html = html.replace(/\n/g, "<br>");
+    html = html.replace(/<ul><br>/g, "<ul>");
+    html = html.replace(/<br><\/ul>/g, "</ul>");
+    html = html.replace(/<\/li><br>/g, "</li>");
+    html = html.replace(/<br><li/g, "<li");
+    html = html.replace(/<br>(<h[123]>)/g, "$1");
+    html = html.replace(/(<\/h[123]>)<br>/g, "$1");
+    html = html.replace(/<br>(<table)/g, "$1");
+    html = html.replace(/(<\/table>)<br>/g, "$1");
+    html = html.replace(/<br>(<hr>)/g, "$1");
+    html = html.replace(/(<hr>)<br>/g, "$1");
+    html = html.replace(/<br>(<blockquote>)/g, "$1");
+    html = html.replace(/(<\/blockquote>)<br>/g, "$1");
+    html = html.replace(/<br>(<pre>)/g, "$1");
+    html = html.replace(/(<\/pre>)<br>/g, "$1");
+    html = html.replace(/(<br>){3,}/g, "<br><br>");
+    return html;
+  }
+
   // src/dashboard/handlers/tools.ts
   function processEscapes(str) {
     return str.replace(/\\n/g, "\n").replace(/\\t/g, "	").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
@@ -5513,9 +5414,9 @@ Session: ${id}` : `Session: ${id}`;
     item?.addEventListener("click", () => {
       const agentId = mapping.agentId;
       if (state.selectedAgentId === agentId) {
-        selectAgentFilter(null);
+        selectAgentFilter2(null);
       } else {
-        selectAgentFilter(agentId);
+        selectAgentFilter2(agentId);
       }
       renderAgentTree();
     });
@@ -6188,7 +6089,6 @@ Session: ${id}` : `Session: ${id}`;
           break;
         case "thinking":
           handleThinking(event);
-          addTeamAgentThinking(event);
           if (event.sessionId) {
             updateSessionActivity(event.sessionId);
           }
@@ -6234,7 +6134,6 @@ Session: ${id}` : `Session: ${id}`;
         case "subagent_mapping":
           handleSubagentMapping(event);
           updateSessionFilter();
-          refreshTeamAgentList();
           break;
         case "team_update":
           handleTeamUpdate(event);
@@ -7186,6 +7085,7 @@ Session: ${id}` : `Session: ${id}`;
     teamState.teamSessionMap.clear();
     teamState.teamMessages.clear();
     taskStatusTimestamps.clear();
+    taskCompletionLog.clear();
     state.selectedAgentId = null;
     elements.eventCount.textContent = "Events: 0";
     elements.thinkingCount.textContent = "0";
@@ -7210,7 +7110,7 @@ Session: ${id}` : `Session: ${id}`;
     }
     resetHistogram();
     resetStats();
-    resetTeamAgentThinking();
+    resetTaskState();
     showToast("Panels cleared", "info");
     announceStatus("All panels cleared");
     updateExportButtonState();

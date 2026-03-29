@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-03-29 — v1.8.0
+
+### Changed
+- **Tasks view redesign** — Replaced 3-column kanban board with a compact two-zone layout: active work rows (single-line per task) and a reverse-chronological completion log with duration pills
+- **Teams view redesign** — Replaced 4 fragmented sections (members, hierarchy, agents, messages) with an agent lifecycle Gantt strip, NxN communication heat matrix, and enhanced message feed with agent/pair filtering
+- **Summary strip for Tasks** — Progress bar + inline metrics: completion fraction, average duration, peak parallelism, bottleneck detection
+- **Communication matrix** — Heat-mapped NxN grid showing inter-agent message patterns; click cells to filter message feed; falls back to summary list for < 3 agents
+- **Agent lifecycle strip** — Horizontal bars showing agent lifespan, colored by status (running/success/failure/cancelled), with idle striping and pulsing edge for active agents
+
+### Removed
+- **Thinking duplication in Teams** — Removed agent thinking detail pane that duplicated the Thinking panel; agents sidebar and thinking entries are no longer rendered in the Teams view
+- **Member grid** — Replaced by the lifecycle strip which shows the same agents with temporal context
+- **Agents sidebar + detail pane** — Replaced by communication matrix and enhanced message filtering
+
+---
+
 ## 2026-03-29 — v1.7.1
 
 ### Added

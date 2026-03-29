@@ -1,57 +1,35 @@
 /**
  * Team event handlers for the Thinking Monitor Dashboard.
  *
- * Unified collaboration surface:
- * - Team members and hierarchy
- * - Inter-agent messages
- * - Session-scoped agent list + thinking detail
+ * Three-component layout:
+ * - Agent Lifecycle Strip: Gantt-style bars showing agent lifespan
+ * - Communication Matrix: NxN grid showing message patterns
+ * - Enhanced Message Feed: chronological log with agent/pair filtering
  */
 
 import { teamState, state, subagentState } from '../state.ts';
 import { elements } from '../ui/elements.ts';
-import { formatTime } from '../utils/formatting.ts';
+import { formatTime, formatElapsed } from '../utils/formatting.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
-import { renderSimpleMarkdown } from '../utils/markdown.ts';
 import { getAgentBadgeColors } from '../ui/colors.ts';
 import { selectAgentFilter, resolveSessionId } from './sessions.ts';
-import type { TeamUpdateEvent, TeammateIdleEvent, MessageSentEvent, ThinkingEvent } from '../types.ts';
+import type { TeamUpdateEvent, TeammateIdleEvent, MessageSentEvent } from '../types.ts';
 import { updateTabBadge, selectView } from '../ui/views.ts';
-import { BoundedMap } from '../../shared/bounded-map.ts';
 import type { AppContext } from '../services/app-context.ts';
 import type { Disposable } from '../services/lifecycle.ts';
 
 // ============================================
-// Constants
+// State
 // ============================================
-
-const MAX_ENTRIES_PER_AGENT = 200;
-const TEAM_SECTION_STORAGE_KEY = 'thinking-monitor-team-section-collapse';
-
-type TeamSectionName = 'members' | 'hierarchy' | 'agents';
-
-const TEAM_SECTION_LABELS: Record<TeamSectionName, string> = {
-  members: 'team members section',
-  hierarchy: 'agent hierarchy section',
-  agents: 'team agents section',
-};
-
-const teamSectionCollapseState: Record<TeamSectionName, boolean> = {
-  members: false,
-  hierarchy: false,
-  agents: false,
-};
-
-interface AgentThinkingEntry {
-  timestamp: string;
-  content: string;
-  sessionId: string;
-}
-
-const agentThinkingEntries: BoundedMap<string, AgentThinkingEntry[]> = new BoundedMap(100);
-let selectedViewAgent: string | null = null;
 
 let ctx: AppContext | null = null;
 let showTeamPanel: (() => void) | null = null;
+
+/** Currently selected agent in the lifecycle strip (filters messages). */
+let selectedTeamAgent: string | null = null;
+
+/** Agent/pair filter for the message feed. */
+let messageAgentFilter: { sender?: string; recipient?: string } | null = null;
 
 const MSG_FILTER_KEY = 'thinking-monitor-msg-filter';
 let messageTypeFilter: string = localStorage.getItem(MSG_FILTER_KEY) || 'all';
@@ -62,11 +40,6 @@ let messageTypeFilter: string = localStorage.getItem(MSG_FILTER_KEY) || 'all';
 export function initTeam(appCtx: AppContext, extras: { showTeamPanel: () => void }): Disposable {
   ctx = appCtx;
   showTeamPanel = extras.showTeamPanel;
-  loadTeamSectionCollapseState();
-  initTeamSectionToggles();
-  for (const sectionName of ['members', 'hierarchy', 'agents'] as const) {
-    applyTeamSectionCollapse(sectionName, false);
-  }
 
   const msgFilter = elements.teamMessageFilter;
   if (msgFilter) {
@@ -81,96 +54,291 @@ export function initTeam(appCtx: AppContext, extras: { showTeamPanel: () => void
   return { dispose: () => { ctx = null; showTeamPanel = null; } };
 }
 
-function getTeamSectionElements(sectionName: TeamSectionName): {
-  section: HTMLElement | null;
-  toggle: HTMLButtonElement | null;
-} {
-  if (sectionName === 'members') {
-    return {
-      section: elements.teamMemberSection as HTMLElement | null,
-      toggle: elements.teamMemberToggle,
-    };
-  }
-  if (sectionName === 'hierarchy') {
-    return {
-      section: elements.teamAgentTreeSection as HTMLElement | null,
-      toggle: elements.teamAgentTreeToggle,
-    };
-  }
-  return {
-    section: elements.teamAgentsSection as HTMLElement | null,
-    toggle: elements.teamAgentsToggle,
-  };
+function getSelectedSessionId(): string | null {
+  return state.selectedSession === 'all' ? null : state.selectedSession;
 }
 
-function saveTeamSectionCollapseState(): void {
-  try {
-    localStorage.setItem(TEAM_SECTION_STORAGE_KEY, JSON.stringify(teamSectionCollapseState));
-  } catch {
-    // Ignore persistence failures (private mode/storage quota)
+// ============================================
+// Agent Lifecycle Strip
+// ============================================
+
+function renderLifecycleStrip(): void {
+  const container = elements.teamLifecycleStrip;
+  if (!container) return;
+
+  const sessionId = getSelectedSessionId();
+  if (!sessionId) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">&#128101;</div>
+        <p class="empty-state-title">No team activity</p>
+        <p class="empty-state-subtitle">Teams appear during multi-agent tasks like /council or parallel research.</p>
+      </div>
+    `;
+    return;
   }
-}
 
-function loadTeamSectionCollapseState(): void {
-  try {
-    const stored = localStorage.getItem(TEAM_SECTION_STORAGE_KEY);
-    if (!stored) return;
+  // Collect agents for this session
+  const agentIds = new Set<string>();
+  const sessionSubagents = subagentState.sessionSubagents.get(sessionId);
+  if (sessionSubagents) {
+    for (const id of sessionSubagents) agentIds.add(id);
+  }
 
-    const parsed = JSON.parse(stored) as Partial<Record<TeamSectionName, boolean>>;
-    if (typeof parsed !== 'object' || parsed === null) return;
-
-    if (typeof parsed.members === 'boolean') {
-      teamSectionCollapseState.members = parsed.members;
+  // Also include any agents from team members
+  for (const [teamName, mappedSession] of teamState.teamSessionMap) {
+    if (mappedSession === sessionId) {
+      const members = teamState.teams.get(teamName) || [];
+      for (const member of members) {
+        for (const [id, mapping] of subagentState.subagents) {
+          if (mapping.agentName === member.name) {
+            agentIds.add(id);
+          }
+        }
+      }
     }
-    if (typeof parsed.hierarchy === 'boolean') {
-      teamSectionCollapseState.hierarchy = parsed.hierarchy;
-    }
-    if (typeof parsed.agents === 'boolean') {
-      teamSectionCollapseState.agents = parsed.agents;
-    }
-  } catch {
-    // Ignore malformed values and fall back to defaults
   }
-}
 
-function applyTeamSectionCollapse(sectionName: TeamSectionName, persist: boolean): void {
-  const { section, toggle } = getTeamSectionElements(sectionName);
-  const isCollapsed = teamSectionCollapseState[sectionName];
-  if (section) {
-    section.classList.toggle('team-section-collapsed', isCollapsed);
+  if (agentIds.size === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">&#128101;</div>
+        <p class="empty-state-title">No agents yet</p>
+        <p class="empty-state-subtitle">Agents appear when Claude spawns parallel workers.</p>
+      </div>
+    `;
+    return;
   }
-  if (toggle) {
-    toggle.setAttribute('aria-expanded', String(!isCollapsed));
-    toggle.setAttribute(
-      'aria-label',
-      `${isCollapsed ? 'Expand' : 'Collapse'} ${TEAM_SECTION_LABELS[sectionName]}`
-    );
-    toggle.title = `${isCollapsed ? 'Expand' : 'Collapse'} section`;
-  }
-  if (persist) {
-    saveTeamSectionCollapseState();
-  }
-}
 
-function toggleTeamSection(sectionName: TeamSectionName): void {
-  teamSectionCollapseState[sectionName] = !teamSectionCollapseState[sectionName];
-  applyTeamSectionCollapse(sectionName, true);
-}
+  // Compute time axis
+  const now = Date.now();
+  let axisStart = now;
+  let axisEnd = now;
 
-function initTeamSectionToggles(): void {
-  const sections: TeamSectionName[] = ['members', 'hierarchy', 'agents'];
-  for (const sectionName of sections) {
-    const { toggle } = getTeamSectionElements(sectionName);
-    if (!toggle || toggle.dataset.initialized === 'true') {
-      continue;
+  const agentData: { id: string; name: string; start: number; end: number; status: string; depth: number }[] = [];
+
+  for (const agentId of agentIds) {
+    const mapping = subagentState.subagents.get(agentId);
+    if (!mapping) continue;
+
+    const start = new Date(mapping.startTime).getTime();
+    const end = mapping.endTime ? new Date(mapping.endTime).getTime() : now;
+
+    if (start < axisStart) axisStart = start;
+    if (end > axisEnd) axisEnd = end;
+
+    // Compute depth from parent chain
+    let depth = 0;
+    let parentId = mapping.parentAgentId;
+    while (parentId && depth < 5) {
+      depth++;
+      const parent = subagentState.subagents.get(parentId);
+      parentId = parent?.parentAgentId;
     }
 
-    toggle.dataset.initialized = 'true';
-    toggle.addEventListener('click', () => {
-      toggleTeamSection(sectionName);
+    agentData.push({
+      id: agentId,
+      name: mapping.agentName,
+      start,
+      end,
+      status: mapping.status,
+      depth,
     });
   }
+
+  // Sort by start time, then by depth
+  agentData.sort((a, b) => a.start - b.start || a.depth - b.depth);
+
+  const totalDuration = Math.max(axisEnd - axisStart, 1);
+
+  const rows = agentData.map(agent => {
+    const leftPct = ((agent.start - axisStart) / totalDuration) * 100;
+    const widthPct = ((agent.end - agent.start) / totalDuration) * 100;
+    const indent = agent.depth * 12;
+    const isRunning = agent.status === 'running';
+    const elapsed = formatElapsed(agent.end - agent.start);
+    const selected = selectedTeamAgent === agent.id ? ' lifecycle-row-selected' : '';
+
+    const statusClass = agent.status === 'running' ? 'lifecycle-bar-running'
+      : agent.status === 'success' ? 'lifecycle-bar-success'
+      : agent.status === 'failure' ? 'lifecycle-bar-failure'
+      : 'lifecycle-bar-cancelled';
+
+    // Check if agent is idle (from team member status)
+    let isIdle = false;
+    for (const members of teamState.teams.values()) {
+      const member = members.find(m => {
+        for (const [id, mapping] of subagentState.subagents) {
+          if (id === agent.id && mapping.agentName === m.name) return true;
+        }
+        return false;
+      });
+      if (member?.status === 'idle') {
+        isIdle = true;
+        break;
+      }
+    }
+
+    return `
+      <div class="lifecycle-row${selected}" data-agent-id="${escapeHtml(agent.id)}" title="${escapeHtml(agent.name)} (${agent.status})">
+        <span class="lifecycle-label" style="padding-left:${indent}px">${escapeHtml(agent.name)}</span>
+        <div class="lifecycle-bar-container">
+          <div class="lifecycle-bar ${statusClass}${isIdle ? ' lifecycle-bar-idle' : ''}${isRunning ? ' lifecycle-bar-pulse' : ''}" style="left:${leftPct}%;width:${Math.max(widthPct, 1)}%"></div>
+        </div>
+        <span class="lifecycle-duration">${elapsed}</span>
+      </div>
+    `;
+  });
+
+  container.innerHTML = rows.join('');
+
+  // Click handlers
+  container.querySelectorAll('.lifecycle-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const agentId = (row as HTMLElement).dataset.agentId;
+      if (!agentId) return;
+
+      if (selectedTeamAgent === agentId) {
+        // Deselect
+        selectedTeamAgent = null;
+        messageAgentFilter = null;
+      } else {
+        selectedTeamAgent = agentId;
+        const mapping = subagentState.subagents.get(agentId);
+        const name = mapping?.agentName || agentId;
+        messageAgentFilter = { sender: name };
+      }
+      renderLifecycleStrip();
+      applyMessageFilter();
+      updateFilterChip();
+      renderCommMatrix();
+    });
+  });
 }
+
+// ============================================
+// Communication Matrix
+// ============================================
+
+function renderCommMatrix(): void {
+  const container = elements.teamCommMatrix;
+  if (!container) return;
+
+  const sessionId = getSelectedSessionId();
+  if (!sessionId) {
+    container.innerHTML = '';
+    return;
+  }
+
+  // Build adjacency counts from messages in this session
+  const messages = teamState.teamMessages.filter(m => m.sessionId === sessionId);
+  const agents = new Set<string>();
+  const counts = new Map<string, number>(); // "sender::recipient" -> count
+
+  for (const msg of messages) {
+    agents.add(msg.sender);
+    if (msg.messageType !== 'broadcast') {
+      agents.add(msg.recipient);
+    }
+    const key = msg.messageType === 'broadcast'
+      ? `${msg.sender}::*`
+      : `${msg.sender}::${msg.recipient}`;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+
+  if (agents.size === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const agentList = Array.from(agents).sort();
+
+  // For < 3 agents, show simple summary instead of matrix
+  if (agentList.length < 3) {
+    const summaryLines = Array.from(counts.entries()).map(([key, count]) => {
+      const [sender, recipient] = key.split('::');
+      const senderColors = getAgentBadgeColors(sender);
+      const recipientLabel = recipient === '*' ? 'all' : recipient;
+      const recipientColors = recipient === '*' ? null : getAgentBadgeColors(recipient);
+      return `
+        <div class="comm-summary-row">
+          <span class="comm-summary-badge" style="background:${escapeCssValue(senderColors.bg)};color:${escapeCssValue(senderColors.text)}">${escapeHtml(sender)}</span>
+          <span class="comm-summary-arrow">&#8594;</span>
+          ${recipientColors
+            ? `<span class="comm-summary-badge" style="background:${escapeCssValue(recipientColors.bg)};color:${escapeCssValue(recipientColors.text)}">${escapeHtml(recipientLabel)}</span>`
+            : `<span class="comm-summary-broadcast">all</span>`
+          }
+          <span class="comm-summary-count">${count}x</span>
+        </div>
+      `;
+    });
+    container.innerHTML = summaryLines.join('');
+    return;
+  }
+
+  // NxN matrix
+  const maxCount = Math.max(1, ...counts.values());
+
+  // Header row
+  let html = '<div class="comm-grid" style="grid-template-columns: auto ' + agentList.map(() => '1fr').join(' ') + '">';
+
+  // Corner cell
+  html += '<div class="comm-cell comm-cell-label"></div>';
+  // Column headers
+  for (const agent of agentList) {
+    const colors = getAgentBadgeColors(agent);
+    const shortName = agent.length > 6 ? agent.slice(0, 6) : agent;
+    html += `<div class="comm-cell comm-cell-col-header" style="color:${escapeCssValue(colors.text)}" title="${escapeHtml(agent)}">${escapeHtml(shortName)}</div>`;
+  }
+
+  // Data rows
+  for (const sender of agentList) {
+    const senderColors = getAgentBadgeColors(sender);
+    const shortName = sender.length > 6 ? sender.slice(0, 6) : sender;
+    html += `<div class="comm-cell comm-cell-row-header" style="color:${escapeCssValue(senderColors.text)}" title="${escapeHtml(sender)}">${escapeHtml(shortName)}</div>`;
+
+    for (const recipient of agentList) {
+      if (sender === recipient) {
+        html += '<div class="comm-cell comm-cell-self">.</div>';
+        continue;
+      }
+      const count = counts.get(`${sender}::${recipient}`) || 0;
+      const broadcastCount = counts.get(`${sender}::*`) || 0;
+      const total = count + broadcastCount;
+      const heat = total > 0 ? Math.min(4, Math.ceil((total / maxCount) * 4)) : 0;
+      const isSelected = messageAgentFilter?.sender === sender && messageAgentFilter?.recipient === recipient;
+      html += `<div class="comm-cell comm-cell-data comm-cell-heat-${heat}${isSelected ? ' comm-cell-selected' : ''}" data-sender="${escapeHtml(sender)}" data-recipient="${escapeHtml(recipient)}" title="${sender} -> ${recipient}: ${total}">${total || ''}</div>`;
+    }
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+
+  // Click handlers for cells
+  container.querySelectorAll('.comm-cell-data').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const sender = (cell as HTMLElement).dataset.sender;
+      const recipient = (cell as HTMLElement).dataset.recipient;
+      if (!sender || !recipient) return;
+
+      if (messageAgentFilter?.sender === sender && messageAgentFilter?.recipient === recipient) {
+        messageAgentFilter = null;
+        selectedTeamAgent = null;
+      } else {
+        messageAgentFilter = { sender, recipient };
+        selectedTeamAgent = null;
+      }
+      applyMessageFilter();
+      updateFilterChip();
+      renderCommMatrix();
+      renderLifecycleStrip();
+    });
+  });
+}
+
+// ============================================
+// Message Feed Filtering
+// ============================================
 
 function applyMessageFilter(): void {
   const container = elements.teamMessages;
@@ -178,285 +346,72 @@ function applyMessageFilter(): void {
 
   container.querySelectorAll('.team-message').forEach(el => {
     const msgEl = el as HTMLElement;
-    if (messageTypeFilter === 'all') {
-      msgEl.style.display = '';
-      return;
+    let visible = true;
+
+    // Type filter
+    if (messageTypeFilter !== 'all') {
+      const isTypeMatch = messageTypeFilter === 'shutdown'
+        ? msgEl.classList.contains('team-message-shutdown_request') || msgEl.classList.contains('team-message-shutdown_response')
+        : msgEl.classList.contains(`team-message-${messageTypeFilter}`);
+      if (!isTypeMatch) visible = false;
     }
-    // Message type classes: team-message-message, team-message-broadcast,
-    // team-message-shutdown_request, team-message-shutdown_response
-    const isMatch = messageTypeFilter === 'shutdown'
-      ? msgEl.classList.contains('team-message-shutdown_request') || msgEl.classList.contains('team-message-shutdown_response')
-      : msgEl.classList.contains(`team-message-${messageTypeFilter}`);
-    msgEl.style.display = isMatch ? '' : 'none';
+
+    // Agent filter
+    if (visible && messageAgentFilter) {
+      const sender = msgEl.dataset.sender || '';
+      const recipient = msgEl.dataset.recipient || '';
+      if (messageAgentFilter.sender && messageAgentFilter.recipient) {
+        // Pair filter: show messages between this specific pair
+        visible = (sender === messageAgentFilter.sender && recipient === messageAgentFilter.recipient)
+          || (sender === messageAgentFilter.recipient && recipient === messageAgentFilter.sender);
+      } else if (messageAgentFilter.sender) {
+        // Single agent filter: show messages involving this agent
+        visible = sender === messageAgentFilter.sender || recipient === messageAgentFilter.sender;
+      }
+    }
+
+    msgEl.style.display = visible ? '' : 'none';
+  });
+}
+
+function updateFilterChip(): void {
+  const chip = elements.teamMessageFilterChip;
+  if (!chip) return;
+
+  if (!messageAgentFilter) {
+    chip.style.display = 'none';
+    chip.innerHTML = '';
+    return;
+  }
+
+  const label = messageAgentFilter.recipient
+    ? `${messageAgentFilter.sender} &#8596; ${messageAgentFilter.recipient}`
+    : messageAgentFilter.sender || '';
+
+  chip.style.display = 'inline-flex';
+  chip.innerHTML = `<span class="filter-chip-text">${label}</span><button class="filter-chip-dismiss" title="Clear filter">&#10005;</button>`;
+
+  chip.querySelector('.filter-chip-dismiss')?.addEventListener('click', () => {
+    messageAgentFilter = null;
+    selectedTeamAgent = null;
+    applyMessageFilter();
+    updateFilterChip();
+    renderCommMatrix();
+    renderLifecycleStrip();
   });
 }
 
 // ============================================
-// Rendering
+// Team Tab Badge
 // ============================================
-
-/**
- * Render the team member grid.
- */
-function renderMemberGrid(teamName: string): void {
-  const memberGrid = elements.teamMemberGrid;
-  if (!memberGrid) return;
-
-  const members = teamState.teams.get(teamName);
-  if (!members || members.length === 0) {
-    memberGrid.innerHTML = `<div class="team-empty">No team members</div>`;
-    return;
-  }
-
-  memberGrid.innerHTML = members.map(member => {
-    const badgeColors = getAgentBadgeColors(member.agentType || member.name);
-    const statusClass = `team-member-status-${member.status || 'active'}`;
-    const statusDot = member.status === 'idle' ? 'idle'
-      : member.status === 'shutdown' ? 'shutdown'
-      : 'active';
-
-    // Compute activity metrics
-    // 1. Thinking count: find agentId by name, look up entries in agentThinkingEntries
-    let thinkingCount = 0;
-    const sessionId = state.selectedSession !== 'all' ? state.selectedSession : null;
-    if (sessionId) {
-      for (const [, mapping] of subagentState.subagents) {
-        if (mapping.agentName === member.name) {
-          const key = `${sessionId}::${mapping.agentId ?? ''}`;
-          const entries = agentThinkingEntries.get(key);
-          if (entries) thinkingCount = entries.length;
-          break;
-        }
-      }
-    }
-
-    // 2. Message count: filter teamMessages by sender (and session if selected)
-    let msgCount = 0;
-    for (const msg of teamState.teamMessages) {
-      if (msg.sender === member.name) {
-        if (!sessionId || msg.sessionId === sessionId) {
-          msgCount++;
-        }
-      }
-    }
-
-    // 3. Task count: iterate all task arrays, count tasks owned by this member
-    let taskCount = 0;
-    for (const tasks of teamState.teamTasks.values()) {
-      for (const task of tasks) {
-        if (task.owner === member.name) taskCount++;
-      }
-    }
-
-    const hasMetrics = thinkingCount > 0 || msgCount > 0 || taskCount > 0;
-    const metricsHtml = hasMetrics ? `
-      <div class="team-member-metrics">
-        ${thinkingCount > 0 ? `<span class="team-member-metric" title="Thinking entries" aria-label="${thinkingCount} thinking entries"><span class="team-member-metric-icon">&#129504;</span>${thinkingCount}</span>` : ''}
-        ${msgCount > 0 ? `<span class="team-member-metric" title="Messages" aria-label="${msgCount} messages"><span class="team-member-metric-icon">&#128172;</span>${msgCount}</span>` : ''}
-        ${taskCount > 0 ? `<span class="team-member-metric" title="Tasks" aria-label="${taskCount} tasks"><span class="team-member-metric-icon">&#9745;</span>${taskCount}</span>` : ''}
-      </div>
-    ` : '';
-
-    return `
-      <div class="team-member-card ${statusClass}">
-        <div class="team-member-header">
-          <span class="team-member-dot team-member-dot-${statusDot}"></span>
-          <span class="team-member-name">${escapeHtml(member.name)}</span>
-        </div>
-        <span class="team-member-type" style="background: ${escapeCssValue(badgeColors.bg)}; color: ${escapeCssValue(badgeColors.text)}">${escapeHtml(member.agentType)}</span>
-        ${metricsHtml}
-        <div class="team-member-actions">
-          <button class="team-member-action-btn" data-action="tasks" title="View tasks for ${escapeHtml(member.name)}" aria-label="View tasks for ${escapeHtml(member.name)}">&#9745; tasks</button>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  // Add click handlers for cross-panel agent filtering
-  memberGrid.querySelectorAll('.team-member-card').forEach((card, index) => {
-    const member = members[index];
-    if (!member) return;
-
-    (card as HTMLElement).style.cursor = 'pointer';
-    (card as HTMLElement).title = `Click to filter events by ${member.name}`;
-
-    card.addEventListener('click', () => {
-      // Find the agentId for this member from subagentState
-      let agentId: string | null = null;
-      for (const [id, mapping] of subagentState.subagents) {
-        if (mapping.agentName === member.name) {
-          agentId = id;
-          break;
-        }
-      }
-
-      if (agentId) {
-        if (state.selectedAgentId === agentId) {
-          selectAgentFilter(null);
-        } else {
-          selectAgentFilter(agentId);
-        }
-      }
-    });
-  });
-
-  // Add click handlers for tasks action buttons on member cards
-  memberGrid.querySelectorAll('.team-member-action-btn[data-action="tasks"]').forEach((btn, index) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation(); // Don't trigger card click
-      const member = members[index];
-      if (!member) return;
-
-      // Find agentId for this member and set agent filter
-      let agentId: string | null = null;
-      for (const [id, mapping] of subagentState.subagents) {
-        if (mapping.agentName === member.name) {
-          agentId = id;
-          break;
-        }
-      }
-      if (agentId) {
-        selectAgentFilter(agentId);
-      }
-      selectView('tasks');
-    });
-  });
-}
-
-/**
- * Render the team panel header with team name.
- */
-function updateTeamHeader(teamName: string): void {
-  const teamNameEl = elements.teamName;
-  if (teamNameEl) {
-    teamNameEl.textContent = teamName;
-  }
-}
-
-function getSelectedSessionId(): string | null {
-  return state.selectedSession === 'all' ? null : state.selectedSession;
-}
-
-function thinkingKey(sessionId: string, agentId: string): string {
-  return `${sessionId}::${agentId}`;
-}
-
-function renderTeamAgentEmptyState(): void {
-  const sidebar = elements.teamAgentsSidebar;
-  if (sidebar) {
-    sidebar.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">&#129302;</div>
-        <p class="empty-state-title">No agents</p>
-        <p class="empty-state-subtitle">Sub-agents appear here for the selected session.</p>
-      </div>
-    `;
-  }
-
-  const detail = elements.teamAgentsDetail;
-  if (detail) {
-    detail.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">&#129504;</div>
-        <p class="empty-state-title">Select an agent</p>
-        <p class="empty-state-subtitle">Select an agent to inspect thinking entries.</p>
-      </div>
-    `;
-  }
-}
-
-function renderTeamAgentDetail(): void {
-  const detail = elements.teamAgentsDetail;
-  if (!detail) return;
-
-  const sessionId = getSelectedSessionId();
-  if (!sessionId) {
-    detail.innerHTML = `<div class="empty-state"><p>Select a session to inspect agent thinking</p></div>`;
-    return;
-  }
-
-  if (!selectedViewAgent) {
-    detail.innerHTML = `<div class="empty-state"><p>Select an agent to view its thinking</p></div>`;
-    return;
-  }
-
-  const entries = agentThinkingEntries.get(thinkingKey(sessionId, selectedViewAgent)) || [];
-  if (entries.length === 0) {
-    const label = selectedViewAgent === 'main'
-      ? 'main'
-      : (subagentState.subagents.get(selectedViewAgent)?.agentName || selectedViewAgent.slice(0, 8));
-    detail.innerHTML = `<div class="empty-state"><p>No thinking entries for ${escapeHtml(label)}</p></div>`;
-    return;
-  }
-
-  detail.innerHTML = entries.map((entry) => {
-    const time = formatTime(entry.timestamp);
-    const preview = entry.content.slice(0, 80).replace(/\n/g, ' ');
-    return `
-      <div class="thinking-entry">
-        <div class="thinking-entry-header">
-          <span class="thinking-time">${escapeHtml(time)}</span>
-          <span class="thinking-preview">${escapeHtml(preview)}...</span>
-        </div>
-        <div class="thinking-text">${renderSimpleMarkdown(entry.content)}</div>
-      </div>
-    `;
-  }).join('');
-
-  detail.scrollTop = detail.scrollHeight;
-}
-
-function selectTeamAgentInView(agentId: string): void {
-  selectedViewAgent = agentId;
-  renderTeamAgentList();
-  renderTeamAgentDetail();
-}
-
-/**
- * Navigate to and select an agent in the Teams view by name.
- * Called from other handlers via the DI callback in app.ts.
- */
-export function navigateToAgent(agentName: string): void {
-  for (const [id, mapping] of subagentState.subagents) {
-    if (mapping.agentName === agentName) {
-      selectTeamAgentInView(id);
-      return;
-    }
-  }
-}
-
-function countSessionThinkingEntries(sessionId: string): number {
-  let total = 0;
-  for (const [key, entries] of agentThinkingEntries) {
-    if (key.startsWith(`${sessionId}::`)) {
-      total += entries.length;
-    }
-  }
-  return total;
-}
 
 function updateTeamTabCount(): void {
   const sessionId = getSelectedSessionId();
   if (!sessionId) {
     updateTabBadge('team', 0);
-    const panelBadge = document.getElementById('team-count');
-    if (panelBadge) panelBadge.textContent = '0';
     return;
   }
 
-  let memberCount = 0;
-  for (const [teamName, mappedSession] of teamState.teamSessionMap) {
-    if (mappedSession === sessionId) {
-      memberCount = (teamState.teams.get(teamName) || []).length;
-      break;
-    }
-  }
-
-  const messageCount = teamState.teamMessages.filter((message) => message.sessionId === sessionId).length;
-  const thinkingCount = countSessionThinkingEntries(sessionId);
-  const total = memberCount + messageCount + thinkingCount;
-
-  // Rich badge: count agents and idle agents from session-scoped team
   let agentCount = 0;
   let idleCount = 0;
   for (const [teamName, mappedSession] of teamState.teamSessionMap) {
@@ -466,120 +421,43 @@ function updateTeamTabCount(): void {
       idleCount += members.filter(m => m.status === 'idle').length;
     }
   }
+
+  // Fall back to subagent count if no team members
+  if (agentCount === 0) {
+    const sessionSubs = subagentState.sessionSubagents.get(sessionId);
+    agentCount = sessionSubs ? sessionSubs.size : 0;
+  }
+
+  const messageCount = teamState.teamMessages.filter(m => m.sessionId === sessionId).length;
+
   const badgeText = idleCount > 0
     ? `${agentCount} agents / ${idleCount} idle`
     : agentCount > 0
     ? `${agentCount} agents`
-    : String(total);
-  updateTabBadge('team', agentCount > 0 ? badgeText : total);
-
-  const panelBadge = document.getElementById('team-count');
-  if (panelBadge) panelBadge.textContent = String(total);
+    : messageCount > 0
+    ? `${messageCount} msgs`
+    : '0';
+  updateTabBadge('team', agentCount > 0 || messageCount > 0 ? badgeText : 0);
 }
 
-function renderTeamAgentList(): void {
-  const section = elements.teamAgentsSection as HTMLElement | null;
-  const sidebar = elements.teamAgentsSidebar;
-  if (!section || !sidebar) return;
+// ============================================
+// Rendering Orchestration
+// ============================================
 
-  const sessionId = getSelectedSessionId();
-  if (!sessionId) {
-    section.classList.add('team-section-no-data');
-    selectedViewAgent = null;
-    renderTeamAgentEmptyState();
-    updateTeamTabCount();
-    return;
-  }
-
-  const availableAgentIds = new Set<string>();
-  availableAgentIds.add('main');
-
-  const knownSubagents = subagentState.sessionSubagents.get(sessionId);
-  if (knownSubagents) {
-    for (const agentId of knownSubagents) {
-      availableAgentIds.add(agentId);
-    }
-  }
-
-  for (const key of agentThinkingEntries.keys()) {
-    if (!key.startsWith(`${sessionId}::`)) continue;
-    const [, agentId] = key.split('::');
-    if (agentId) {
-      availableAgentIds.add(agentId);
-    }
-  }
-
-  const hasAgentData = availableAgentIds.size > 1 || countSessionThinkingEntries(sessionId) > 0;
-  if (!hasAgentData) {
-    section.classList.add('team-section-no-data');
-    selectedViewAgent = null;
-    renderTeamAgentEmptyState();
-    updateTeamTabCount();
-    return;
-  }
-
-  section.classList.remove('team-section-no-data');
-
-  const subagentItems = Array.from(availableAgentIds)
-    .filter((agentId) => agentId !== 'main')
-    .sort((a, b) => {
-      const aName = subagentState.subagents.get(a)?.agentName || a;
-      const bName = subagentState.subagents.get(b)?.agentName || b;
-      return aName.localeCompare(bName);
-    });
-
-  const orderedAgentIds = ['main', ...subagentItems];
-  if (!selectedViewAgent || !availableAgentIds.has(selectedViewAgent)) {
-    selectedViewAgent = 'main';
-  }
-
-  sidebar.innerHTML = orderedAgentIds.map((agentId) => {
-    const mapping = subagentState.subagents.get(agentId);
-    const name = agentId === 'main' ? 'main' : (mapping?.agentName || agentId.slice(0, 8));
-    const entries = agentThinkingEntries.get(thinkingKey(sessionId, agentId)) || [];
-    const thinkingCount = entries.length;
-    const selected = selectedViewAgent === agentId ? ' selected' : '';
-    const dotClass = agentId === 'main'
-      ? 'running'
-      : mapping?.status === 'running'
-        ? 'running'
-        : (mapping?.status === 'success' || mapping?.status === 'failure' || mapping?.status === 'cancelled')
-          ? 'stopped'
-          : 'idle';
-
-    // Aggregate activity: thinking entries + messages sent by this agent
-    let msgCount = 0;
-    for (const msg of teamState.teamMessages) {
-      if (msg.sender === name) {
-        if (!sessionId || msg.sessionId === sessionId) {
-          msgCount++;
-        }
-      }
-    }
-    const total = thinkingCount + msgCount;
-    const level = total > 20 ? 'high' : total >= 5 ? 'medium' : 'low';
-
-    return `
-      <div class="agent-list-item${selected}" data-agent-id="${escapeHtml(agentId)}">
-        <span class="agent-list-dot ${dotClass}"></span>
-        <span class="agent-list-name">${escapeHtml(name)}</span>
-        <span class="agent-activity-bar agent-activity-${level}" aria-hidden="true"></span>
-        <span class="agent-list-count">${total}</span>
-      </div>
-    `;
-  }).join('');
-
-  sidebar.querySelectorAll('.agent-list-item').forEach((item) => {
-    item.addEventListener('click', () => {
-      const agentId = (item as HTMLElement).dataset.agentId;
-      if (agentId) {
-        selectTeamAgentInView(agentId);
-      }
-    });
-  });
-
-  renderTeamAgentDetail();
+function renderTeamView(): void {
+  renderLifecycleStrip();
+  renderCommMatrix();
   updateTeamTabCount();
+}
+
+/**
+ * Update the team panel header with team name.
+ */
+function updateTeamHeader(teamName: string): void {
+  const teamNameEl = elements.teamName;
+  if (teamNameEl) {
+    teamNameEl.textContent = teamName;
+  }
 }
 
 // ============================================
@@ -595,28 +473,19 @@ export function handleTeamUpdate(event: TeamUpdateEvent): void {
   const teamName = event.teamName;
   teamState.teams.set(teamName, event.members);
 
-  // Map team to session: prefer event.sessionId, fall back to subagent name matching
   resolveTeamSession(teamName, event.sessionId, event.members);
 
-  // Only render if this team belongs to the currently selected session
   const teamSession = teamState.teamSessionMap.get(teamName);
-  if (state.selectedSession === 'all') {
-    return;
-  }
-  if (!teamSession || teamSession !== state.selectedSession) {
-    return;
-  }
+  if (state.selectedSession === 'all') return;
+  if (!teamSession || teamSession !== state.selectedSession) return;
 
   showTeamPanel?.();
   updateTeamHeader(teamName);
-  renderMemberGrid(teamName);
-  renderTeamAgentList();
+  renderTeamView();
 }
 
 /**
  * Resolve which session a team belongs to.
- * Uses event sessionId directly when available, falls back to matching
- * member names against known subagent mappings.
  */
 function resolveTeamSession(teamName: string, sessionId?: string, members?: TeamUpdateEvent['members']): void {
   if (sessionId) {
@@ -639,20 +508,15 @@ function resolveTeamSession(teamName: string, sessionId?: string, members?: Team
 
 /**
  * Filter team panel by session.
- * When a specific session is selected, only show matching teams.
- * When "all", clear session-specific content.
  */
 export function filterTeamBySession(): void {
-  const teamContent = elements.teamMemberGrid?.parentElement;
-  if (!teamContent) return;
-
   if (state.selectedSession === 'all') {
     const teamNameEl = elements.teamName;
     if (teamNameEl) teamNameEl.textContent = '';
-    const memberGrid = elements.teamMemberGrid;
-    if (memberGrid) memberGrid.innerHTML = '';
-    selectedViewAgent = null;
-    renderTeamAgentList();
+    selectedTeamAgent = null;
+    messageAgentFilter = null;
+    updateFilterChip();
+    renderTeamView();
     return;
   }
 
@@ -666,19 +530,12 @@ export function filterTeamBySession(): void {
 
   if (matchedTeam) {
     updateTeamHeader(matchedTeam);
-    renderMemberGrid(matchedTeam);
   } else {
     const teamNameEl = elements.teamName;
-    if (teamNameEl) {
-      teamNameEl.textContent = 'No team';
-    }
-    const memberGrid = elements.teamMemberGrid;
-    if (memberGrid) {
-      memberGrid.innerHTML = `<div class="team-empty">No team for this session</div>`;
-    }
+    if (teamNameEl) teamNameEl.textContent = 'No team';
   }
 
-  renderTeamAgentList();
+  renderTeamView();
 }
 
 /**
@@ -702,11 +559,8 @@ export function handleTeammateIdle(event: TeammateIdleEvent): void {
   if (state.selectedSession === 'all') return;
   if (!teamSession || teamSession !== state.selectedSession) return;
 
-  if (members) {
-    renderMemberGrid(teamName);
-  }
   showTeamPanel?.();
-  updateTeamTabCount();
+  renderTeamView();
 }
 
 /**
@@ -717,7 +571,6 @@ export function handleMessageSent(event: MessageSentEvent): void {
 
   teamState.teamMessages.push(event);
 
-  // Strict session filtering for render: event must include selected session.
   if (state.selectedSession === 'all') return;
   if (!event.sessionId || event.sessionId !== state.selectedSession) return;
 
@@ -727,13 +580,13 @@ export function handleMessageSent(event: MessageSentEvent): void {
   if (!messagesContainer) return;
 
   const emptyState = messagesContainer.querySelector('.empty-state');
-  if (emptyState) {
-    emptyState.remove();
-  }
+  if (emptyState) emptyState.remove();
 
   const entry = document.createElement('div');
   entry.className = `team-message team-message-${event.messageType}`;
   entry.dataset.timestamp = String(Date.now());
+  entry.dataset.sender = event.sender;
+  entry.dataset.recipient = event.recipient;
 
   const time = formatTime(event.timestamp);
   const senderColors = getAgentBadgeColors(event.sender);
@@ -748,13 +601,13 @@ export function handleMessageSent(event: MessageSentEvent): void {
 
   const recipientLabel = isBroadcast
     ? '<span class="team-message-broadcast-label">all</span>'
-    : `<span class="team-message-badge" style="background: ${escapeCssValue(recipientColors.bg)}; color: ${escapeCssValue(recipientColors.text)}">${escapeHtml(event.recipient)}</span>`;
+    : `<span class="team-message-badge" style="background:${escapeCssValue(recipientColors.bg)};color:${escapeCssValue(recipientColors.text)}">${escapeHtml(event.recipient)}</span>`;
 
   entry.innerHTML = `
     <div class="team-message-header">
       <span class="team-message-time">${escapeHtml(time)}</span>
       ${typeIcon}
-      <span class="team-message-badge" style="background: ${escapeCssValue(senderColors.bg)}; color: ${escapeCssValue(senderColors.text)}">${escapeHtml(event.sender)}</span>
+      <span class="team-message-badge" style="background:${escapeCssValue(senderColors.bg)};color:${escapeCssValue(senderColors.text)}">${escapeHtml(event.sender)}</span>
       <span class="team-message-arrow">&#8594;</span>
       ${recipientLabel}
     </div>
@@ -767,62 +620,27 @@ export function handleMessageSent(event: MessageSentEvent): void {
   entry.classList.add('new');
   setTimeout(() => entry.classList.remove('new'), 1000);
 
-  // Apply current filter to the newly added message
-  if (messageTypeFilter !== 'all') {
-    const isMatch = messageTypeFilter === 'shutdown'
-      ? event.messageType === 'shutdown_request' || event.messageType === 'shutdown_response'
-      : event.messageType === messageTypeFilter;
-    if (!isMatch) {
-      (entry as HTMLElement).style.display = 'none';
-    }
-  }
+  // Apply filters to the newly added message
+  applyMessageFilter();
 
+  // Update comm matrix with new message
+  renderCommMatrix();
   updateTeamTabCount();
 }
 
 /**
- * Track a thinking event in the team's session-scoped agent detail view.
+ * Navigate to and select an agent in the Teams view by name.
  */
-export function addTeamAgentThinking(event: ThinkingEvent): void {
-  if (!event.sessionId) return;
-
-  const agentId = event.agentId || 'main';
-  const key = thinkingKey(event.sessionId, agentId);
-  let entries = agentThinkingEntries.get(key);
-  if (!entries) {
-    entries = [];
-    agentThinkingEntries.set(key, entries);
+export function navigateToAgent(agentName: string): void {
+  for (const [id, mapping] of subagentState.subagents) {
+    if (mapping.agentName === agentName) {
+      selectedTeamAgent = id;
+      messageAgentFilter = { sender: agentName };
+      renderLifecycleStrip();
+      applyMessageFilter();
+      updateFilterChip();
+      renderCommMatrix();
+      return;
+    }
   }
-
-  entries.push({
-    timestamp: event.timestamp,
-    content: event.content,
-    sessionId: event.sessionId,
-  });
-
-  while (entries.length > MAX_ENTRIES_PER_AGENT) {
-    entries.shift();
-  }
-
-  if (state.selectedSession === event.sessionId) {
-    renderTeamAgentList();
-  } else {
-    updateTeamTabCount();
-  }
-}
-
-/**
- * Refresh the team agent list after subagent mapping updates.
- */
-export function refreshTeamAgentList(): void {
-  renderTeamAgentList();
-}
-
-/**
- * Reset team agent thinking state (called from clearAllPanels).
- */
-export function resetTeamAgentThinking(): void {
-  selectedViewAgent = null;
-  agentThinkingEntries.clear();
-  renderTeamAgentList();
 }

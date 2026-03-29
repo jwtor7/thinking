@@ -2,11 +2,9 @@
    Team Panel Styles
    ======================================== */
 
-/* Team layout - dual pane */
 .team-layout {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
   height: 100%;
 }
 
@@ -15,8 +13,7 @@
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.5px;
   color: var(--color-text-muted);
-  margin-bottom: var(--spacing-xs);
-  padding: 0 var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
 }
 
 .team-section {
@@ -79,136 +76,324 @@
 }
 
 /* ========================================
-   Member Grid
+   Agent Lifecycle Strip
    ======================================== */
 
-.team-member-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs);
+.team-lifecycle-section {
+  border-bottom: 1px solid var(--color-border-light);
 }
 
-.team-member-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-surface-1);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  transition: border-color var(--duration-fast) var(--ease-default);
+.team-lifecycle-strip {
+  padding: var(--spacing-xs) var(--spacing-sm);
 }
 
-.team-member-card:hover {
-  border-color: var(--color-text-muted);
-}
-
-.team-member-status-active {
-  border-left: 3px solid var(--color-accent-green);
-}
-
-.team-member-status-idle {
-  border-left: 3px solid var(--color-accent-yellow);
-}
-
-.team-member-status-shutdown {
-  border-left: 3px solid var(--color-text-muted);
-  opacity: 0.6;
-}
-
-.team-member-header {
+.lifecycle-row {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+  height: 24px;
+  margin-bottom: 2px;
+  padding: 0 var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default);
 }
 
-.team-member-dot {
-  width: 8px;
-  height: 8px;
+.lifecycle-row:hover {
+  background: var(--color-surface-1);
+}
+
+.lifecycle-row-selected {
+  background: var(--color-surface-2);
+  outline: 1px solid var(--color-accent-blue);
+}
+
+.lifecycle-label {
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-primary);
+  width: 100px;
+  min-width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lifecycle-bar-container {
+  flex: 1;
+  position: relative;
+  height: 14px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.lifecycle-bar {
+  position: absolute;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  transition: width 0.3s ease;
+  min-width: 4px;
+}
+
+.lifecycle-bar-running {
+  background: var(--color-accent-green);
+}
+
+.lifecycle-bar-success {
+  background: var(--color-accent-blue);
+}
+
+.lifecycle-bar-failure {
+  background: var(--color-accent-red);
+}
+
+.lifecycle-bar-cancelled {
+  background: var(--color-text-muted);
+}
+
+.lifecycle-bar-idle {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.15) 3px,
+    rgba(0, 0, 0, 0.15) 6px
+  );
+}
+
+.lifecycle-bar-pulse::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--color-accent-green);
+  animation: lifecycle-pulse 1.5s ease-in-out infinite;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+@keyframes lifecycle-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--color-accent-green); }
+  50% { opacity: 0.4; box-shadow: none; }
+}
+
+.lifecycle-duration {
+  font-size: var(--font-size-2xs);
+  font-family: var(--font-family-mono);
+  color: var(--color-text-muted);
+  min-width: 40px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ========================================
+   Agent Tree Section (kept from agents.ts)
+   ======================================== */
+
+.team-agent-tree-section {
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.agent-tree-content {
+  padding: var(--spacing-xs);
+}
+
+.agent-tree-node {
+  margin-bottom: 1px;
+}
+
+.agent-tree-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 3px var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default);
+}
+
+.agent-tree-item:hover {
+  background: var(--color-surface-2);
+}
+
+.agent-tree-selected {
+  background: var(--color-surface-3);
+  outline: 1px solid var(--color-accent-blue);
+}
+
+.agent-tree-line {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+  user-select: none;
+}
+
+.agent-tree-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.team-member-dot-active {
+.agent-tree-dot.agent-status-running {
   background: var(--color-accent-green);
-  box-shadow: 0 0 6px rgba(63, 185, 80, 0.5);
-  animation: pulse-dot 2s ease-in-out infinite;
+  box-shadow: 0 0 4px rgba(63, 185, 80, 0.4);
 }
 
-.team-member-dot-idle {
-  background: var(--color-accent-yellow);
+.agent-tree-dot.agent-status-success {
+  background: var(--color-accent-blue);
 }
 
-.team-member-dot-shutdown {
+.agent-tree-dot.agent-status-failure {
+  background: var(--color-accent-red);
+}
+
+.agent-tree-dot.agent-status-cancelled {
   background: var(--color-text-muted);
 }
 
-.team-member-name {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.team-member-type {
+.agent-tree-name {
   font-size: var(--font-size-2xs);
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: var(--radius-sm);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  align-self: flex-start;
 }
 
-.team-empty {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-  text-align: center;
-  padding: var(--spacing-lg);
-}
-
-/* Member Activity Metrics */
-.team-member-metrics {
-  display: flex;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-xs);
-}
-
-.team-member-metric {
+.agent-tree-duration {
   font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+  margin-left: auto;
+}
+
+/* ========================================
+   Communication Matrix
+   ======================================== */
+
+.team-comm-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.team-comm-section {
+  width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-border-light);
+  overflow-y: auto;
+}
+
+.team-comm-matrix {
+  padding: var(--spacing-xs);
+}
+
+.comm-grid {
+  display: grid;
+  gap: 1px;
+  background: var(--color-border-light);
+}
+
+.comm-cell {
   display: flex;
   align-items: center;
-  gap: 2px;
+  justify-content: center;
+  background: var(--color-surface-0);
+  font-size: 10px;
+  font-family: var(--font-family-mono);
+  min-width: 28px;
+  min-height: 28px;
+  padding: 2px;
 }
 
-.team-member-metric-icon {
+.comm-cell-label {
+  background: transparent;
+}
+
+.comm-cell-col-header,
+.comm-cell-row-header {
+  font-weight: var(--font-weight-semibold);
   font-size: var(--font-size-2xs);
-  opacity: 0.7;
+  background: var(--color-surface-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.team-member-actions {
+.comm-cell-self {
+  color: var(--color-text-muted);
+  background: var(--color-surface-1);
+}
+
+.comm-cell-data {
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default);
+  color: var(--color-text-secondary);
+}
+
+.comm-cell-data:hover {
+  outline: 1px solid var(--color-accent-blue);
+}
+
+.comm-cell-selected {
+  outline: 2px solid var(--color-accent-blue);
+}
+
+.comm-cell-heat-0 {
+  background: var(--color-surface-0);
+  color: var(--color-text-muted);
+}
+
+.comm-cell-heat-1 {
+  background: color-mix(in srgb, var(--color-accent-blue) 10%, var(--color-surface-0));
+}
+
+.comm-cell-heat-2 {
+  background: color-mix(in srgb, var(--color-accent-blue) 25%, var(--color-surface-0));
+}
+
+.comm-cell-heat-3 {
+  background: color-mix(in srgb, var(--color-accent-blue) 40%, var(--color-surface-0));
+}
+
+.comm-cell-heat-4 {
+  background: color-mix(in srgb, var(--color-accent-blue) 55%, var(--color-surface-0));
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Simple summary for < 3 agents */
+.comm-summary-row {
   display: flex;
+  align-items: center;
   gap: var(--spacing-xs);
-  margin-top: var(--spacing-xs);
+  padding: 3px var(--spacing-xs);
 }
 
-.team-member-action-btn {
-  background: none;
-  border: 1px solid var(--color-border);
+.comm-summary-badge {
+  font-size: var(--font-size-2xs);
+  padding: 1px 5px;
   border-radius: var(--radius-sm);
-  padding: 1px 4px;
+  white-space: nowrap;
+}
+
+.comm-summary-arrow {
   font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
-  cursor: pointer;
 }
 
-.team-member-action-btn:hover {
-  border-color: var(--color-text-muted);
-  color: var(--color-text-primary);
+.comm-summary-broadcast {
+  font-size: var(--font-size-2xs);
+  color: var(--color-accent-purple);
+  font-weight: var(--font-weight-medium);
+}
+
+.comm-summary-count {
+  font-size: var(--font-size-2xs);
+  font-family: var(--font-family-mono);
+  color: var(--color-text-muted);
+  margin-left: auto;
 }
 
 /* ========================================
@@ -218,6 +403,7 @@
 .team-messages-section {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -225,13 +411,12 @@
 .team-messages-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--spacing-sm);
   padding: var(--spacing-xs) var(--spacing-sm);
   border-bottom: 1px solid var(--color-border-light);
 }
 
 .team-messages-header .team-section-label {
-  margin: 0;
   padding: 0;
 }
 
@@ -243,20 +428,47 @@
   color: var(--color-text-primary);
   font-size: var(--font-size-xs);
   cursor: pointer;
+  margin-left: auto;
 }
 
 .team-messages-filter-select:hover {
   border-color: var(--color-text-muted);
 }
 
-.team-messages-filter-select:focus {
-  outline: none;
-  border-color: var(--color-accent-blue);
-}
-
 .team-messages-filter-select:focus-visible {
   outline: 2px solid var(--color-accent-blue);
   outline-offset: 1px;
+}
+
+/* Filter chip for agent/pair filter */
+.team-message-filter-chip {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-secondary);
+}
+
+.filter-chip-text {
+  white-space: nowrap;
+}
+
+.filter-chip-dismiss {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.filter-chip-dismiss:hover {
+  color: var(--color-text-primary);
 }
 
 .team-messages {
@@ -336,91 +548,6 @@
   padding-left: var(--spacing-sm);
 }
 
-/* ========================================
-   Agent Tree Section
-   ======================================== */
-
-.team-agent-tree-section {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-top: 1px solid var(--color-border);
-}
-
-/* ========================================
-   Agent Tree
-   ======================================== */
-
-.agent-tree-content {
-  padding: var(--spacing-xs);
-}
-
-.agent-tree-node {
-  margin-bottom: 1px;
-}
-
-.agent-tree-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: 3px var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-default);
-}
-
-.agent-tree-item:hover {
-  background: var(--color-surface-2);
-}
-
-.agent-tree-selected {
-  background: var(--color-surface-3);
-  outline: 1px solid var(--color-accent-blue);
-}
-
-.agent-tree-line {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-  font-family: var(--font-family-mono);
-  user-select: none;
-}
-
-.agent-tree-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.agent-tree-dot.agent-status-running {
-  background: var(--color-accent-green);
-  box-shadow: 0 0 4px rgba(63, 185, 80, 0.4);
-}
-
-.agent-tree-dot.agent-status-success {
-  background: var(--color-accent-blue);
-}
-
-.agent-tree-dot.agent-status-failure {
-  background: var(--color-accent-red);
-}
-
-.agent-tree-dot.agent-status-cancelled {
-  background: var(--color-text-muted);
-}
-
-.agent-tree-name {
-  font-size: var(--font-size-2xs);
-  padding: 1px 5px;
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-}
-
-.agent-tree-duration {
-  font-size: var(--font-size-2xs);
-  color: var(--color-text-muted);
-  font-family: var(--font-family-mono);
-  margin-left: auto;
-}
-
 /* Pulse animation for active dots */
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
@@ -428,11 +555,32 @@
 }
 
 /* ========================================
+   Reduced Motion
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .lifecycle-bar-pulse::after {
+    animation: none;
+  }
+}
+
+/* ========================================
    Responsive
    ======================================== */
 
 @media (max-width: 768px) {
-  .team-member-grid {
-    grid-template-columns: 1fr;
+  .team-comm-layout {
+    flex-direction: column;
+  }
+
+  .team-comm-section {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border-light);
+  }
+
+  .lifecycle-label {
+    width: 80px;
+    min-width: 80px;
   }
 }

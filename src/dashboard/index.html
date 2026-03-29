@@ -131,20 +131,10 @@
           </header>
           <div class="panel-content" id="team-content">
             <div class="team-layout">
-              <div class="team-member-section team-section" id="team-member-section">
-                <button
-                  class="team-section-toggle"
-                  id="team-member-toggle"
-                  data-team-section="members"
-                  type="button"
-                  aria-expanded="true"
-                  aria-label="Collapse team members section"
-                  title="Collapse section"
-                >
-                  <span class="team-section-label">MEMBERS</span>
-                  <span class="team-section-chevron">&#9660;</span>
-                </button>
-                <div class="team-member-grid team-section-body" id="team-member-grid">
+              <!-- Agent Lifecycle Strip -->
+              <div class="team-lifecycle-section" id="team-lifecycle-section">
+                <div class="team-section-label">AGENT LIFECYCLE</div>
+                <div class="team-lifecycle-strip" id="team-lifecycle-strip">
                   <div class="empty-state">
                     <div class="empty-state-icon">&#128101;</div>
                     <p class="empty-state-title">No team activity</p>
@@ -152,6 +142,7 @@
                   </div>
                 </div>
               </div>
+              <!-- Agent Hierarchy (rendered by agents.ts) -->
               <div class="team-agent-tree-section team-section team-section-no-data" id="agent-tree-section">
                 <button
                   class="team-section-toggle"
@@ -167,51 +158,29 @@
                 </button>
                 <div class="agent-tree-content team-section-body" id="agent-tree-content"></div>
               </div>
-              <div class="team-agents-section team-section team-section-no-data" id="team-agents-section">
-                <button
-                  class="team-section-toggle"
-                  id="team-agents-toggle"
-                  data-team-section="agents"
-                  type="button"
-                  aria-expanded="true"
-                  aria-label="Collapse team agents section"
-                  title="Collapse section"
-                >
-                  <span class="team-section-label">AGENTS</span>
-                  <span class="team-section-chevron">&#9660;</span>
-                </button>
-                <div class="agents-layout team-section-body">
-                  <div class="agents-sidebar" id="team-agents-sidebar">
-                    <div class="empty-state">
-                      <div class="empty-state-icon">&#129302;</div>
-                      <p class="empty-state-title">No agents</p>
-                      <p class="empty-state-subtitle">Sub-agents appear here when Claude spawns parallel workers for the selected session.</p>
-                    </div>
-                  </div>
-                  <div class="agents-detail" id="team-agents-detail">
-                    <div class="empty-state">
-                      <div class="empty-state-icon">&#129504;</div>
-                      <p class="empty-state-title">Select an agent</p>
-                      <p class="empty-state-subtitle">Select an agent to inspect thinking entries.</p>
-                    </div>
-                  </div>
+              <!-- Communication + Messages split pane -->
+              <div class="team-comm-layout">
+                <div class="team-comm-section" id="team-comm-section">
+                  <div class="team-section-label">COMMUNICATION</div>
+                  <div class="team-comm-matrix" id="team-comm-matrix"></div>
                 </div>
-              </div>
-              <div class="team-messages-section">
-                <div class="team-messages-header">
-                  <div class="team-section-label">MESSAGES</div>
-                  <select class="team-messages-filter-select" id="team-message-filter" aria-label="Filter messages by type">
-                    <option value="all">All</option>
-                    <option value="message">Direct</option>
-                    <option value="broadcast">Broadcast</option>
-                    <option value="shutdown">Shutdown</option>
-                  </select>
-                </div>
-                <div class="team-messages" id="team-messages">
-                  <div class="empty-state">
-                    <div class="empty-state-icon">&#128172;</div>
-                    <p class="empty-state-title">No messages yet</p>
-                    <p class="empty-state-subtitle">Messages appear when agents coordinate via SendMessage during team workflows.</p>
+                <div class="team-messages-section">
+                  <div class="team-messages-header">
+                    <div class="team-section-label">MESSAGES</div>
+                    <span class="team-message-filter-chip" id="team-message-filter-chip"></span>
+                    <select class="team-messages-filter-select" id="team-message-filter" aria-label="Filter messages by type">
+                      <option value="all">All</option>
+                      <option value="message">Direct</option>
+                      <option value="broadcast">Broadcast</option>
+                      <option value="shutdown">Shutdown</option>
+                    </select>
+                  </div>
+                  <div class="team-messages" id="team-messages">
+                    <div class="empty-state">
+                      <div class="empty-state-icon">&#128172;</div>
+                      <p class="empty-state-title">No messages yet</p>
+                      <p class="empty-state-subtitle">Messages appear when agents coordinate via SendMessage during team workflows.</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -234,34 +203,17 @@
             </div>
           </header>
           <div class="panel-content" id="tasks-content">
-            <div class="task-board">
-              <div class="task-column">
-                <div class="task-column-header">
-                  <span class="task-column-title">Pending</span>
-                  <span class="task-column-count" id="tasks-pending-count">0</span>
-                </div>
-                <div class="task-column-cards" id="tasks-pending">
-                  <div class="task-column-empty">No pending tasks</div>
-                </div>
+            <div class="tasks-summary-strip" id="tasks-summary-strip"></div>
+            <div class="tasks-active-zone" id="tasks-active-work">
+              <div class="tasks-zone-header">ACTIVE</div>
+              <div class="empty-state">
+                <div class="empty-state-icon">&#9745;</div>
+                <p class="empty-state-title">No active tasks</p>
+                <p class="empty-state-subtitle">Tasks appear here when Claude breaks work into steps using TaskCreate.</p>
               </div>
-              <div class="task-column">
-                <div class="task-column-header">
-                  <span class="task-column-title">In Progress</span>
-                  <span class="task-column-count" id="tasks-in-progress-count">0</span>
-                </div>
-                <div class="task-column-cards" id="tasks-in-progress">
-                  <div class="task-column-empty">No active tasks</div>
-                </div>
-              </div>
-              <div class="task-column">
-                <div class="task-column-header">
-                  <span class="task-column-title">Completed</span>
-                  <span class="task-column-count" id="tasks-completed-count">0</span>
-                </div>
-                <div class="task-column-cards" id="tasks-completed">
-                  <div class="task-column-empty">No completed tasks</div>
-                </div>
-              </div>
+            </div>
+            <div class="tasks-log-zone" id="tasks-completion-log">
+              <div class="tasks-zone-header">COMPLETED</div>
             </div>
           </div>
         </section>
@@ -373,6 +325,6 @@
     </button>
   </div>
 
-  <script src="app.js?v=1.7.1" defer></script>
+  <script src="app.js?v=1.8.0" defer></script>
 </body>
 </html>

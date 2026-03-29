@@ -330,8 +330,8 @@ describe('Phase 1.4: Basic HTML Dashboard Shell', () => {
     expect(content).toContain('id="connection-status"');
     expect(content).toContain('id="thinking-content"');
     expect(content).toContain('id="tools-content"');
-    // Team panel includes embedded agent list/detail sections
-    expect(content).toContain('id="team-agents-sidebar"');
+    // Team panel includes lifecycle strip and communication matrix
+    expect(content).toContain('id="team-lifecycle-strip"');
     expect(content).toContain('id="plan-content"');
     // Agent tabs were replaced with view-tabs (created dynamically in app.ts)
     // Keyboard hints were removed from static footer (commit d944ada)

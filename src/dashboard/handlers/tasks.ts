@@ -1,31 +1,30 @@
 /**
  * Task board handlers for the Thinking Monitor Dashboard.
  *
- * Handles task_update and task_completed events, rendering a
- * three-column kanban board (Pending | In Progress | Completed).
+ * Renders a two-zone layout:
+ * - Active Work: compact rows for pending + in_progress tasks
+ * - Completion Log: reverse-chronological list of completed tasks
+ * - Summary Strip: progress bar + metrics in the panel header
  */
 
-import { teamState, state, taskStatusTimestamps } from '../state.ts';
+import { teamState, state, taskStatusTimestamps, taskCompletionLog } from '../state.ts';
+import type { TaskCompletionRecord } from '../state.ts';
 import { elements } from '../ui/elements.ts';
 import { escapeHtml, escapeCssValue } from '../utils/html.ts';
 import { getAgentBadgeColors } from '../ui/colors.ts';
 import type { TaskUpdateEvent, TaskCompletedEvent, TaskInfo } from '../types.ts';
 import { updateTabBadge } from '../ui/views.ts';
 import type { Disposable } from '../services/lifecycle.ts';
-import { formatElapsed } from '../utils/formatting.ts';
+import { formatElapsed, formatDuration, getDurationClass, formatTime } from '../utils/formatting.ts';
 
 let showTasksPanel: (() => void) | null = null;
 let navigateToTeamAgent: ((agentName: string) => void) | null = null;
 
-/**
- * The teamId currently being rendered.
- * Set before each renderTaskCard call so the card can look up the
- * correct taskStatusTimestamps entry without receiving teamId as a parameter.
- */
-let currentRenderTeamId = '';
+/** Track peak concurrent in_progress tasks. */
+let peakParallelism = 0;
 
 /** Card IDs from the previous render, used to detect new cards for entry animation. */
-let previousCardIds = new Set<string>();
+let previousRowIds = new Set<string>();
 
 /**
  * Initialize the tasks handler.
@@ -37,273 +36,316 @@ export function initTasks(extras: { showTasksPanel: () => void; navigateToTeamAg
 }
 
 // ============================================
-// Progress Bar
+// Summary Strip
 // ============================================
 
-/**
- * Update the segmented progress bar in the tasks panel header.
- */
-function updateTasksProgress(pending: number, inProgress: number, completed: number): void {
+function renderSummaryStrip(pending: number, inProgress: number, completed: number): void {
+  const strip = elements.tasksSummaryStrip;
+  if (!strip) return;
+
   const total = pending + inProgress + completed;
-  const bar = elements.tasksProgressBar;
-  const text = elements.tasksProgressText;
-
-  if (!bar || !text) return;
-
   if (total === 0) {
-    bar.innerHTML = '';
-    text.textContent = '0 tasks';
+    strip.innerHTML = '';
     return;
   }
 
-  const pctPending = (pending / total) * 100;
-  const pctProgress = (inProgress / total) * 100;
+  // Progress bar segments
   const pctDone = (completed / total) * 100;
+  const pctActive = (inProgress / total) * 100;
+  const pctPending = (pending / total) * 100;
 
   const segments: string[] = [];
-  if (pctDone > 0) {
-    segments.push(`<span class="tasks-seg tasks-seg-done" style="width: ${pctDone}%" title="${completed} completed"></span>`);
+  if (pctDone > 0) segments.push(`<span class="tasks-seg tasks-seg-done" style="width:${pctDone}%" title="${completed} completed"></span>`);
+  if (pctActive > 0) segments.push(`<span class="tasks-seg tasks-seg-active" style="width:${pctActive}%" title="${inProgress} in progress"></span>`);
+  if (pctPending > 0) segments.push(`<span class="tasks-seg tasks-seg-pending" style="width:${pctPending}%" title="${pending} pending"></span>`);
+
+  // Compute metrics from completion log
+  let avgDuration = 0;
+  let durCount = 0;
+  for (const record of taskCompletionLog) {
+    if (record.durationMs !== null) {
+      avgDuration += record.durationMs;
+      durCount++;
+    }
   }
-  if (pctProgress > 0) {
-    segments.push(`<span class="tasks-seg tasks-seg-active" style="width: ${pctProgress}%" title="${inProgress} in progress"></span>`);
-  }
-  if (pctPending > 0) {
-    segments.push(`<span class="tasks-seg tasks-seg-pending" style="width: ${pctPending}%" title="${pending} pending"></span>`);
+  if (durCount > 0) avgDuration = avgDuration / durCount;
+
+  // Bottleneck detection: any active task exceeding 2x average
+  let hasBottleneck = false;
+  if (avgDuration > 0) {
+    const now = Date.now();
+    for (const [teamId, tasks] of teamState.teamTasks) {
+      for (const task of tasks) {
+        if (task.status === 'in_progress') {
+          const tsKey = `${teamId}::${task.id}::in_progress`;
+          const ts = taskStatusTimestamps.get(tsKey);
+          if (ts && (now - ts) > avgDuration * 2) {
+            hasBottleneck = true;
+            break;
+          }
+        }
+      }
+      if (hasBottleneck) break;
+    }
   }
 
-  bar.innerHTML = segments.join('');
-  text.textContent = `${completed}/${total} complete`;
+  const metricsHtml: string[] = [];
+  metricsHtml.push(`<span class="tasks-metric">${completed}/${total}</span>`);
+  if (durCount > 0) {
+    metricsHtml.push(`<span class="tasks-metric" title="Average task duration">avg ${formatDuration(avgDuration)}</span>`);
+  }
+  if (peakParallelism > 1) {
+    metricsHtml.push(`<span class="tasks-metric" title="Peak concurrent tasks">peak ${peakParallelism}x</span>`);
+  }
+  if (hasBottleneck) {
+    metricsHtml.push(`<span class="tasks-metric tasks-metric-warn" title="A task is taking 2x+ longer than average">bottleneck</span>`);
+  }
+
+  strip.innerHTML = `
+    <div class="tasks-progress" aria-label="Task completion progress">
+      <span class="tasks-progress-bar">${segments.join('')}</span>
+    </div>
+    <div class="tasks-metrics">${metricsHtml.join('')}</div>
+  `;
 }
 
 // ============================================
-// Rendering
+// Active Work Zone
 // ============================================
 
-/**
- * Render a single task card.
- * Reads `currentRenderTeamId` (module-level) to look up time-in-state.
- */
-function renderTaskCard(task: TaskInfo): string {
+function renderActiveTaskRow(task: TaskInfo, teamId: string): string {
+  const isBlocked = task.blockedBy.length > 0;
+
+  const statusDot = isBlocked
+    ? '<span class="task-row-dot task-row-dot-blocked" title="Blocked">&#128274;</span>'
+    : task.status === 'in_progress'
+    ? '<span class="task-row-dot task-row-dot-active"></span>'
+    : '<span class="task-row-dot task-row-dot-pending"></span>';
+
   const ownerBadge = task.owner
     ? (() => {
         const colors = getAgentBadgeColors(task.owner);
-        return `<span class="task-owner-badge" style="background: ${escapeCssValue(colors.bg)}; color: ${escapeCssValue(colors.text)}">${escapeHtml(task.owner)}</span>`;
+        return `<span class="task-owner-badge" style="background:${escapeCssValue(colors.bg)};color:${escapeCssValue(colors.text)}">${escapeHtml(task.owner)}</span>`;
       })()
-    : '<span class="task-unassigned">unassigned</span>';
-
-  const blockedIndicators = task.blockedBy.length > 0
-    ? `<div class="task-blocked-by">blocked by: ${task.blockedBy.map(id => `<span class="task-blocked-id">#${escapeHtml(id)}</span>`).join(', ')}</div>`
     : '';
 
-  const isBlocked = task.blockedBy.length > 0;
-  const statusIcon = isBlocked ? '&#128274;'
-    : task.status === 'completed' ? '&#10003;'
-    : task.status === 'in_progress' ? '&#9654;'
-    : '&#9679;';
-  const statusIconClass = isBlocked ? 'task-blocked-lock' : 'task-card-status-icon';
-
-  const hasDescription = task.description && task.description.trim().length > 0;
-  const expandIcon = hasDescription ? '<span class="task-card-expand-icon">&#9656;</span>' : '';
-  const descriptionHtml = hasDescription
-    ? `<div class="task-card-description">${escapeHtml(task.description!)}</div>`
-    : '';
-
-  // Elapsed time updates on re-render (event-driven), not real-time
-  const tsKey = `${currentRenderTeamId}::${task.id}::${task.status}`;
+  const tsKey = `${teamId}::${task.id}::${task.status}`;
   const ts = taskStatusTimestamps.get(tsKey);
   const elapsed = ts !== undefined ? formatElapsed(Date.now() - ts) : '';
-  const statusLabel = task.status.replace('_', ' ');
-  const timeInStateHtml = elapsed
-    ? `<span class="task-time-in-state" title="Time in ${statusLabel}: ${elapsed}">${elapsed}</span>`
+  const timeHtml = elapsed ? `<span class="task-row-time">${elapsed}</span>` : '';
+
+  const blockedHtml = isBlocked
+    ? `<span class="task-row-blocked">blocked by ${task.blockedBy.map(id => `#${escapeHtml(id)}`).join(', ')}</span>`
+    : '';
+
+  const hasDescription = task.description && task.description.trim().length > 0;
+  const expandIcon = hasDescription ? '<span class="task-row-expand">&#9656;</span>' : '';
+  const descriptionHtml = hasDescription
+    ? `<div class="task-row-description">${escapeHtml(task.description!)}</div>`
     : '';
 
   return `
-    <div class="task-card task-card-${task.status}${isBlocked ? ' task-card-blocked' : ''}${hasDescription ? ' task-card-expandable' : ''}" data-task-id="${escapeHtml(task.id)}" data-timestamp="${Date.now()}">
-      <div class="task-card-header">
-        <span class="task-card-id">${expandIcon}#${escapeHtml(task.id)}</span>
-        <span class="${statusIconClass}">${statusIcon}</span>
-      </div>
-      <div class="task-card-subject">${escapeHtml(task.subject)}</div>
-      ${descriptionHtml}
-      <div class="task-card-footer">
+    <div class="task-row${isBlocked ? ' task-row-is-blocked' : ''}${hasDescription ? ' task-row-expandable' : ''}" data-task-id="${escapeHtml(task.id)}" data-timestamp="${Date.now()}">
+      <div class="task-row-main">
+        ${statusDot}
+        <span class="task-row-id">${expandIcon}#${escapeHtml(task.id)}</span>
+        <span class="task-row-subject">${escapeHtml(task.subject)}</span>
+        <span class="task-row-spacer"></span>
         ${ownerBadge}
-        ${blockedIndicators}
-        ${timeInStateHtml}
+        ${blockedHtml}
+        ${timeHtml}
       </div>
+      ${descriptionHtml}
     </div>
   `;
 }
 
-/**
- * Re-render the full task board from state.
- */
-function renderTaskBoard(): void {
-  const pendingCol = elements.tasksPending;
-  const progressCol = elements.tasksInProgress;
-  const completedCol = elements.tasksCompleted;
+// ============================================
+// Completion Log Zone
+// ============================================
 
-  if (!pendingCol || !progressCol || !completedCol) return;
+function renderCompletionEntry(record: TaskCompletionRecord): string {
+  const time = formatTime(new Date(record.completedAt).toISOString());
+  const ownerBadge = record.owner
+    ? (() => {
+        const colors = getAgentBadgeColors(record.owner);
+        return `<span class="task-owner-badge" style="background:${escapeCssValue(colors.bg)};color:${escapeCssValue(colors.text)}">${escapeHtml(record.owner)}</span>`;
+      })()
+    : '';
 
-  // Gather tasks, filtered by session if one is selected.
-  // taskTeamMap associates each TaskInfo reference with its originating teamId
-  // so renderTaskCard can look up taskStatusTimestamps correctly.
-  const allTasks: TaskInfo[] = [];
-  const taskTeamMap = new Map<TaskInfo, string>();
+  const durationHtml = record.durationMs !== null
+    ? `<span class="task-duration-pill ${getDurationClass(record.durationMs)}">${formatDuration(record.durationMs)}</span>`
+    : '';
+
+  return `
+    <div class="task-log-entry">
+      <span class="task-log-check">&#10003;</span>
+      <span class="task-log-time">${escapeHtml(time)}</span>
+      <span class="task-log-subject">${escapeHtml(record.subject)}</span>
+      <span class="task-row-spacer"></span>
+      ${ownerBadge}
+      ${durationHtml}
+    </div>
+  `;
+}
+
+// ============================================
+// Main Render
+// ============================================
+
+function renderTasksView(): void {
+  const activeZone = elements.tasksActiveWork;
+  const logZone = elements.tasksCompletionLog;
+  if (!activeZone || !logZone) return;
+
+  // Gather tasks, filtered by session
+  const activeTasks: { task: TaskInfo; teamId: string }[] = [];
   let hasSessionMapping = false;
 
-  const gatherTasks = (teamId: string, tasks: TaskInfo[]): void => {
+  const gatherActive = (teamId: string, tasks: TaskInfo[]): void => {
     for (const t of tasks) {
-      allTasks.push(t);
-      taskTeamMap.set(t, teamId);
+      if (t.status !== 'completed') {
+        activeTasks.push({ task: t, teamId });
+      }
     }
   };
 
   if (state.selectedSession === 'all') {
     for (const [teamId, tasks] of teamState.teamTasks) {
-      gatherTasks(teamId, tasks);
+      gatherActive(teamId, tasks);
     }
+    hasSessionMapping = true;
   } else {
-    // Primary mapping path: task updates that provide sessionId.
     for (const [teamId, sessionId] of teamState.taskSessionMap) {
       if (sessionId === state.selectedSession) {
         hasSessionMapping = true;
         const tasks = teamState.teamTasks.get(teamId);
-        if (tasks) {
-          gatherTasks(teamId, tasks);
-        }
+        if (tasks) gatherActive(teamId, tasks);
       }
     }
-
-    // Compatibility path: older mappings that only include teamName -> session.
     if (!hasSessionMapping) {
       for (const [teamName, sessionId] of teamState.teamSessionMap) {
         if (sessionId === state.selectedSession) {
           hasSessionMapping = true;
           const tasks = teamState.teamTasks.get(teamName);
-          if (tasks) {
-            gatherTasks(teamName, tasks);
-          }
+          if (tasks) gatherActive(teamName, tasks);
         }
       }
     }
-
-    if (!hasSessionMapping) {
-      if (elements.tasksPendingCount) {
-        elements.tasksPendingCount.textContent = '0';
-      }
-      if (elements.tasksInProgressCount) {
-        elements.tasksInProgressCount.textContent = '0';
-      }
-      if (elements.tasksCompletedCount) {
-        elements.tasksCompletedCount.textContent = '0';
-      }
-
-      const unmappedMessage = 'No tasks mapped to this session yet';
-      pendingCol.innerHTML = `<div class="task-column-empty">${unmappedMessage}</div>`;
-      progressCol.innerHTML = `<div class="task-column-empty">${unmappedMessage}</div>`;
-      completedCol.innerHTML = `<div class="task-column-empty">${unmappedMessage}</div>`;
-
-      updateTabBadge('tasks', 0);
-      updateTasksProgress(0, 0, 0);
-      return;
-    }
   }
 
-  /**
-   * Render a task card with its teamId context loaded into the module-level
-   * `currentRenderTeamId` variable so renderTaskCard can look up timestamps.
-   */
-  const renderCard = (task: TaskInfo): string => {
-    currentRenderTeamId = taskTeamMap.get(task) ?? '';
-    return renderTaskCard(task);
-  };
-
-  const pending = allTasks.filter(t => t.status === 'pending');
-  const inProgress = allTasks.filter(t => t.status === 'in_progress');
-  const completed = allTasks.filter(t => t.status === 'completed');
-
-  // Update counts
-  if (elements.tasksPendingCount) {
-    elements.tasksPendingCount.textContent = String(pending.length);
-  }
-  if (elements.tasksInProgressCount) {
-    elements.tasksInProgressCount.textContent = String(inProgress.length);
-  }
-  if (elements.tasksCompletedCount) {
-    elements.tasksCompletedCount.textContent = String(completed.length);
+  if (!hasSessionMapping) {
+    activeZone.innerHTML = `
+      <div class="tasks-zone-header">ACTIVE</div>
+      <div class="task-zone-empty">No tasks mapped to this session yet</div>
+    `;
+    logZone.innerHTML = '<div class="tasks-zone-header">COMPLETED</div>';
+    updateTabBadge('tasks', 0);
+    renderSummaryStrip(0, 0, 0);
+    return;
   }
 
-  pendingCol.innerHTML = pending.length > 0
-    ? pending.map(renderCard).join('')
-    : '<div class="task-column-empty">No pending tasks</div>';
+  // Sort: blocked tasks last, then by time-in-state descending
+  activeTasks.sort((a, b) => {
+    const aBlocked = a.task.blockedBy.length > 0 ? 1 : 0;
+    const bBlocked = b.task.blockedBy.length > 0 ? 1 : 0;
+    if (aBlocked !== bBlocked) return aBlocked - bBlocked;
 
-  progressCol.innerHTML = inProgress.length > 0
-    ? inProgress.map(renderCard).join('')
-    : '<div class="task-column-empty">No active tasks</div>';
+    const aKey = `${a.teamId}::${a.task.id}::${a.task.status}`;
+    const bKey = `${b.teamId}::${b.task.id}::${b.task.status}`;
+    const aTs = taskStatusTimestamps.get(aKey) ?? Date.now();
+    const bTs = taskStatusTimestamps.get(bKey) ?? Date.now();
+    return aTs - bTs; // longest wait first
+  });
 
-  completedCol.innerHTML = completed.length > 0
-    ? completed.map(renderCard).join('')
-    : '<div class="task-column-empty">No completed tasks</div>';
+  // Count statuses for summary
+  const pending = activeTasks.filter(t => t.task.status === 'pending').length;
+  const inProgress = activeTasks.filter(t => t.task.status === 'in_progress').length;
+  const completedCount = taskCompletionLog.length;
 
-  // Update tab badge with rich task summary
-  const blocked = inProgress.filter(t => t.blockedBy.length > 0).length;
-  const active = inProgress.length;
+  // Render active zone
+  if (activeTasks.length > 0) {
+    const rowsHtml = activeTasks.map(({ task, teamId }) => renderActiveTaskRow(task, teamId)).join('');
+    activeZone.innerHTML = `<div class="tasks-zone-header">ACTIVE <span class="tasks-zone-count">${activeTasks.length}</span></div>${rowsHtml}`;
+  } else {
+    activeZone.innerHTML = `
+      <div class="tasks-zone-header">ACTIVE</div>
+      <div class="task-zone-empty">${completedCount > 0 ? 'All tasks completed' : 'Waiting for tasks...'}</div>
+    `;
+  }
+
+  // Render completion log (reverse chronological)
+  const logEntries = [...taskCompletionLog].reverse();
+  if (logEntries.length > 0) {
+    const entriesHtml = logEntries.map(renderCompletionEntry).join('');
+    logZone.innerHTML = `<div class="tasks-zone-header">COMPLETED <span class="tasks-zone-count">${logEntries.length}</span></div>${entriesHtml}`;
+  } else {
+    logZone.innerHTML = '<div class="tasks-zone-header">COMPLETED</div>';
+  }
+
+  // Summary strip
+  renderSummaryStrip(pending, inProgress, completedCount);
+
+  // Tab badge
+  const blocked = activeTasks.filter(t => t.task.blockedBy.length > 0).length;
+  const active = inProgress;
+  const totalTasks = activeTasks.length + completedCount;
   const badgeText = blocked > 0
     ? `${active} active / ${blocked} blocked`
     : active > 0
     ? `${active} active`
-    : `${allTasks.length}`;
-  updateTabBadge('tasks', allTasks.length > 0 ? badgeText : 0);
+    : totalTasks > 0
+    ? `${completedCount}/${totalTasks} done`
+    : '0';
+  updateTabBadge('tasks', totalTasks > 0 ? badgeText : 0);
 
-  // Collect current card IDs and animate newly appeared cards (single DOM pass)
-  const currentCardIds = new Set<string>();
-  const allCards = document.querySelectorAll('.task-card[data-task-id]');
-  allCards.forEach(card => {
-    const id = card.getAttribute('data-task-id');
+  // Entry animations
+  const currentRowIds = new Set<string>();
+  activeZone.querySelectorAll('.task-row[data-task-id]').forEach(row => {
+    const id = row.getAttribute('data-task-id');
     if (id) {
-      currentCardIds.add(id);
-      if (previousCardIds.size > 0 && !previousCardIds.has(id)) {
-        card.classList.add('task-card-enter');
+      currentRowIds.add(id);
+      if (previousRowIds.size > 0 && !previousRowIds.has(id)) {
+        row.classList.add('task-row-enter');
       }
     }
   });
-  previousCardIds = currentCardIds;
+  previousRowIds = currentRowIds;
 
-  // Update segmented progress bar in panel header
-  updateTasksProgress(pending.length, inProgress.length, completed.length);
-
-  // Add click handlers for expand/collapse on task cards with descriptions
-  document.querySelectorAll('.task-card-expandable').forEach((card) => {
-    card.addEventListener('click', (e) => {
-      // Don't toggle if clicking on an owner badge (cross-panel navigation)
+  // Click handlers: expand/collapse descriptions
+  activeZone.querySelectorAll('.task-row-expandable').forEach(row => {
+    row.addEventListener('click', (e) => {
       if ((e.target as HTMLElement).closest('.task-owner-badge')) return;
-      card.classList.toggle('task-card-expanded');
+      row.classList.toggle('task-row-expanded');
     });
   });
 
-  // Add click handlers for owner badges -> navigate to agent in Teams tab
-  const taskBoard = document.querySelector('.task-board');
-  if (taskBoard) {
-    taskBoard.querySelectorAll('.task-owner-badge').forEach((badge) => {
-      const ownerName = (badge as HTMLElement).textContent?.trim();
-      if (!ownerName) return;
-
-      (badge as HTMLElement).style.cursor = 'pointer';
-      (badge as HTMLElement).title = `Jump to ${ownerName} in Teams`;
-
-      badge.addEventListener('click', (e) => {
-        e.stopPropagation(); // Don't trigger card click
-        navigateToTeamAgent?.(ownerName);
-      });
+  // Click handlers: owner badges -> navigate to agent in Teams tab
+  activeZone.querySelectorAll('.task-owner-badge').forEach(badge => {
+    const ownerName = (badge as HTMLElement).textContent?.trim();
+    if (!ownerName) return;
+    (badge as HTMLElement).style.cursor = 'pointer';
+    (badge as HTMLElement).title = `Jump to ${ownerName} in Teams`;
+    badge.addEventListener('click', (e) => {
+      e.stopPropagation();
+      navigateToTeamAgent?.(ownerName);
     });
-  }
+  });
 }
 
 /**
- * Re-render task board when session filter changes.
+ * Reset task-specific module state (called from clearAllPanels).
+ */
+export function resetTaskState(): void {
+  peakParallelism = 0;
+  previousRowIds.clear();
+}
+
+/**
+ * Re-render task view when session filter changes.
  */
 export function filterTasksBySession(): void {
-  renderTaskBoard();
+  renderTasksView();
 }
 
 // ============================================
@@ -312,10 +354,7 @@ export function filterTasksBySession(): void {
 
 /**
  * Handle a task_update event.
- *
- * Claude Code removes task JSON files from disk once all tasks are completed,
- * so the server may broadcast an empty list. We retain previously-completed
- * tasks in memory so they stay visible on the dashboard.
+ * Retains previously-completed tasks in memory.
  */
 export function handleTaskUpdate(event: TaskUpdateEvent): void {
   if (!showTasksPanel) return;
@@ -335,9 +374,7 @@ export function handleTaskUpdate(event: TaskUpdateEvent): void {
     teamState.teamTasks.set(event.teamId, event.tasks);
   }
 
-  // Record the timestamp when each task first enters a given status.
-  // Only set if the key is absent — we never overwrite an existing entry so
-  // the elapsed time reflects how long the task has been in its current state.
+  // Record timestamps for status tracking
   const now = Date.now();
   for (const task of event.tasks) {
     const key = `${event.teamId}::${task.id}::${task.status}`;
@@ -346,8 +383,19 @@ export function handleTaskUpdate(event: TaskUpdateEvent): void {
     }
   }
 
+  // Track peak parallelism
+  let currentInProgress = 0;
+  for (const tasks of teamState.teamTasks.values()) {
+    for (const t of tasks) {
+      if (t.status === 'in_progress') currentInProgress++;
+    }
+  }
+  if (currentInProgress > peakParallelism) {
+    peakParallelism = currentInProgress;
+  }
+
   showTasksPanel?.();
-  renderTaskBoard();
+  renderTasksView();
 }
 
 /**
@@ -358,18 +406,34 @@ export function handleTaskCompleted(event: TaskCompletedEvent): void {
 
   const teamId = event.teamId || '';
   const tasks = teamState.teamTasks.get(teamId);
+  const now = Date.now();
+
   if (tasks) {
     const task = tasks.find(t => t.id === event.taskId);
     if (task) {
+      // Compute duration before marking complete
+      const pendingKey = `${teamId}::${task.id}::pending`;
+      const pendingTs = taskStatusTimestamps.get(pendingKey);
+      const durationMs = pendingTs !== undefined ? now - pendingTs : null;
+
+      // Add to completion log
+      taskCompletionLog.push({
+        taskId: task.id,
+        subject: task.subject,
+        owner: task.owner,
+        teamId,
+        completedAt: now,
+        durationMs,
+      });
+
       task.status = 'completed';
-      // Stamp the transition to 'completed' if not already recorded.
       const key = `${teamId}::${task.id}::completed`;
       if (!taskStatusTimestamps.has(key)) {
-        taskStatusTimestamps.set(key, Date.now());
+        taskStatusTimestamps.set(key, now);
       }
     }
   }
 
   showTasksPanel?.();
-  renderTaskBoard();
+  renderTasksView();
 }

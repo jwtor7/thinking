@@ -65,7 +65,7 @@ describe('Event Dispatcher - Static Analysis', () => {
     });
 
     it('should import handler functions from team.ts', () => {
-      expect(dispatcherContent).toContain("import { handleTeamUpdate, handleTeammateIdle, handleMessageSent, addTeamAgentThinking, refreshTeamAgentList } from './team.ts'");
+      expect(dispatcherContent).toContain("import { handleTeamUpdate, handleTeammateIdle, handleMessageSent } from './team.ts'");
     });
 
     it('should import handler functions from tasks.ts', () => {

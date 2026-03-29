@@ -140,8 +140,8 @@ describe('Phase 4: Dashboard Polish', () => {
       // 4. Markdown rendering escapes before processing
       expect(appTsContent).toMatch(/let html = escapeHtml\(content\)/);
 
-      // 5. Agents view uses renderSimpleMarkdown (which calls escapeHtml internally)
-      expect(appTsContent).toContain('renderSimpleMarkdown(entry.content)');
+      // 5. Plan and tool views use renderSimpleMarkdown (which calls escapeHtml internally)
+      expect(appTsContent).toContain('renderSimpleMarkdown(');
 
       // 6. The escapeHtml function uses the secure DOM-based method
       const escapeHtmlMatch = appTsContent.match(

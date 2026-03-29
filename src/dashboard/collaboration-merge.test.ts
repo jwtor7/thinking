@@ -23,7 +23,7 @@ describe('Collaboration Refactor: Team + Agents Merge', () => {
 
     it('scopes team rendering to mapped selected session', () => {
       expect(teamHandlerContent).toContain('const teamSession = teamState.teamSessionMap.get(teamName);');
-      expect(teamHandlerContent).toContain('if (!teamSession || teamSession !== state.selectedSession) {');
+      expect(teamHandlerContent).toContain('if (!teamSession || teamSession !== state.selectedSession) return;');
     });
 
     it('shows explicit unmapped-session empty state for tasks instead of cross-session fallback', () => {
@@ -45,38 +45,36 @@ describe('Collaboration Refactor: Team + Agents Merge', () => {
       expect(existsSync(new URL('./handlers/agents-view.ts', import.meta.url))).toBe(false);
     });
 
-    it('renders members, hierarchy, agents, and messages inside the Team panel', () => {
+    it('renders lifecycle strip, hierarchy, communication, and messages inside the Team panel', () => {
       const teamSectionStart = indexHtmlContent.indexOf('panel panel-team');
       const teamSectionEnd = indexHtmlContent.indexOf('</section>', teamSectionStart);
       const teamSection = indexHtmlContent.slice(teamSectionStart, teamSectionEnd);
 
       expect(teamSectionStart).toBeGreaterThanOrEqual(0);
-      expect(teamSection).toContain('id="team-member-grid"');
+      expect(teamSection).toContain('id="team-lifecycle-strip"');
       expect(teamSection).toContain('id="agent-tree-content"');
-      expect(teamSection).toContain('id="team-agents-sidebar"');
-      expect(teamSection).toContain('id="team-agents-detail"');
+      expect(teamSection).toContain('id="team-comm-matrix"');
       expect(teamSection).toContain('id="team-messages"');
       expect(indexHtmlContent).not.toContain('panel panel-agents');
     });
 
-    it('routes thinking and subagent updates through the unified Team handler', () => {
-      expect(dispatcherContent).toContain('addTeamAgentThinking(event);');
-      expect(dispatcherContent).toContain('refreshTeamAgentList();');
+    it('routes team events through the unified Team handler', () => {
+      expect(dispatcherContent).toContain('handleTeamUpdate(event);');
+      expect(dispatcherContent).toContain('handleTeammateIdle(event);');
+      expect(dispatcherContent).toContain('handleMessageSent(event);');
     });
 
-    it('uses Team-specific embedded agent elements and not standalone agents panel elements', () => {
-      expect(elementsContent).toContain('teamAgentsSidebar');
-      expect(elementsContent).toContain('teamAgentsDetail');
+    it('uses lifecycle and comm matrix elements in Team panel', () => {
+      expect(elementsContent).toContain('teamLifecycleStrip');
+      expect(elementsContent).toContain('teamCommMatrix');
       expect(elementsContent).not.toContain('agentsSidebar');
       expect(elementsContent).not.toContain('agentsDetail');
     });
 
-    it('initializes and resets Team-owned agent thinking state from app startup flow', () => {
+    it('initializes Team handler from app startup flow', () => {
       expect(appContent).toContain('initTeam');
       expect(appContent).toContain('handleMessageSent');
-      expect(appContent).toContain('resetTeamAgentThinking');
       expect(appContent).toContain('from \'./handlers/team.ts\'');
-      expect(appContent).toContain('resetTeamAgentThinking();');
       expect(appContent).not.toContain('./handlers/agents-view.ts');
     });
   });

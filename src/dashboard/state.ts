@@ -152,3 +152,16 @@ export const agentContextTimestamps: Map<string, number> = new Map();
  * the same status, and are naturally session-scoped via teamId.
  */
 export const taskStatusTimestamps: Map<string, number> = new Map();
+
+/** Completion record for historical task log. */
+export interface TaskCompletionRecord {
+  taskId: string;
+  subject: string;
+  owner?: string;
+  teamId: string;
+  completedAt: number;
+  durationMs: number | null;
+}
+
+/** Historical log of completed tasks. Bounded ring buffer. */
+export const taskCompletionLog: BoundedArray<TaskCompletionRecord> = new BoundedArray(200);
