@@ -2225,7 +2225,7 @@
       navigateToTeamAgent = null;
     } };
   }
-  function renderSummaryStrip(pending, inProgress, completed) {
+  function renderSummaryStrip(pending, inProgress, completed, sessionPeak) {
     const strip = elements.tasksSummaryStrip;
     if (!strip) return;
     const total = pending + inProgress + completed;
@@ -2271,8 +2271,8 @@
     if (durCount > 0) {
       metricsHtml.push(`<span class="tasks-metric" title="Average task duration">avg ${formatDuration(avgDuration)}</span>`);
     }
-    if (peakParallelism > 1) {
-      metricsHtml.push(`<span class="tasks-metric" title="Peak concurrent tasks">peak ${peakParallelism}x</span>`);
+    if (sessionPeak > 1) {
+      metricsHtml.push(`<span class="tasks-metric" title="Peak concurrent tasks">peak ${sessionPeak}x</span>`);
     }
     if (hasBottleneck) {
       metricsHtml.push(`<span class="tasks-metric tasks-metric-warn" title="A task is taking 2x+ longer than average">bottleneck</span>`);
@@ -2325,6 +2325,7 @@
     <div class="task-log-entry">
       <span class="task-log-check">&#10003;</span>
       <span class="task-log-time">${escapeHtml(time)}</span>
+      <span class="task-row-id">#${escapeHtml(record.taskId)}</span>
       <span class="task-log-subject">${escapeHtml(record.subject)}</span>
       <span class="task-row-spacer"></span>
       ${ownerBadge}
@@ -2337,8 +2338,10 @@
     const logZone = elements.tasksCompletionLog;
     if (!activeZone || !logZone) return;
     const activeTasks = [];
+    const matchedTeamIds = /* @__PURE__ */ new Set();
     let hasSessionMapping = false;
     const gatherActive = (teamId, tasks) => {
+      matchedTeamIds.add(teamId);
       for (const t of tasks) {
         if (t.status !== "completed") {
           activeTasks.push({ task: t, teamId });
@@ -2375,7 +2378,7 @@
     `;
       logZone.innerHTML = '<div class="tasks-zone-header">COMPLETED</div>';
       updateTabBadge("tasks", 0);
-      renderSummaryStrip(0, 0, 0);
+      renderSummaryStrip(0, 0, 0, 0);
       return;
     }
     activeTasks.sort((a, b) => {
@@ -2386,11 +2389,17 @@
       const bKey = `${b.teamId}::${b.task.id}::${b.task.status}`;
       const aTs = taskStatusTimestamps.get(aKey) ?? Date.now();
       const bTs = taskStatusTimestamps.get(bKey) ?? Date.now();
-      return aTs - bTs;
+      if (aTs !== bTs) return aTs - bTs;
+      const aNum = parseInt(a.task.id, 10) || 0;
+      const bNum = parseInt(b.task.id, 10) || 0;
+      return aNum - bNum;
     });
     const pending = activeTasks.filter((t) => t.task.status === "pending").length;
     const inProgress = activeTasks.filter((t) => t.task.status === "in_progress").length;
-    const completedCount = taskCompletionLog.length;
+    const sessionLogEntries = taskCompletionLog.filter(
+      (r) => matchedTeamIds.has(r.teamId)
+    );
+    const completedCount = sessionLogEntries.length;
     if (activeTasks.length > 0) {
       const rowsHtml = activeTasks.map(({ task, teamId }) => renderActiveTaskRow(task, teamId)).join("");
       activeZone.innerHTML = `<div class="tasks-zone-header">ACTIVE <span class="tasks-zone-count">${activeTasks.length}</span></div>${rowsHtml}`;
@@ -2400,17 +2409,31 @@
       <div class="task-zone-empty">${completedCount > 0 ? "All tasks completed" : "Waiting for tasks..."}</div>
     `;
     }
-    const logEntries = [...taskCompletionLog].reverse();
+    const logEntries = [...sessionLogEntries].reverse();
     if (logEntries.length > 0) {
       const entriesHtml = logEntries.map(renderCompletionEntry).join("");
       logZone.innerHTML = `<div class="tasks-zone-header">COMPLETED <span class="tasks-zone-count">${logEntries.length}</span></div>${entriesHtml}`;
     } else {
       logZone.innerHTML = '<div class="tasks-zone-header">COMPLETED</div>';
     }
-    renderSummaryStrip(pending, inProgress, completedCount);
+    let sessionPeak = inProgress;
+    for (const teamId of matchedTeamIds) {
+      const tasks = teamState.teamTasks.get(teamId);
+      if (tasks) {
+        let ip = 0;
+        for (const t of tasks) {
+          if (t.status === "in_progress") ip++;
+        }
+        if (ip > sessionPeak) sessionPeak = ip;
+      }
+    }
+    renderSummaryStrip(pending, inProgress, completedCount, sessionPeak);
+    const totalTasks = activeTasks.length + completedCount;
+    if (elements.tasksProgressText) {
+      elements.tasksProgressText.textContent = totalTasks === 1 ? "1 task" : `${totalTasks} tasks`;
+    }
     const blocked = activeTasks.filter((t) => t.task.blockedBy.length > 0).length;
     const active = inProgress;
-    const totalTasks = activeTasks.length + completedCount;
     const badgeText = blocked > 0 ? `${active} active / ${blocked} blocked` : active > 0 ? `${active} active` : totalTasks > 0 ? `${completedCount}/${totalTasks} done` : "0";
     updateTabBadge("tasks", totalTasks > 0 ? badgeText : 0);
     const currentRowIds = /* @__PURE__ */ new Set();
@@ -2454,7 +2477,9 @@
       teamState.taskSessionMap.set(event.teamId, event.sessionId);
     }
     const prev = teamState.teamTasks.get(event.teamId);
+    const prevMap = /* @__PURE__ */ new Map();
     if (prev) {
+      for (const t of prev) prevMap.set(t.id, t.status);
       const incomingIds = new Set(event.tasks.map((t) => t.id));
       const retainedCompleted = prev.filter(
         (t) => t.status === "completed" && !incomingIds.has(t.id)
@@ -2469,10 +2494,32 @@
       if (!taskStatusTimestamps.has(key)) {
         taskStatusTimestamps.set(key, now);
       }
+      if (task.status === "completed") {
+        const prevStatus = prevMap.get(task.id);
+        const alreadyLogged = taskCompletionLog.find(
+          (r) => r.taskId === task.id && (r.teamId === event.teamId || r.subject === task.subject)
+        ) !== void 0;
+        const isTransition = prev && prevStatus && prevStatus !== "completed";
+        const isFirstSeen = !prev;
+        if (!alreadyLogged && (isTransition || isFirstSeen)) {
+          const pendingKey = `${event.teamId}::${task.id}::pending`;
+          const pendingTs = taskStatusTimestamps.get(pendingKey);
+          const durationMs = pendingTs !== void 0 ? now - pendingTs : null;
+          taskCompletionLog.push({
+            taskId: task.id,
+            subject: task.subject,
+            owner: task.owner,
+            teamId: event.teamId,
+            completedAt: now,
+            durationMs
+          });
+        }
+      }
     }
     let currentInProgress = 0;
-    for (const tasks of teamState.teamTasks.values()) {
-      for (const t of tasks) {
+    const eventTasks = teamState.teamTasks.get(event.teamId);
+    if (eventTasks) {
+      for (const t of eventTasks) {
         if (t.status === "in_progress") currentInProgress++;
       }
     }
@@ -2493,14 +2540,19 @@
         const pendingKey = `${teamId}::${task.id}::pending`;
         const pendingTs = taskStatusTimestamps.get(pendingKey);
         const durationMs = pendingTs !== void 0 ? now - pendingTs : null;
-        taskCompletionLog.push({
-          taskId: task.id,
-          subject: task.subject,
-          owner: task.owner,
-          teamId,
-          completedAt: now,
-          durationMs
-        });
+        const alreadyLogged = taskCompletionLog.find(
+          (r) => r.taskId === task.id && (r.teamId === teamId || r.subject === task.subject)
+        ) !== void 0;
+        if (!alreadyLogged) {
+          taskCompletionLog.push({
+            taskId: task.id,
+            subject: task.subject,
+            owner: task.owner,
+            teamId,
+            completedAt: now,
+            durationMs
+          });
+        }
         task.status = "completed";
         const key = `${teamId}::${task.id}::completed`;
         if (!taskStatusTimestamps.has(key)) {

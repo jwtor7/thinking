@@ -2537,7 +2537,7 @@ import { readFile as readFile3, stat as stat5, readdir as readdir3 } from "node:
 import { join as join6 } from "node:path";
 import { homedir as homedir3 } from "node:os";
 var POLL_INTERVAL_MS = 2e3;
-var TeamWatcher = class {
+var TeamWatcher = class _TeamWatcher {
   hub;
   teamsDir;
   tasksDir;
@@ -2600,6 +2600,7 @@ var TeamWatcher = class {
   getTaskEvents() {
     const events = [];
     for (const taskDir of this.trackedTaskDirs.values()) {
+      if (taskDir.tasks.length === 0) continue;
       events.push({
         type: "task_update",
         timestamp: taskDir.detectedAt,
@@ -2735,7 +2736,9 @@ var TeamWatcher = class {
               sessionId,
               detectedAt: existing?.detectedAt || (/* @__PURE__ */ new Date()).toISOString()
             });
-            this.broadcastTaskUpdate(teamId, tasks, sessionId);
+            if (tasks.length > 0) {
+              this.broadcastTaskUpdate(teamId, tasks, sessionId);
+            }
           }
         } catch {
         }
@@ -2774,11 +2777,17 @@ var TeamWatcher = class {
       return { members: [] };
     }
   }
+  /** UUID pattern for session-based task directories */
+  static UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   /**
    * Resolve session ID for a task directory via its team identity.
+   * For UUID-based directories (non-team tasks), the teamId IS the sessionId.
    */
   resolveTaskSessionId(teamId) {
-    return this.trackedTeams.get(teamId)?.sessionId;
+    const fromTeam = this.trackedTeams.get(teamId)?.sessionId;
+    if (fromTeam) return fromTeam;
+    if (_TeamWatcher.UUID_PATTERN.test(teamId)) return teamId;
+    return void 0;
   }
   /**
    * Parse a task JSON file into TaskInfo.

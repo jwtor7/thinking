@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-03-30 — v1.8.1
+
+### Fixed
+- **Task view not working for non-team sessions** — UUID task directories now resolve their sessionId from the directory name, enabling session filtering for regular TaskCreate/TaskUpdate usage
+- **Empty task directory noise** — Suppressed ~78 empty task_update broadcasts from directories with no JSON files (only `.highwatermark`/`.lock`)
+- **Completed tasks not showing** — Tasks transitioning to completed via task_update events now populate the completion log; fixed silent TypeError from calling `.some()` on BoundedArray (used `.find()` instead)
+- **Cross-session task leakage** — Completion log now filtered by session-scoped team IDs; only shows tasks belonging to the selected session
+- **Inflated peak parallelism** — Peak metric was accumulated globally across all sessions; now calculated per-session from matched task data
+- **"0 tasks" header** — Panel header task count now updates with actual total
+- **Active task ordering** — Added numeric ID tiebreaker to sort when timestamps match
+- **Task IDs in completion log** — Added `#N` prefix to completed task entries
+
+---
+
 ## 2026-03-29 — v1.8.0
 
 ### Changed

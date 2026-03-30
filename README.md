@@ -5,7 +5,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.8.0-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.1-purple)](./CHANGELOG.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 [![GitHub Stars](https://img.shields.io/github/stars/jwtor7/thinking?style=social)](https://github.com/jwtor7/thinking)
 
@@ -175,8 +175,8 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
+- **v1.8.1** (2026-03-30 00:21) — Task view fix: UUID session resolution, empty dir suppression, completion log from task_update events, session-scoped filtering, correct peak metric, header count, ID display in completions.
 - **v1.8.0** (2026-03-29 16:50) — Tasks and Teams view redesign: Tasks replaced kanban with compact active-work rows + completion log with duration pills; Teams replaced 4 sections with agent lifecycle Gantt strip, NxN communication heat matrix, and enhanced message filtering.
 - **v1.7.1** (2026-03-29 12:01) — Backlog clearance: in-memory search index (replaces DOM scanning), session dropdown horizontal scroll fix, Mermaid architecture diagram, JSDoc for dispatcher and elements.
-- **v1.7.0** (2026-03-29) — Rich tab badge counts, cross-tab navigation (Tasks↔Teams), smarter empty states with contextual guidance and pulsing borders.
 
 *For complete history, see [CHANGELOG.md](./CHANGELOG.md)*

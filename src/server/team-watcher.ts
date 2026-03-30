@@ -134,6 +134,8 @@ export class TeamWatcher {
   getTaskEvents(): TaskUpdateEvent[] {
     const events: TaskUpdateEvent[] = [];
     for (const taskDir of this.trackedTaskDirs.values()) {
+      // Skip empty directories — they're just session scaffolding with no task JSON
+      if (taskDir.tasks.length === 0) continue;
       events.push({
         type: 'task_update',
         timestamp: taskDir.detectedAt,
@@ -304,7 +306,10 @@ export class TeamWatcher {
               detectedAt: existing?.detectedAt || new Date().toISOString(),
             });
 
-            this.broadcastTaskUpdate(teamId, tasks, sessionId);
+            // Only broadcast if there are actual tasks (skip empty scaffolding dirs)
+            if (tasks.length > 0) {
+              this.broadcastTaskUpdate(teamId, tasks, sessionId);
+            }
           }
         } catch {
           // Can't read task directory contents, skip
@@ -354,11 +359,19 @@ export class TeamWatcher {
     }
   }
 
+  /** UUID pattern for session-based task directories */
+  private static readonly UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   /**
    * Resolve session ID for a task directory via its team identity.
+   * For UUID-based directories (non-team tasks), the teamId IS the sessionId.
    */
   private resolveTaskSessionId(teamId: string): string | undefined {
-    return this.trackedTeams.get(teamId)?.sessionId;
+    const fromTeam = this.trackedTeams.get(teamId)?.sessionId;
+    if (fromTeam) return fromTeam;
+    // For UUID directories, the directory name is the session ID
+    if (TeamWatcher.UUID_PATTERN.test(teamId)) return teamId;
+    return undefined;
   }
 
   /**
