@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-05-23 — v2.0.0
+
+### Deprecated
+- Project is no longer maintained. Repository archived as read-only. See README for context.
+
+---
+
 ## 2026-03-30 — v1.8.1
 
 ### Fixed

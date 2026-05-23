@@ -5,9 +5,19 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.8.1-purple)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.0.0-purple)](./CHANGELOG.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 [![GitHub Stars](https://img.shields.io/github/stars/jwtor7/thinking?style=social)](https://github.com/jwtor7/thinking)
+
+> ## Deprecated
+>
+> This project is no longer maintained.
+>
+> Claude Code is shipping new capabilities faster than I can keep this dashboard in sync with the underlying hook surface, and I do not have the bandwidth to chase it. The repo is archived as read-only for reference.
+>
+> I have also been having great success with agent harnesses like [Hermes](https://hermes-agent.nousresearch.com/) from Nous Research, which are mature enough to run autonomously. Watching every agent step in real time has become less relevant for the way I work now.
+>
+> Fork freely if it is useful to you.
 
 A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
 
