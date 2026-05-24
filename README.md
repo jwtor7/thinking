@@ -9,15 +9,13 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 [![GitHub Stars](https://img.shields.io/github/stars/jwtor7/thinking?style=social)](https://github.com/jwtor7/thinking)
 
-> ## Deprecated
+> ## Status: On Hold
 >
-> This project is no longer maintained.
+> This repository is paused, not abandoned. The questions it was built to investigate, including visibility into AI agent reasoning, tool calls, and inter-agent coordination at runtime, are still live, and I am still working on them, in different shapes, in my current research.
 >
-> Claude Code is shipping new capabilities faster than I can keep this dashboard in sync with the underlying hook surface, and I do not have the bandwidth to chase it. The repo is archived as read-only for reference.
+> In the meantime, I've been running with autonomous agent harnesses like [Hermes](https://hermes-agent.nousresearch.com/) from Nous Research. A note on that: I'm comfortable operating this way because I have years of hands-on experience reading agent behavior, recognizing failure modes, and intervening when something looks wrong. Running agents autonomously without that background is a meaningfully different risk profile. Treat my setup as a researcher's choice, not a general recommendation.
 >
-> I have also been having great success with agent harnesses like [Hermes](https://hermes-agent.nousresearch.com/) from Nous Research, which are mature enough to run autonomously. Watching every agent step in real time has become less relevant for the way I work now.
->
-> Fork freely if it is useful to you.
+> Fork freely if any of this code is useful to you.
 
 A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-05-24
+
+### Changed
+- Project status reframed from "Deprecated" to "On Hold" in README. Repository unarchived on GitHub; remains paused pending future research direction. No code changes.
+
+---
+
 ## 2026-05-23 — v2.0.0
 
 ### Deprecated
