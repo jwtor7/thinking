@@ -9,6 +9,9 @@
 - Removed em-dashes throughout the README in favor of colons, commas, and parentheses (voice guideline).
 - No code changes.
 
+### Fixed
+- Repo hygiene: untracked `dist/.DS_Store`, `dist/server/index.js`, and `src/dashboard/app.js`, which were tracked despite being listed in `.gitignore`. Files remain on disk; git will now ignore them as intended.
+
 ---
 
 ## 2026-05-23 — v2.0.0

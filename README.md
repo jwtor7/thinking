@@ -218,8 +218,8 @@ Thinking Monitor is an **unofficial community tool**. It is not affiliated with,
 
 ## Recent Changes
 
+- **2026-05-24 18:09**: Project status reframed from "Deprecated" to "On Hold"; README expanded with research-context framing, stakeholder table, and author bio; repo hygiene cleanup (untracked files already in .gitignore).
 - **v1.8.1** (2026-03-30 00:21): Task view fix: UUID session resolution, empty dir suppression, completion log from task_update events, session-scoped filtering, correct peak metric, header count, ID display in completions.
 - **v1.8.0** (2026-03-29 16:50): Tasks and Teams view redesign: Tasks replaced kanban with compact active-work rows + completion log with duration pills; Teams replaced 4 sections with agent lifecycle Gantt strip, NxN communication heat matrix, and enhanced message filtering.
-- **v1.7.1** (2026-03-29 12:01): Backlog clearance: in-memory search index (replaces DOM scanning), session dropdown horizontal scroll fix, Mermaid architecture diagram, JSDoc for dispatcher and elements.
 
 *For complete history, see [CHANGELOG.md](./CHANGELOG.md)*
