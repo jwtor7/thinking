@@ -3,7 +3,11 @@
 ## 2026-05-24
 
 ### Changed
-- Project status reframed from "Deprecated" to "On Hold" in README. Repository unarchived on GitHub; remains paused pending future research direction. No code changes.
+- Project status reframed from "Deprecated" to "On Hold" in README. Repository unarchived on GitHub; remains paused pending future research direction.
+- README expanded with research-context framing (AI agent governance, zero-trust for autonomous systems, secure-by-default tooling), a "Who this is for" stakeholder table, and an "About the author" section.
+- Replaced "PRs Welcome" badge with "Status: On Hold" badge; added "Made in Canada" badge.
+- Removed em-dashes throughout the README in favor of colons, commas, and parentheses (voice guideline).
+- No code changes.
 
 ---
 

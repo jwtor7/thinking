@@ -2,11 +2,14 @@
 
 **See inside Claude's mind.**
 
+*A research instrument for visualizing AI coding assistant reasoning, tool calls, hook lifecycle, and multi-agent coordination in real time. Built to make agent behavior observable enough to govern, audit, and debug.*
+
+[![Status: On Hold](https://img.shields.io/badge/status-on%20hold-orange.svg)](#status-on-hold)
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Version](https://img.shields.io/badge/version-2.0.0-purple)](./CHANGELOG.md)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
+[![Made in Canada](https://img.shields.io/badge/made%20in-Canada-red.svg)](https://www.canada.ca/)
 [![GitHub Stars](https://img.shields.io/github/stars/jwtor7/thinking?style=social)](https://github.com/jwtor7/thinking)
 
 > ## Status: On Hold
@@ -17,15 +20,39 @@
 >
 > Fork freely if any of this code is useful to you.
 
-A real-time dashboard that visualizes Claude Code's thinking process, tool usage, and agent activity as it happens.
-
 ![Thinking Monitor Dashboard](docs/screenshot.png)
 
 ---
 
-## Why
+## Why this exists
 
-Claude Code is powerful, but opaque. You see the output, not the process. Thinking Monitor changes that — watch Claude reason through problems, track every tool call, and understand how agents coordinate in real-time. It's the developer tools experience for AI-assisted coding.
+Organizations are deploying AI coding assistants (Claude Code, GitHub Copilot, Cursor) that execute with elevated privileges: modifying source code, running terminal commands, accessing credentials, and making API calls on behalf of the developer. Unlike traditional software, these systems make autonomous decisions in real time based on reasoning that is invisible to the security teams responsible for the environments they run in.
+
+Thinking Monitor was built to close that visibility gap. It captures the full trace of an AI agent's activity (reasoning, tool calls, hook lifecycle events, sub-agent delegation) and presents it as a real-time, filterable dashboard. The intent is to make agentic behavior observable enough that humans can govern it, auditors can review it, and developers can debug it.
+
+---
+
+## Research context
+
+This project sits at the intersection of three active conversations in Canadian and global AI security:
+
+- **AI agent governance and trust frameworks**: OWASP Agentic Top 10, NIST AI Risk Management Framework, ISO/IEC 23894 (AI risk management), ISO/IEC 42001 (AI management systems)
+- **Zero-trust architecture for autonomous systems**: localhost-only binding, no persistence, tamper-evident audit trails, hook-based policy enforcement at the runtime boundary
+- **Secure-by-default tooling for AI-assisted software development**: secrets redaction, prompt and tool-output sanitization, chain-of-custody for agent actions
+
+The patterns this project explored, including tamper-evident logging of agent tool calls, policy enforcement at the agent runtime boundary, and secrets redaction in prompt and tool-output pipelines, have informed how I now architect agent deployments in client environments. The dashboard itself is paused; the design language is not.
+
+---
+
+## Who this is for
+
+| Stakeholder | What they get |
+|-------------|---------------|
+| **Software development teams** | Visibility into AI assistant behavior without sacrificing velocity; faster debugging of agent missteps |
+| **Security operations** | Real-time event stream of AI activity that can be inspected, exported, or routed into existing SIEM workflows |
+| **Compliance and audit** | A defensible record of what an agent did, when, on which files, and with which tools |
+| **Researchers** | A reference implementation for instrumenting agentic AI and a substrate for studying agent behavioral patterns |
+| **AI vendors and platform teams** | A reference architecture for building trustworthy agent runtime observability |
 
 ---
 
@@ -82,7 +109,7 @@ Open **http://localhost:3356** and start a Claude Code session. Watch the magic.
 
 ![Architecture Diagram](docs/architecture.png)
 
-Thinking Monitor hooks into Claude Code's lifecycle events. When Claude Code runs, it fires hooks at key moments — before and after tool calls, when thinking blocks are produced, when agents start and stop. These hooks POST JSON events to a local server on port 3355.
+Thinking Monitor hooks into Claude Code's lifecycle events. When Claude Code runs, it fires hooks at key moments (before and after tool calls, when thinking blocks are produced, when agents start and stop), and those hooks POST JSON events to a local server on port 3355.
 
 The server validates, redacts secrets from, and broadcasts each event over WebSocket to any connected dashboard clients. The dashboard (served on port 3356) renders events in real time across its seven panels, giving you a live view of everything Claude is doing.
 
@@ -133,13 +160,13 @@ LOG_LEVEL=debug pnpm start  # Verbose
 
 Thinking Monitor is **localhost-only by design**. It binds exclusively to `127.0.0.1` and is never exposed to the network. All data stays on your machine.
 
-- **No persistence** — events exist only in memory during the session
-- **Secret redaction** — API keys, tokens, and passwords are automatically masked before display
-- **Path validation** — file operations are restricted and normalized to prevent traversal
-- **XSS prevention** — all content is HTML-escaped before rendering
-- **CSP headers** — Content-Security-Policy for defense-in-depth protection
-- **CSRF protection** — Origin header validation on all mutating requests
-- **Rate limiting** — protects against local denial-of-service
+- **No persistence**: events exist only in memory during the session
+- **Secret redaction**: API keys, tokens, and passwords are automatically masked before display
+- **Path validation**: file operations are restricted and normalized to prevent traversal
+- **XSS prevention**: all content is HTML-escaped before rendering
+- **CSP headers**: Content-Security-Policy for defense-in-depth protection
+- **CSRF protection**: Origin header validation on all mutating requests
+- **Rate limiting**: protects against local denial-of-service
 
 See [SECURITY.md](./SECURITY.md) for vulnerability reporting.
 
@@ -159,32 +186,40 @@ See [SECURITY.md](./SECURITY.md) for vulnerability reporting.
 | **Linux** | Fully supported | All features work natively |
 | **Windows** | Partial | Server and dashboard work via Node.js. Shell scripts (`setup.sh`, `mock-data.sh`) require WSL or Git Bash. File-open actions use `explorer /select,` natively. |
 
-The core server uses cross-platform Node.js APIs (`path.join`, `os.homedir`) throughout. Windows users can run the dashboard and server without issues — the main gap is that hook installation and utility scripts are bash-only.
+The core server uses cross-platform Node.js APIs (`path.join`, `os.homedir`) throughout. Windows users can run the dashboard and server without issues; the main gap is that hook installation and utility scripts are bash-only.
 
 ---
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, testing, and PR guidelines.
+The project is on hold (see the [Status](#status-on-hold) note at the top of this README), so I'm not actively reviewing pull requests right now. If you fork this and build something interesting, open an issue or reach out, I would like to hear about it. For development setup and the original PR guidelines, see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+---
+
+## About the author
+
+Junior Williams is a Principal Enterprise Architect working at the intersection of cybersecurity and AI. He holds CISSP, GCIH, CCSK, GSEC, and SSCP certifications, and serves on the Standards Council of Canada Mirror Committees for ISO/IEC JTC 1/SC 42 (Artificial Intelligence) and SC 27 (Information security, cybersecurity and privacy protection), contributing to the development of international standards in both domains.
+
+Prior work includes the "Williams' Law" paper on exponential AI advancement through algorithmic innovation (published via Zenodo), enterprise security roadmaps aligned with PCI DSS, ISO/IEC 27001, and NIST CSF, and vCISO engagements for critical-infrastructure clients. Based in Toronto.
 
 ---
 
 ## Disclaimer
 
-Thinking Monitor is an **unofficial community tool**. It is not affiliated with, endorsed by, or supported by Anthropic. Use at your own risk. This software is provided as-is with no warranty — see the [LICENSE](./LICENSE) for details.
+Thinking Monitor is an **unofficial community tool**. It is not affiliated with, endorsed by, or supported by Anthropic. Use at your own risk. This software is provided as-is with no warranty; see the [LICENSE](./LICENSE) for details.
 
 ---
 
 ## License
 
-[MIT](./LICENSE) — Copyright (c) 2025-2026 Junior Williams
+[MIT](./LICENSE), Copyright (c) 2025-2026 Junior Williams
 
 ---
 
 ## Recent Changes
 
-- **v1.8.1** (2026-03-30 00:21) — Task view fix: UUID session resolution, empty dir suppression, completion log from task_update events, session-scoped filtering, correct peak metric, header count, ID display in completions.
-- **v1.8.0** (2026-03-29 16:50) — Tasks and Teams view redesign: Tasks replaced kanban with compact active-work rows + completion log with duration pills; Teams replaced 4 sections with agent lifecycle Gantt strip, NxN communication heat matrix, and enhanced message filtering.
-- **v1.7.1** (2026-03-29 12:01) — Backlog clearance: in-memory search index (replaces DOM scanning), session dropdown horizontal scroll fix, Mermaid architecture diagram, JSDoc for dispatcher and elements.
+- **v1.8.1** (2026-03-30 00:21): Task view fix: UUID session resolution, empty dir suppression, completion log from task_update events, session-scoped filtering, correct peak metric, header count, ID display in completions.
+- **v1.8.0** (2026-03-29 16:50): Tasks and Teams view redesign: Tasks replaced kanban with compact active-work rows + completion log with duration pills; Teams replaced 4 sections with agent lifecycle Gantt strip, NxN communication heat matrix, and enhanced message filtering.
+- **v1.7.1** (2026-03-29 12:01): Backlog clearance: in-memory search index (replaces DOM scanning), session dropdown horizontal scroll fix, Mermaid architecture diagram, JSDoc for dispatcher and elements.
 
 *For complete history, see [CHANGELOG.md](./CHANGELOG.md)*
