@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-05-24 — v2.1.0
+
+### Changed
+- README repositioned from "On Hold" to "Research instrument, v1 paused" with new framing of v1 as the prototype that justified continued research.
+- README tagline updated to "Observability for AI agents running with elevated privileges."
+- Standards stack in Research context extended to NIST AI Risk Management Framework (AI 100-1) + Generative AI Profile (NIST AI 600-1) and ISO/IEC 27001/27002 as the ISMS baseline.
+- Zero-trust framing replaced with least-privilege / runtime-boundary controls language (localhost-only is attack-surface reduction, not zero-trust per NIST SP 800-207).
+- "AI trust frameworks" named explicitly as the umbrella heading in Research context.
+- Stakeholder table rewritten for peer audience (standards bodies, enterprise security architects, AI security researchers, Catalyst Fellowship and academic reviewers) with past/aspirational column tense matching paused status.
+- About-the-author section restructured into three sub-sections: Standards and advisory roles, Active research and practitioner work, Public scholarship and speaking.
+- Added: SCC Mirror Committee membership (SC 42 + SC 27) framing linked to ISO/IEC 42001; NSERC CREATE IAB role at Dalhousie and Memorial; AIUC-1 consortium membership and contribution to control B006 ("Prevent unauthorized AI agent actions"); CCN advisory board membership with Financial Post coverage; CSA Group membership; PQC migration practitioner work; secure AI architecture practitioner work; public scholarship and speaking summary with Williams' Law contextualized against Kaplan 2020 / Chinchilla 2022.
+- Author callout added above the fold (between Status block and "Why this exists").
+- How It Works trimmed to remove specific port numbers and transcript-watcher implementation details from the public README (still documented in source).
+- Quick Start closer "Watch the magic." replaced with descriptive sentence about hooks populating the dashboard in real time.
+- Removed by-name reference and link to Hermes / Nous Research from the Status block.
+- "Made in Canada" badge re-linked from canada.ca to the Canadian Centre for Cybersecurity (cyber.gc.ca).
+- Status badge updated to "Research instrument, v1 paused".
+- Voice cleanup: "sits at the intersection" → "intersects"; "is paused; design language is not" replaced with substantive sentence about patterns moving upstream into client work.
+- No code changes; v2.1.0 marks the research-instrument repositioning.
+
+---
+
 ## 2026-05-24
 
 ### Changed
